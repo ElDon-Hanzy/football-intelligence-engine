@@ -288,3 +288,86 @@ Read these files together:
 - `DECISIONS_AND_HISTORY.md` — rationale, historical decisions, rejected approaches, regressions and lessons.
 
 A future conversation must inspect GitHub and Supabase directly before execution because repository/database state may have advanced beyond these documents.
+
+## 18. Why Layer 1 uses latest-snapshot semantics
+
+Production testing exposed an important read-side issue: if the API merges all historical pre-kickoff snapshots, an older bookmaker market can silently fill a market that disappeared from the newest snapshot. That creates a false impression that an old price is still available.
+
+Decision:
+- keep **every raw snapshot append-only** for history;
+- for the live/current read API, use only the **latest valid pre-kickoff raw snapshot per fixture + bookmaker source**;
+- historical snapshots remain available for price-movement and CLV analysis;
+- never backfill a currently missing price from an older snapshot unless the UI explicitly labels it as historical.
+
+This also explains why `Bet365` and `Bet365 (no latency)` are preserved as distinct raw provider sources but canonicalized to one Bet365 bookmaker family for bookmaker counts.
+
+## 19. Why Correct Score de-vig is conditional on the offered set
+
+Exact-score books often omit extreme scorelines. Simply pretending the displayed scorelines are the complete universe would be mathematically misleading.
+
+Decision:
+- store bookmaker fair probability **conditional on the exact-score outcomes actually offered**;
+- store the model's raw/unconditional score probability;
+- also compute the model probability conditional on the same offered set;
+- compare conditional model vs conditional bookmaker probability for `conditional_edge`;
+- calculate actual wager EV from the **raw/unconditional model probability** and the offered decimal price.
+
+Therefore:
+
+`EV = P_model_raw * decimal_odds - 1`
+
+This prevents omitted outcomes from creating fake EV while still allowing like-for-like de-vig comparison.
+
+## 20. Why two de-vig methods are required for Correct Score
+
+The first implementation used proportional de-vig. Live Correct Score books showed large margins, especially on one Unibet snapshot. In many-outcome, high-margin markets, proportional de-vig can retain favorite/longshot bias.
+
+Decision:
+- retain proportional de-vig as an interpretable baseline;
+- add power de-vig as a second method;
+- store both observations independently;
+- call an observation method-robust only if the edge sign survives both methods.
+
+The two methods are not averaged into a single unexplained number. The consensus view preserves method agreement explicitly.
+
+## 21. Research edge is not yet a betting recommendation
+
+Live production now computes Correct Score de-vig, model-vs-market edge and EV. Some observations show positive EV under the model and positive conditional edge under both de-vig methods.
+
+That is **not enough** to promote them to bets.
+
+Decision:
+- keep `research_classification='UNVALIDATED'`;
+- keep `model_effect_enabled=false`;
+- expose `research_edge_available` separately from `value_edge_available`;
+- keep `value_edge_available=false` until validation is sufficient;
+- use research statuses such as `ROBUST_POSITIVE_EV` only to organize evidence, not as NO BET / WATCH / EDGE / STRONG EDGE recommendations.
+
+Promotion requires a forward sample, calibration checks and preferably evidence that these buckets beat the closing market.
+
+## 22. Edge-generation timeout lesson
+
+When de-vig/EV was first wired automatically into bookmaker ingestion, Layer 1 odds ingestion succeeded but the edge RPC timed out. This was intentionally recorded as a separate Layer-2 failure rather than rolling back valid odds.
+
+The expensive part was repeatedly solving the power de-vig exponent across a broad GW scope.
+
+Decision/fix:
+- preserve Layer 1 success independently of Layer 2 computation;
+- surface edge-generation errors separately in ingestion metadata;
+- add snapshot-scoped edge generation;
+- materialize intermediate sets;
+- solve the power exponent once per bookmaker raw snapshot;
+- make the GW wrapper select only snapshots with missing edge observations.
+
+A subsequent live ingestion verified the corrected automatic path: normalized odds succeeded and 228 edge rows were generated (114 proportional + 114 power), with zero bad chronology and zero post-kickoff contamination.
+
+## 23. Security findings are separated from model work
+
+Production inspection found legacy public tables with broad anon/authenticated grants and/or RLS disabled. This is a security issue, but blindly changing grants could break existing direct dashboard/API dependencies.
+
+Decision:
+- new Mispricing/Edge data is internal and hardened immediately;
+- do not silently revoke legacy access without first mapping clients;
+- later migrate writes behind trusted Edge Functions and reduce grants deliberately.
+
+Security cleanup is required, but it must not be mixed with model-validation changes in a way that obscures regressions.

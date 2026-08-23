@@ -5,7 +5,9 @@ const H={'Access-Control-Allow-Origin':'*','Content-Type':'application/json','Ca
 Deno.serve(async req=>{
   try{
     const ks=JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')||'{}');
-    const sb=createClient(Deno.env.get('SUPABASE_URL')!,ks.default||Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
+    const serviceKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||ks.default;
+    if(!serviceKey)throw Error('Missing Supabase service credential');
+    const sb=createClient(Deno.env.get('SUPABASE_URL')!,serviceKey,{auth:{persistSession:false}});
     const u=new URL(req.url),gw=Number(u.searchParams.get('gw')||1);
     const [mr,tr,sr,rr,or,ir]=await Promise.all([
       sb.from('matches').select('*').eq('source','fpl').eq('gameweek',gw).order('kickoff_time'),

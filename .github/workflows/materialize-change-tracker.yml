@@ -21,7 +21,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat project-management/.tracker-transfer/part*.b64 | base64 --decode > project-management/FOOTBALL_INTELLIGENCE_CHANGE_TRACKER.xlsx
+          cat project-management/.tracker-transfer/gzpart*.b64 | base64 --decode | gunzip > project-management/FOOTBALL_INTELLIGENCE_CHANGE_TRACKER.xlsx
           unzip -t project-management/FOOTBALL_INTELLIGENCE_CHANGE_TRACKER.xlsx
       - name: Commit workbook
         shell: bash

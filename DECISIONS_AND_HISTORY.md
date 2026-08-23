@@ -264,3 +264,91 @@ Before replacement quality can affect the active model:
 5. test out of sample for incremental predictive value.
 
 Until then all replacement outputs remain observational research only.
+
+## 39. Tactical matchup intelligence uses family-specific score semantics
+
+Do not compress all tactical context into one unexplained “matchup score.” Different signals mean different things.
+
+Tactical Matchup v0.1.1 therefore stores explicit `score_type` values:
+- `ADVANTAGE` for attack-vs-resistance comparisons;
+- `OPPORTUNITY` for context that may create a mode of attack without asserting superiority;
+- `DISRUPTION` for personnel/continuity risk.
+
+This prevents a 0.60 transition-opportunity number from being read as the same concept as a 0.60 aerial advantage or 0.60 personnel disruption.
+
+## 40. Tactical matchup components obey missing-is-not-zero
+
+The scratch prototype exposed a tempting but invalid shortcut: `COALESCE(missing_metric, 0)` inside matchup scores.
+
+That approach was rejected before production persistence.
+
+Production Tactical Matchups use null-aware weighted means. Missing role/tactical components are excluded from the relevant calculation and separately reflected in data coverage/confidence. Absence of evidence is never converted into evidence of weakness.
+
+## 41. Do not claim left/right flank mismatches without side/zone evidence
+
+Current Role/Tactical data can support broad **wide-channel pressure** but not reliable left-vs-right assignment.
+
+Until player-side/zone data exists, the engine may say a team has a wide-channel attacking lean, but it may not claim “Chelsea right side vs Fulham left side” or similar precision.
+
+A future side-specific channel model must have independent evidence and validation.
+
+## 42. Direct-transition opportunity is not high-line-vs-pace
+
+The current transition signal uses directness, expected-XI shot/box threat and opponent control/block context.
+
+It does **not** contain measured defensive line height or player speed. Therefore it must remain `direct_transition_opportunity`, not be relabelled as high-line-vs-pace.
+
+True line-height-vs-pace intelligence is a future, separate feature family.
+
+## 43. Research fixture intelligence gets an additive API contract
+
+The existing `fpl-api` v8 contract is tied to frozen FPL prediction/actual semantics and had already caused frontend regressions during prior schema evolution.
+
+Decision: do not mutate that contract just to add unvalidated tactical research.
+
+Create a separate additive `fixture-intelligence-api` that exposes:
+- tactical profile;
+- matchup signals;
+- Expected XI/availability;
+- player-role research;
+- replacement research;
+- explicit research-only limitations.
+
+Historical fixtures with no genuine pre-kickoff research remain empty rather than being reconstructed after the fact.
+
+This API is the stable read boundary for the future Fixtures UI.
+
+## 44. Tactical signal labels need lean states and provenance consistency
+
+The first persisted direction bands labeled a score such as 0.581 as `BALANCED`, hiding a useful but non-strong lean.
+
+Decision for ADVANTAGE signals:
+- >=0.62 ATTACK_ADVANTAGE;
+- >=0.55 ATTACK_LEAN;
+- <=0.45 DEFENSIVE_LEAN;
+- <=0.38 DEFENSIVE_RESISTANCE;
+- otherwise BALANCED.
+
+A later audit found the calibrated outer direction could differ from the nested technical-evidence direction inherited from v0.1. This was corrected append-only with `evidence_revision=2`.
+
+Permanent rule: displayed direction and stored technical provenance must agree.
+
+## 45. Personnel disruption is continuity research, not player ability
+
+The Tactical Matchup `personnel_disruption` signal uses absence relevance, replacement role fit, candidate collision and availability uncertainty.
+
+It does not prove that a replacement is equally good or worse in absolute football quality, and it does not model manager system changes.
+
+A high disruption score therefore means “current expected personnel path has low continuity under this research proxy,” not “team strength must drop by this amount.”
+
+Before personnel disruption may affect xPts/lambdas:
+1. replacement ranks must be validated against actual lineups/substitutions;
+2. role vectors must be validated forward;
+3. player ability must be added separately;
+4. whole-team tactical consequence must be tested out of sample.
+
+## 46. Foundational-layer stop point reached
+
+With Expected XI, role archetypes, team style, replacement-cover research and fixture-specific Tactical Matchups now behind additive read contracts, the engine has enough foundational structure for the planned product interface.
+
+Decision: do **not** delay the UI rebuild waiting for every future contextual family (pressing, line height, weather, referees, etc.). Freeze the current core read contracts and rebuild the interface around Home / FPL / Fixtures / Market Intelligence / Performance. Future validated intelligence families should plug into that fixture-detail architecture.

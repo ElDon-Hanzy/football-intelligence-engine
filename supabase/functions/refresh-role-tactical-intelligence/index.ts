@@ -8,9 +8,13 @@ Deno.serve(async(req)=>{try{
   const {data:tok,error:ae}=await sb.rpc('get_backend_secret',{secret_name:'FOOTBALL_ENGINE_ADMIN_TOKEN'});if(ae||!tok||req.headers.get('x-engine-token')!==tok)return new Response(JSON.stringify({ok:false,error:'unauthorized'}),{status:401,headers:H});
   const body=await req.json().catch(()=>({}));const gw=body.gameweek==null?null:Number(body.gameweek);
   const call=async(name:string,args?:Record<string,unknown>)=>{const {data,error}=await sb.rpc(name,args);if(error)throw new Error(`${name}: ${error.message}`);return data};
-  const playerProfiles=await call('refresh_player_role_profiles');
+  const safe=async(name:string,args?:Record<string,unknown>)=>{try{return {status:'success',data:await call(name,args),error:null}}catch(e){return {status:'error',data:null,error:errText(e)}}};
+  const rawProfiles=await call('refresh_player_role_profiles_v02');
+  const calibratedProfiles=await call('refresh_player_role_profiles_v021');
   const teamProfiles=await call('refresh_team_tactical_profiles_v011');
   const playerFixtures=await call('refresh_player_fixture_role_snapshots',{p_gameweek:gw});
   const teamFixtures=await call('refresh_team_fixture_tactical_snapshots',{p_gameweek:gw});
-  return new Response(JSON.stringify({ok:true,gameweek:gw,player_profiles:playerProfiles,team_profiles:teamProfiles,player_fixture_roles:playerFixtures,team_fixture_tactics:teamFixtures,model_effect_enabled:false,note:'Automated player roles are event-profile archetypes; team styles are multi-axis heuristics. Exact formations, defensive pressing intensity and replacement-quality effects are not asserted by this layer.'}),{headers:H});
+  const replacement=await safe('refresh_replacement_quality_v011',{p_gameweek:gw});
+  const validation=await safe('refresh_role_forward_validation_v02');
+  return new Response(JSON.stringify({ok:true,gameweek:gw,player_profiles_raw:rawProfiles,player_profiles_calibrated:calibratedProfiles,team_profiles:teamProfiles,player_fixture_roles:playerFixtures,team_fixture_tactics:teamFixtures,replacement_quality:replacement,forward_role_validation:validation,model_effect_enabled:false,note:'v0.2 raw behavioral axes use historical EPL + preseason + competitive evidence. v0.2.1 calibrates archetypes relative to positional peers. Replacement quality remains an observational proxy; exact formation, pressing intensity and full tactical impact are not asserted.'}),{headers:H});
 }catch(e){return new Response(JSON.stringify({ok:false,error:errText(e)}),{status:500,headers:H})}});

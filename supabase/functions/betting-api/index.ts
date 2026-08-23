@@ -41,6 +41,7 @@ Deno.serve(async req=>{
     const rawIds=latestRaw.map((r:any)=>Number(r.id));
 
     const oddsRows:any[]=[];
+    let edgeRows:any[]=[];
     if(rawIds.length){
       for(let from=0;;from+=1000){
         const r=await sb.from('odds_market_selections')
@@ -51,6 +52,11 @@ Deno.serve(async req=>{
         oddsRows.push(...(r.data||[]));
         if((r.data||[]).length<1000)break;
       }
+      const er=await sb.from('correct_score_edge_consensus')
+        .select('raw_snapshot_id,match_id,bookmaker,selection_name,decimal_odds,model_probability,expected_value,min_edge_across_methods,max_edge_across_methods,market_overround,model_offered_mass,devig_method_count,research_status,evidence_quality,odds_captured_at,model_captured_at,kickoff_time,chronology_valid,model_effect_enabled')
+        .eq('gameweek',gw).in('raw_snapshot_id',rawIds).order('expected_value',{ascending:false});
+      if(er.error)throw Error(`edge_research: ${er.error.message}`);
+      edgeRows=er.data||[];
     }
 
     const tm=new Map((tr.data||[]).map((x:any)=>[x.id,x]));
@@ -69,6 +75,8 @@ Deno.serve(async req=>{
       const bookmakerSources=[...new Set(odds.map((z:any)=>z.bookmaker))];
       const bookmakers=[...new Set(odds.map((z:any)=>z.bookmaker_family))];
       const markets=[...new Set(odds.map((z:any)=>z.market_key))];
+      const research=edgeRows.filter((z:any)=>z.match_id===x.id&&z.chronology_valid===true&&z.model_effect_enabled===false);
+      const robust=research.filter((z:any)=>z.research_status==='ROBUST_POSITIVE_EV').sort((a:any,b:any)=>Number(b.expected_value)-Number(a.expected_value));
       return {
         match_id:x.id,kickoff_time:x.kickoff_time,home_team:home?.name,away_team:away?.name,home_short:home?.short_name,away_short:away?.short_name,
         prediction:p?{home_lambda:p.home_lambda,away_lambda:p.away_lambda,confidence:p.confidence,top_scorelines:p.top_scorelines,markets:p.markets,captured_at:p.captured_at}:null,
@@ -76,9 +84,10 @@ Deno.serve(async req=>{
         odds_count:odds.length||null,correct_score_count:cs.length||null,
         bookmaker_count:bookmakers.length||null,bookmaker_source_count:bookmakerSources.length||null,market_count:markets.length||null,
         bookmakers,bookmaker_sources:bookmakerSources,market_keys:markets,
+        edge_research:research.length?{status:'UNVALIDATED',model_effect_enabled:false,observation_count:research.length,robust_positive_ev_count:robust.length,top_robust_positive_ev:robust.slice(0,5)}:null,
         frozen:+new Date(x.kickoff_time)<=Date.now()
       };
     });
-    return new Response(JSON.stringify({ok:true,gameweek:gw,odds_status:allOdds.length?'connected':'no_data',value_edge_available:false,last_ingestion:ir.data||null,fixtures}),{headers:H});
+    return new Response(JSON.stringify({ok:true,gameweek:gw,odds_status:allOdds.length?'connected':'no_data',value_edge_available:false,research_edge_available:edgeRows.length>0,last_ingestion:ir.data||null,fixtures}),{headers:H});
   }catch(e){return new Response(JSON.stringify({ok:false,error:e instanceof Error?e.message:String(e)}),{status:500,headers:H})}
 });

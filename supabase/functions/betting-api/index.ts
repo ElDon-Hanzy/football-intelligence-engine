@@ -1,11 +1,11 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.112.3';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const H={'Access-Control-Allow-Origin':'*','Content-Type':'application/json','Cache-Control':'no-store'};
 
 Deno.serve(async req=>{
   try{
     const ks=JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')||'{}');
-    const serviceKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||ks.default;
+    const serviceKey=ks.default||Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if(!serviceKey)throw Error('Missing Supabase service credential');
     const sb=createClient(Deno.env.get('SUPABASE_URL')!,serviceKey,{auth:{persistSession:false}});
     const u=new URL(req.url),gw=Number(u.searchParams.get('gw')||1);

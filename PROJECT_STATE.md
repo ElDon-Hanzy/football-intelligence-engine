@@ -14,355 +14,316 @@ Non-negotiable production rules:
 - missing data is not zero;
 - preserve raw source/provenance and known-at timestamps;
 - never commit secrets/API keys;
-- all new Mispricing Intelligence families remain `model_effect_enabled=false` until validated out of sample;
-- betting research quality must eventually be judged by calibration, EV and CLV, not raw hit rate alone.
+- new intelligence families remain `model_effect_enabled=false` until validated out of sample;
+- betting research quality is judged by calibration, EV and CLV, not raw hit rate alone.
 
 ## 2. FPL model/state architecture
 
 Model evolution:
 - v0.1.1 — initial engine; fixture-strength compression defect identified.
-- v0.1.2 — multiplicative matchup-strength recalibration and the base `player_state` layer consumed by later models.
-- v0.1.2b — starter minutes/P(start), penalty-event treatment, latent BPS/bonus simulation, opponent-adjusted Defensive Contributions.
-- v0.1.3 — consumes the v0.1.2 player-state layer and overlays the older manually researched Player Role Intelligence table.
+- v0.1.2 — multiplicative matchup-strength recalibration and base `player_state`.
+- v0.1.2b — starter minutes/P(start), penalties, latent BPS/bonus, opponent-adjusted Defensive Contributions.
+- v0.1.3 — consumes v0.1.2 player state and overlays the older manually researched Player Role Intelligence table.
 
-Historical GW1 forecasts remain frozen.
+Historical GW1 forecasts remain frozen. The new automated Role/Tactical/Replacement layers are research-only and do not alter v0.1.3.
 
-Permanent weekly rules:
-- project the full 15-man squad before XI/bench/captain decisions;
-- xMins, xPts, P(blank), P(5+), P(10+), P(15+), P(20+);
-- include Defensive Contributions;
-- use Captaincy Haul Model rather than mean xPts alone;
-- anti-anchor to prior XI/bench/captain.
+Permanent weekly rules: project all 15 players before XI/bench/captain decisions; include xMin, xPts, P(blank), P(5+), P(10+), P(15+), P(20+), Defensive Contributions and Captaincy Haul distributions.
 
 Current official FPL player dimension: **604 players**, with zero missing team mappings and zero missing position mappings at latest verification.
 
-## 3. Result pipeline and current-season evidence
+## 3. Result pipeline / current-season state
 
-### `sync-gw-results`
-Current deployed version: **v4 ACTIVE**.
+`sync-gw-results`: **v4 ACTIVE**, production cron `*/15 * * * *`.
+It preserves snapshot-safe actuals and factual fixture state without altering frozen predictions.
 
-It:
-- reads official FPL live player data and GW fixtures;
-- writes append-only `gameweek_result_runs` and `player_gameweek_actuals`;
-- records the exact `finished_fixture_ids` for every result snapshot;
-- reconciles mutable factual result state in `matches` without altering frozen predictions;
-- invokes `refresh_current_season_team_intelligence()` after fixture reconciliation;
-- is hash-idempotent when the official result payload is unchanged.
+Official-FPL current-season team evidence currently contains 16 team-side rows from 8 completed GW1 matches. Goals are factual; unavailable xG remains NULL.
 
-Production result cron: `*/15 * * * *`.
+`refresh-current-player-state`: **v3 ACTIVE**, pinned to `npm:@supabase/supabase-js@2.112.3`, cron `0 */4 * * *`.
+Correct lineage remains v0.1.2 state consumed by v0.1.3. First successful refresh appended 600 rows; identical rerun inserted 0. No historical GW1 predictions were regenerated.
 
-Current-season team evidence from official FPL currently contains **16 team-side rows** from 8 completed GW1 matches. Goals are factual; unavailable team xG remains NULL, never fabricated zero.
+## 4. Expected XI / Availability Intelligence v0.1 — DEPLOYED + VERIFIED
 
-## 4. Snapshot-safe FPL actuals / fixtures
+Production storage: `player_fixture_availability_observations` with pre-kickoff guard, RLS, internal-only access and `model_effect_enabled=false`.
 
-Current deployed `fpl-api`: **v8 ACTIVE**.
-Player actual finality is evaluated against the same stored result snapshot's `finished_fixture_ids`, never a newer live fixture state.
+`refresh-availability-intelligence`: **v4 ACTIVE**, pinned to `npm:@supabase/supabase-js@2.112.3`, cron `10 */4 * * *`.
 
-`fixture_results` exposes mutable factual results separately from frozen pre-kickoff predictions.
+Candidate shapes such as 4-5-1 are FPL-valid selection shapes only, not tactical formations.
 
-Historical expected scores must never be reconstructed after results are known. Missing valid pre-kickoff prediction = `—`.
+Current Fulham–Chelsea snapshot remains 61 player observations with exactly 11 candidate-XI players per team and zero post-kickoff/model-effect contamination.
 
-## 5. Dashboard / UI state
+## 5. Dashboard / Market Intelligence state
 
-Repository: `ElDon-Hanzy/football-intelligence-engine`.
-Main page: `index.html`.
-GitHub Pages workflow deploys repository root on pushes to `main`.
+Dashboard source remains `index.html`; GitHub Pages deploys repository root. Current UI supports fixture prediction-vs-actual, FPL actuals, bookmaker health, Correct Score odds, research edges, price tracking and CLV. Heavy UI polish remains deferred until core contracts stabilize.
 
-Latest dashboard contract repair before this intelligence pass:
-`aab8189426c51716eae48a4a99443a7e600a7998`.
-
-Current dashboard can render fixture prediction-vs-actual, FPL actuals, bookmaker feed health, Correct Score odds, research edges, price tracking and CLV.
-
-Planned information architecture after foundational intelligence contracts stabilize:
-- Home;
-- FPL;
-- Fixtures;
-- Market Intelligence;
-- Performance.
-
-Do not heavily polish the table-oriented UI before remaining data contracts stabilize.
-
-## 6. Existing Mispricing Intelligence base
-
-Existing observational families:
+Existing observational Mispricing families:
 - Recent Performance / attacking xG trend;
 - Recent Performance / defensive xGA trend;
 - Schedule / Fatigue / rest-congestion.
 
-All remain `model_effect_enabled=false`.
+Bookmaker Layer 1 remains PASSED. Correct Score Layer 2 remains research-only with proportional + power de-vig, offered-set conditional edge, unconditional wager EV, price history and CLV. `value_edge_available=false`.
 
-Historical adapters remain verified:
-- Football-Data: 932 source matches, 784 current-team historical rows, all 20 teams, xG correctly NULL;
-- Understat: 380 EPL matches, 646 current-team xG rows, 17 teams;
-- canonical reconciliation: 784 team-dates, 646 overlaps, 138 Football-Data-only promoted-team dates, zero source/match/team duplicate groups.
+## 6. Competitive rich-event ingestion — DEPLOYED + VERIFIED
 
-## 7. Expected XI / Availability Intelligence v0.1 — DEPLOYED + VERIFIED
+`ingest-competitive-core-stats`: **v1 ACTIVE**.
+It imports current-season FPL-Core-Insights rich events only after completed fixtures and accepts player-event evidence only when upstream marks `player_stats_processed=true`.
 
-Production table:
-`public.player_fixture_availability_observations`.
+Initial GW1 run:
+- 10 source matches;
+- 8 completed matches represented;
+- 16 team-side rows inserted;
+- 1 match fully player-stat processed at that snapshot;
+- 40 competitive player-event rows inserted;
+- 200 unprocessed player rows skipped;
+- 0 unmapped players.
 
-Stores append-only fixture/player observations with official FPL status/news/chance of playing, latest base P(start)/xMin, candidate-XI membership, candidate positional shape, confidence/provenance and observation hash.
+Identical-source rerun inserted 0. Missing values are never converted to zero.
 
-Safeguards:
-- RLS enabled;
-- anon/authenticated revoked;
-- service role only;
-- hard pre-kickoff trigger;
-- `model_effect_enabled=false` enforced.
+Production cron: `football_intelligence_competitive_core_ingest` = `0 8,18 * * *`.
+Latest observed scheduled execution at 18:00 UTC returned HTTP 200.
 
-`refresh-availability-intelligence`: **v4 ACTIVE**, pinned to `npm:@supabase/supabase-js@2.112.3`.
+## 7. Historical detailed role evidence — DEPLOYED + VERIFIED
 
-Important semantic rule: labels such as 4-5-1 / 5-4-1 are **selection-constrained candidate shapes, not tactical formations**.
+New protected Edge Function: `ingest-historical-role-evidence` **v1 ACTIVE**, pinned to:
+- `npm:@supabase/supabase-js@2.112.3`;
+- `npm:papaparse@5.5.3`.
 
-Fulham–Chelsea validation:
-- 61 player observations per current snapshot;
-- 11 candidate XI players per team;
-- zero post-kickoff rows;
-- zero model-effect rows.
+Source: FPL-Core-Insights 2025/26 EPL `playermatchstats.csv` for GW1–GW38, mapped old source player ID -> stable player code -> current canonical player.
 
-Production availability cron: `10 */4 * * *`.
+Verified import:
+- **12,754** source rows;
+- **10,205** mapped current-player rows;
+- **2,549** rows not mapping to current players;
+- **419** current players represented;
+- **38/38** gameweeks present;
+- duplicate groups: **0**;
+- model-effect rows: **0**.
 
-## 8. Current-season player-state refresh — DEPLOYED + VERIFIED
+Protected identical rerun returned HTTP 200 and inserted **0**.
 
-`refresh-current-player-state`: **v3 ACTIVE**, pinned to `npm:@supabase/supabase-js@2.112.3`.
+This historical data is a role-learning prior only and never rewrites historical forecasts.
 
-Correct lineage:
-- v0.1.3 consumes v0.1.2 `player_state` plus manual role intelligence;
-- current-season future-state updates therefore append under v0.1.2;
-- they do not regenerate historical predictions.
+## 8. Role Intelligence v0.2 raw behavioral axes — DEPLOYED + VERIFIED
 
-First successful production run:
-- 600 state rows appended;
-- 4 new FPL players explicitly reported with no base state rather than fabricated priors;
-- identical rerun: 0 inserts / 600 unchanged;
-- 0 GW1 predictions generated after the state refresh.
+`refresh_player_role_profiles_v02()` builds source-capped behavioral profiles from:
+- 2025/26 EPL detailed events: prior, max source mass 0.55;
+- 2026 preseason: weak bridge, max mass 0.15;
+- current 2026/27 competitive events: strongest, max mass 0.90 and progressively dominant.
 
-Production state cron: `0 */4 * * *`.
+Core behavioral axes:
+- shot threat;
+- box occupation;
+- creation;
+- width;
+- defensive load;
+- progression;
+- aerial involvement.
 
-## 9. Competitive rich-event ingestion — DEPLOYED + VERIFIED
+Missing component metrics are ignored, not imputed to zero. FPL position remains only a broad role-family guardrail. Manual Bruno/Isak research is explicitly not used as training input.
 
-New Edge Function:
-`ingest-competitive-core-stats` **v1 ACTIVE**.
+Raw v0.2 produced 472 profiles. Its first absolute-score taxonomy overconcentrated defenders as CENTRE_BACK and midfielders as HOLDING_MIDFIELDER; that result was retained as evidence but **not accepted as the calibrated taxonomy**.
 
-Source adapter: current-season Premier League files from FPL-Core-Insights. It maps source team codes/FPL player IDs into canonical fixtures and imports richer event features for Role/Tactical research.
+## 9. Role Intelligence v0.2.1 positional calibration — DEPLOYED + VERIFIED
 
-Strict completeness rule:
-- team evidence may ingest from completed source matches;
-- player-event evidence is accepted only when the upstream match explicitly has `player_stats_processed=true`;
-- partial/unprocessed player rows are skipped, not treated as zero;
-- missing components remain NULL.
+`refresh_player_role_profiles_v021()` calibrates the raw v0.2 axes using **position-relative behavioral percentiles**.
 
-First GW1 execution:
-- source matches: 10;
-- completed matches represented: 8;
-- team-side candidates/inserted: **16 / 16**;
-- matches with fully processed player stats: **1**;
-- competitive player-event candidates/inserted: **40 / 40**;
-- skipped unprocessed player rows: 200;
-- unmapped players: 0.
-
-Identical-source rerun inserted **0 team rows / 0 player rows**.
-
-## 10. Role Intelligence v0.1 — DEPLOYED + VERIFIED
-
-New append-only production objects:
-- `player_role_profile_observations`;
-- `player_fixture_role_observations`;
-- `current_player_role_profiles`;
-- `current_player_fixture_roles`.
-
-Automated role taxonomy is an **event-profile archetype taxonomy**, not an exact positional-tracking system.
-
-Current archetypes:
+Taxonomy:
 - GKP: GOALKEEPER;
-- DEF: CENTRE_BACK, WIDE_BACK, HYBRID_DEFENDER;
-- MID: HOLDING_MIDFIELDER, BOX_TO_BOX, CREATOR_10, WIDE_ATTACKER;
-- FWD: CENTRAL_STRIKER, LINK_FORWARD, WIDE_FORWARD, TARGET_FORWARD.
+- DEF: CENTRE_BACK / WIDE_BACK / HYBRID_DEFENDER;
+- MID: HOLDING_MIDFIELDER / BOX_TO_BOX / CREATOR_10 / WIDE_ATTACKER / WING_BACK;
+- FWD: CENTRAL_STRIKER / LINK_FORWARD / WIDE_FORWARD / TARGET_FORWARD.
 
-Evidence uses weighted event rates including crosses, final-third passes, chances created, box touches, shots/xG/xA, dribbles, tackles/interceptions/recoveries/clearances, aerials, long balls and offsides.
+`UNRESOLVED` remains a valid output when evidence, coverage or separation is insufficient.
 
-Source weights:
-- competitive Premier League event evidence = 1.0;
-- preseason/friendlies = 0.3.
+Current v0.2.1 audit:
+- **472 profiles**;
+- **162 UNRESOLVED**;
+- average confidence **0.6253**;
+- max confidence **0.92**;
+- 31 profiles currently contain competitive 2026/27 evidence.
 
-Conservative resolution rule:
-- thin or weak evidence => `UNRESOLVED`;
-- `UNRESOLVED` is a valid result, not a failure;
-- no role is promoted to certainty merely because the player has an FPL position.
+Current distribution:
+- UNRESOLVED 162;
+- CENTRE_BACK 62;
+- WIDE_ATTACKER 58;
+- HOLDING_MIDFIELDER 58;
+- GOALKEEPER 46;
+- WIDE_BACK 42;
+- CREATOR_10 14;
+- LINK_FORWARD 8;
+- TARGET_FORWARD 8;
+- WIDE_FORWARD 6;
+- CENTRAL_STRIKER 3;
+- WING_BACK 2;
+- BOX_TO_BOX 2;
+- HYBRID_DEFENDER 1.
 
-Latest current profile audit:
-- **406 player profiles**;
-- **371 UNRESOLVED**;
-- **31 players with competitive event evidence**;
-- **0 profiles at confidence >= 0.75**;
-- average confidence about 0.378.
+Sanity examples:
+- Bruno Fernandes = CREATOR_10 / WIDE_ATTACKER;
+- Frimpong = WIDE_BACK / HYBRID_DEFENDER;
+- Gabriel and Maguire = CENTRE_BACK;
+- Mbeumo = WIDE_ATTACKER;
+- Odegaard = CREATOR_10;
+- White = WIDE_BACK;
+- Havertz = LINK_FORWARD;
+- Raya = GOALKEEPER.
 
-Directionally sensible resolved examples include Raya = GOALKEEPER, Gabriel/Maguire = CENTRE_BACK, White/Frimpong = WIDE_BACK, Odegaard = CREATOR_10, Mbeumo = WIDE_ATTACKER, Havertz = TARGET_FORWARD.
+Intentional ambiguities:
+- Haaland = UNRESOLVED because CENTRAL_STRIKER vs TARGET_FORWARD scores are effectively tied;
+- Isak = UNRESOLVED with CENTRAL_STRIKER as top candidate because evidence/margin does not yet clear the calibrated threshold;
+- Chelsea Palmer = UNRESOLVED because top role scores are too close.
 
-Critical limitation:
-FPL position is currently only a broad guardrail. Players listed unusually by FPL—for example a tactical wing-back listed as MID—can still be forced into the wrong role family. This must be improved with stronger historical/zone/positional evidence before replacement-quality effects are enabled.
+Do not lower thresholds merely to force familiar football labels.
 
-The existing manually researched `player_role_intelligence` rows remain separate and untouched; this automated layer does **not** overwrite them and does not alter v0.1.3 today.
+## 10. Team Tactical Intelligence v0.1.1 — DEPLOYED + VERIFIED
 
-## 11. Team Tactical Intelligence v0.1.1 — DEPLOYED + VERIFIED
-
-New append-only production objects:
-- `team_tactical_profile_observations`;
-- `team_fixture_tactical_observations`;
-- `current_team_tactical_profiles`;
-- `current_team_fixture_tactics`.
-
-The model stores orthogonal style axes rather than pretending to know a single exact formation:
+Team style remains a multi-axis heuristic, not an asserted formation:
 - possession control;
 - directness;
 - width/delivery;
-- **attacking box occupation**;
+- attacking box occupation;
 - set-piece emphasis;
 - defensive-block tendency.
 
-Dominant research labels currently include:
-- POSSESSION_CONTROL;
-- DIRECT_TRANSITION;
-- WIDE_DELIVERY;
-- HIGH_BOX_OCCUPATION;
-- SET_PIECE_EMPHASIS;
-- DEEP_DEFENSIVE_BLOCK;
-- BALANCED.
+Current taxonomy is `team_style_v0.1.1`; `HIGH_BOX_OCCUPATION` corrected the misleading earlier `HIGH_BOX_PRESSURE` wording. The physical `box_pressure_score` column remains for compatibility but explicitly means attacking box occupation, **not defensive pressing**.
 
-### Semantic correction
-The initial implementation called the attacking-box axis `HIGH_BOX_PRESSURE`. That could be confused with defensive pressing intensity. It was corrected append-only to taxonomy **`team_style_v0.1.1`** with label `HIGH_BOX_OCCUPATION`.
+Current team profiles: **19**. Defensive pressing intensity and defensive-line height remain unmodeled.
 
-The physical column name `box_pressure_score` remains for compatibility, but evidence explicitly states that it means attacking box occupation/pressure and **does not measure defensive pressing**.
+## 11. Fixture chronology — Role/Tactical/Replacement VERIFIED
 
-Defensive pressing intensity is **not modeled yet**.
+All future-fixture role/tactical/replacement observations use database-level kickoff guards.
 
 Latest audit:
-- **19 current team tactical profiles**;
-- one team remains without sufficient mapped/rich evidence rather than receiving fake zeroes;
-- current Fulham and Chelsea dominant label: WIDE_DELIVERY;
-- all labels remain research heuristics, not tactical truth or asserted formations.
+- post-kickoff fixture-role rows: **0**;
+- fixture-role evidence cutoff at/after kickoff: **0**;
+- post-kickoff replacement v0.1.1 rows: **0**;
+- role v0.2/v0.2.1 model-effect rows: **0**;
+- replacement model-effect rows: **0**;
+- validation model-effect rows: **0**.
 
-## 12. Fixture Role/Tactical chronology — VERIFIED
+The v0.2.1 lineage created 54 new Fulham–Chelsea fixture-role snapshots pre-kickoff because source profile lineage changed. No historical forecast was regenerated.
 
-Fulham–Chelsea current fixture state:
-- **61 current player-fixture role rows**;
-- **2 current team-fixture tactical rows**.
+Direct forecast-immutability audit after this build:
+- `fixture_prediction_snapshots` created after build start: **0**;
+- `gameweek_prediction_runs`: **0**;
+- `model_predictions`: **0**.
 
-Database safeguards and audit:
-- post-kickoff player-role rows: **0**;
-- post-kickoff team-tactical rows: **0**;
-- role model-effect rows: **0**;
-- tactical model-effect rows: **0**;
-- fixture role snapshots whose source evidence cutoff is at/after kickoff: **0**;
-- fixture tactical snapshots whose source evidence cutoff is at/after kickoff: **0**.
+## 12. Replacement Quality proxy v0.1.1 — DEPLOYED + VERIFIED, OBSERVATIONAL ONLY
 
-A deliberate post-kickoff `guard_test` insert persisted **0 rows**.
+Replacement Quality is now **modeled as a research proxy**, but remains disabled as a model effect.
 
-The protected v3 Role/Tactical orchestrator was then run twice on identical evidence. Second execution returned HTTP 200 with:
-- player profiles inserted 0;
-- team profiles inserted 0;
-- player fixture roles inserted 0;
-- team fixture tactics inserted 0.
+Production function: `refresh_replacement_quality_v011(gameweek)`.
+Storage: `player_replacement_quality_observations` with pre-kickoff trigger and `model_effect_enabled=false` constraint.
 
-Thus the current path is end-to-end idempotent.
+Target gating:
+- doubtful player requires meaningful current start probability;
+- injured/suspended/unavailable player requires sample-size-scaled historical/preseason relevance;
+- tiny historical samples cannot imply major absence importance.
 
-## 13. Role/Tactical production functions and cadence
+Candidate pool:
+- same team;
+- available;
+- non-XI candidate;
+- same FPL position by default;
+- only explicit cross-position bridges are allowed: WIDE_BACK <-> WING_BACK, WIDE_ATTACKER <-> WIDE_FORWARD, and HOLDING_MIDFIELDER -> HYBRID_DEFENDER;
+- goalkeeper only matches goalkeeper.
 
-`refresh-role-tactical-intelligence`: **v3 ACTIVE**, pinned to `npm:@supabase/supabase-js@2.112.3`.
-It is a thin authenticated orchestrator over database RPCs:
-1. `refresh_player_role_profiles()`;
-2. `refresh_team_tactical_profiles_v011()`;
-3. `refresh_player_fixture_role_snapshots(gameweek)`;
-4. `refresh_team_fixture_tactical_snapshots(gameweek)`.
+Scoring:
+- behavioral role-vector fit;
+- role-specific production continuity proxy from current xG90/xA90/CBIRT90 where meaningful;
+- composite = 72% role fit + 28% production continuity when both exist.
 
-Production cron:
-- `football_intelligence_competitive_core_ingest`: `0 8,18 * * *`;
-- `football_intelligence_role_tactical_refresh`: `20 8,18 * * *`.
+Statuses are intentionally cautious:
+- `PROXY_NOT_VALIDATED`;
+- `ROLE_FIT_ONLY`;
+- `INSUFFICIENT_ROLE_EVIDENCE`;
+- `NO_RELIABLE_MATCH`.
 
-This lets the rich-event adapter ingest after the upstream twice-daily update window, then rebuilds profiles twenty minutes later.
+First v0.1.1 run inserted **26** rows. Current best-cover research examples:
+- Chelsea Chalobah -> Tosin: composite 0.9525, confidence 0.6120;
+- Chelsea Fofana -> Tosin: 0.9422, confidence 0.6120;
+- Chelsea Henderson -> Lavia: 0.9429, confidence 0.5992;
+- Fulham Andersen -> J.Cuenca: 0.9338, confidence 0.5358;
+- Chelsea Welbeck -> Delap: ROLE_FIT_ONLY because the target role is unresolved;
+- Fulham Cairney -> Reed: ROLE_FIT_ONLY, low confidence 0.3896.
 
-Protected backend allowlist now includes:
-- `ingest-team-history`;
-- `ingest-understat-xg`;
-- `ingest-bookmaker-odds`;
-- `refresh-availability-intelligence`;
-- `refresh-current-player-state`;
-- `ingest-competitive-core-stats`;
-- `refresh-role-tactical-intelligence`.
+These are **not claims of actual manager selections or validated tactical equivalence**. Ability, formation changes and full team tactical consequences are not yet modeled.
 
-Vault token remains internal and no secret is committed.
+## 13. Forward Role Validation — DEPLOYED, WAITING FOR FORWARD SAMPLE
 
-## 14. Replacement quality — STILL DELIBERATELY NOT MODELED
+`refresh_role_forward_validation_v02()` compares a genuinely pre-match v0.2.x behavioral vector with the player's realized post-match competitive event vector for appearances >=30 minutes.
 
-Do **not** enable replacement quality yet.
+It stores `axis_similarity` in `player_role_validation_observations` and never writes model effects.
 
-We now have a useful observational role layer, but it is not sufficiently calibrated to identify all true tactical substitutes, especially cross-listed roles and unusual FPL positions.
+Current validation rows: **0**, as expected: no completed fixture yet has both a pre-match v0.2.x snapshot and processed realized player-event evidence. Do not backfill a fake validation sample with hindsight.
 
-Replacement quality requires:
-1. stronger role priors / positional-zone evidence;
-2. forward validation against actual lineups and observed roles;
-3. role-distance mapping between absent player and replacement;
-4. then football-quality and tactical-consequence estimates.
+## 14. Role/Tactical production orchestration and cadence
 
-Until then availability continues to expose:
-`replacement_quality_status='NOT_MODELED_NO_RELIABLE_ROLE_MAP'`.
+`refresh-role-tactical-intelligence`: **v4 ACTIVE**, pinned to `npm:@supabase/supabase-js@2.112.3`.
 
-## 15. Bookmaker / Correct Score research state
+Strict core path:
+1. raw v0.2 player behavioral profiles;
+2. v0.2.1 calibrated role profiles;
+3. team tactical profiles v0.1.1;
+4. pre-kickoff player fixture-role snapshots;
+5. pre-kickoff team tactical snapshots.
 
-Layer 1 remains PASSED and append-only.
-Layer 2 remains observational with proportional + power de-vig, offered-set conditional comparisons, raw/unconditional wager EV and `value_edge_available=false`.
+Optional research hooks are isolated so they cannot invalidate the core refresh:
+6. replacement quality v0.1.1;
+7. forward role validation v0.2.
 
-Price/CLV semantics remain:
-- first observed != asserted true opening;
-- closing = last-valid-pre-kickoff proxy;
-- exact capture gap retained;
-- original observations never rewritten.
+Protected v4 identical rerun returned HTTP 200 with **0 new rows in every component**.
 
-Current deployed `betting-api`: **v9 ACTIVE**.
+Production crons remain:
+- competitive ingest `0 8,18 * * *`;
+- Role/Tactical refresh `20 8,18 * * *`.
 
-## 16. Repository parity — latest Role/Tactical commits
+Protected backend allowlist additionally includes `ingest-historical-role-evidence`. Vault token remains internal; no secret is committed.
 
-Role/Tactical source/config/migrations committed this pass:
-- `7c9aac83fb4808b29581dd1775109742f87cfd63` — competitive ingestion import config;
-- `84b28613d6313c7f04f3020b0c2ab54b970a9edc` — competitive rich-stat ingestion source;
-- `17b46bf5547cd4e5836fd4657a60753147af75de` — Role/Tactical orchestrator import config;
-- `43bd1893ff744266eaa8e02d257155fecb788093` — Role/Tactical v3 orchestrator source;
-- `9ffdf8d1e555f58c097432671a00c9f3f87b47ed` — Role/Tactical storage, guards and protected backend allowlist;
-- `f553da6fd6c1712f238cdbb84dfbc448a0cb5162` — final Role/Tactical refresh RPCs;
-- `ebd7a17395052c00d7f6fb92a9fb9e3d499ce826` — competitive/Role-Tactical cron schedule.
+## 15. Security / performance state
 
-Previous current-season evidence commits remain in repository history.
-
-## 17. Security state
-
-New Role/Tactical tables are internal:
+New Role/Tactical/Replacement tables are internal:
 - RLS enabled;
 - anon/authenticated revoked;
-- service-role read/write only as required;
+- service-role access only as required;
 - current views use `security_invoker=true`.
 
-Known legacy security issues remain on older exposed objects including `player_role_intelligence`, `fixture_prediction_snapshots` and legacy odds tables. Do not blindly change them before mapping direct client dependencies.
+Supabase security advisor reports INFO `RLS enabled, no policy` on internal service-only tables; this is expected with revoked client grants and is not a reason to create permissive public policies.
 
-Security cleanup remains separate from model validation.
+Known legacy ERROR findings remain on older exposed tables including `player_role_intelligence`, `fixture_prediction_snapshots` and legacy odds tables with RLS disabled. Do not blindly change these before mapping client dependencies.
 
-## 18. Exact next-action queue
+Performance advisor flagged unindexed foreign keys on the new replacement/validation research storage; covering indexes were added in production and in the repository migration.
 
-1. **Improve Role Intelligence evidence and calibration**: add historical/current positional-zone evidence so FPL-listed position is not the dominant role-family guardrail.
-2. Validate automated role classifications against actual lineups/roles across forward fixtures and calibrate confidence thresholds.
-3. Only then build **replacement-quality intelligence** using role distance + replacement player quality.
-4. Build true tactical interaction features separately: defensive pressing vs buildup, defensive-line height vs pace, attack-channel mismatches, aerial/set-piece mismatch, etc. Do not misuse attacking box occupation as pressing.
-5. Validate Expected XI against actual lineups and calibrate P(start)/xMin update strength.
+## 16. Repository parity — latest commits
+
+Role v0.2 / Replacement pass:
+- `025f3ad9cace17365041a328a2d1564a03367303` — v4 Role/Tactical orchestrator source;
+- `061a77735b1789f9f9a27be5f64ba6ae8e870626` — historical role-ingest dependency config;
+- `2dd666d24c1676a8c6db44d16bfc864fbf750bec` — historical role-ingest source;
+- `f0d3b1353b2830e12cdd5d56095863ec786606d9` — v0.2 research storage / protected allowlist / FK indexes;
+- `43375b3a8010f9be44d555a4b1e5468f95e82ab2` — raw multi-source behavioral role profiles v0.2;
+- `254ee69b0705793aa00666460e02c9c14385d027` — position-relative archetype calibration v0.2.1;
+- `f475a6e17a15237b915cf98ab7963e364a609d05` — forward validation + replacement proxy v0.1.1.
+
+Earlier Role/Tactical v0.1 commits and all previous FPL/market migrations remain in history.
+
+## 17. Exact next-action queue
+
+1. Collect the first **forward role-validation sample** from fixtures whose v0.2.x role snapshot existed pre-kickoff; calibrate confidence/margins from realized axes.
+2. Validate replacement proxy against actual starting lineups/substitution paths and realized player roles. Keep `model_effect_enabled=false`.
+3. Add ability/quality and tactical-consequence dimensions only after replacement role-fit validation; do not equate a high vector-fit score with equal football quality.
+4. Build true tactical interactions separately: defensive pressing vs buildup, defensive-line height vs pace, attack-channel mismatch, aerial/set-piece mismatch. Never reuse box occupation as pressing.
+5. Validate Expected XI against actual lineups and calibrate P(start)/xMin strength.
 6. Freeze main API contracts for Home / FPL / Fixtures / Market Intelligence / Performance, then rebuild UI/UX.
 7. Continue forward odds/edge/CLV sampling and add a third Correct Score source.
-8. Only after forward validation define live betting recommendation thresholds.
+8. Only after forward validation define any live recommendation thresholds.
 9. Map legacy direct client access and harden RLS/grants safely.
 
-## 19. Operational instruction for future conversations
+## 18. Operational instruction for future conversations
 
 When resuming:
 1. read this file and `DECISIONS_AND_HISTORY.md`;
-2. inspect current GitHub and Supabase state independently;
-3. preserve frozen forecasts and append-only historical observations;
+2. inspect GitHub and Supabase independently;
+3. preserve frozen forecasts and append-only observations;
 4. never commit secrets;
 5. distinguish planned / coded / committed / deployed / executed / verified;
-6. continue from the first unresolved queue item unless live production state has advanced.
+6. continue from the first unresolved queue item unless production state has advanced.

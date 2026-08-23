@@ -1,0 +1,55 @@
+name: Assemble change tracker workbook
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/assemble-tracker.yml'
+      - 'project-management/.tracker-transfer/**'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: assemble-change-tracker
+  cancel-in-progress: false
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Assemble and verify workbook
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f project-management/.tracker-transfer/gzpart05.b64 ]; then
+            echo 'Tracker payload is not present; nothing to assemble.'
+            exit 0
+          fi
+          cat project-management/.tracker-transfer/gzpart*.b64 > /tmp/tracker.gz.b64
+          base64 --decode /tmp/tracker.gz.b64 > /tmp/tracker.xlsx.gz
+          gunzip -c /tmp/tracker.xlsx.gz > project-management/FOOTBALL_INTELLIGENCE_CHANGE_TRACKER.xlsx
+          echo 'd5970621dbb140e59de5292029470b2f113c0fb88d20b4c17b814cea887f256e  project-management/FOOTBALL_INTELLIGENCE_CHANGE_TRACKER.xlsx' | sha256sum --check --strict
+
+      - name: Commit workbook and remove transfer payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f project-management/FOOTBALL_INTELLIGENCE_CHANGE_TRACKER.xlsx ]; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -r project-management/.tracker-transfer
+          git add project-management/FOOTBALL_INTELLIGENCE_CHANGE_TRACKER.xlsx
+          if git diff --cached --quiet; then
+            echo 'No tracker changes to commit.'
+            exit 0
+          fi
+          git commit -m 'Add verified change management tracker workbook [skip ci]'
+          git push

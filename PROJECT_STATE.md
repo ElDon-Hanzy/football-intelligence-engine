@@ -34,238 +34,310 @@ Permanent weekly rules:
 - use Captaincy Haul Model rather than mean xPts alone;
 - anti-anchor to prior XI/bench/captain.
 
-## 3. Current production APIs and result pipeline
+Current official FPL player dimension: **604 players**, with zero missing team mappings and zero missing position mappings at latest verification.
+
+## 3. Result pipeline and current-season evidence
 
 Supabase project: `knooiwezzsxcwhtjtdap`.
 
 ### `sync-gw-results`
-Current deployed version: **v3 ACTIVE**.
-Source is now committed under `supabase/functions/sync-gw-results/`.
+Current deployed version: **v4 ACTIVE**.
 
 Key behavior:
 - reads official FPL live player data and GW fixtures;
 - writes append-only `gameweek_result_runs` and `player_gameweek_actuals`;
-- every new result run records the exact `finished_fixture_ids` that were finished at that snapshot;
-- reconciles mutable factual result state in `matches` (`home_score`, `away_score`, `finished`, raw source, updated_at);
-- does not rewrite any frozen prediction;
-- hash-idempotent when the FPL payload is unchanged.
+- every result snapshot records the exact `finished_fixture_ids` finished at that snapshot;
+- reconciles mutable factual result state in `matches` without altering frozen predictions;
+- invokes `refresh_current_season_team_intelligence()` after fixture reconciliation;
+- hash-idempotent when the result payload is unchanged.
 
-Production cron `football_intelligence_result_sync` was changed from every six hours to **every 15 minutes** (`*/15 * * * *`).
+Production cron `football_intelligence_result_sync`: **every 15 minutes** (`*/15 * * * *`).
 
-Why: the old six-hour cadence left finished matches stale for hours. More importantly, the old read API combined a stale result snapshot with current live fixture completion, which could turn an old pre-match `0 points` row into a false final actual.
+Latest verification returned HTTP 200 with:
+- GW1;
+- 10 fixtures reconciled;
+- 8 finished fixture IDs at that moment;
+- 604 player actual rows in the newest run;
+- current-season team evidence hook inserted 0 because the existing finished-match evidence was already present.
 
-### `fpl-api`
-Current deployed version: **v8 ACTIVE**.
-Source is now committed under `supabase/functions/fpl-api/`.
+### Current-season team evidence
+Production function: `public.refresh_current_season_team_intelligence()`.
+
+Current verified storage:
+- source `official_fpl_results`;
+- **16 team-side rows** = 8 completed GW1 matches × 2 teams;
+- final goals for/against retained;
+- official FPL does not provide the team xG fields required here, therefore all 16 current-season rows have xG **NULL, not zero**;
+- uniqueness `(source, source_match_id, team_id)` makes reruns idempotent.
+
+This evidence may inform future fixtures only; it does not rewrite any GW1 forecast.
+
+## 4. Snapshot-safe FPL API and fixture actuals
+
+Current deployed `fpl-api`: **v8 ACTIVE**.
 
 Snapshot-safe actual semantics:
-- when `gameweek_result_runs.metadata.finished_fixture_ids` exists, a player actual is final only if all of that row's fixture IDs were already finished in the same result snapshot;
-- older result runs without this field use a conservative chronology fallback rather than current completion alone;
-- live/current fixture facts are exposed separately from frozen prediction state.
+- player actual finality is evaluated against the same result snapshot's `finished_fixture_ids`, not a newer live fixture state;
+- mutable current result facts and frozen prediction facts are exposed separately;
+- `fixture_results` includes actual score/status plus the frozen pre-kickoff fixture prediction where one genuinely exists.
 
-New `fixture_results` response includes:
-- fixture/team/kickoff identifiers;
-- actual home/away score and finished state;
-- whether the selected result snapshot had that fixture finished;
-- frozen pre-kickoff model lambda, top scoreline, scoreline probability, markets and confidence.
-
-### Verified GW1 repair
-Fresh result run id **9** was executed and verified with:
-- 600 player actual rows;
-- 10 fixtures reconciled;
-- 8 finished fixture IDs at that snapshot.
-
-Man City vs Bournemouth is verified in the API as:
-- actual: **2-1**;
-- finished: true;
+Verified example:
+- Man City vs Bournemouth actual: **2-1**;
 - frozen model top scoreline: **2-1**;
-- frozen fixture lambdas: **2.157 – 1.452**.
+- frozen lambdas: **2.157 – 1.452**.
 
-Verified Man City examples from that snapshot include Haaland 2, O'Reilly 2, Guéhi 10, Gvardiol 9, Cherki 8 and Donnarumma 3. Genuine non-participants remain true zeroes.
+Never reconstruct a missing historical expected score after the result is known. Show `—` if no valid frozen pre-kickoff fixture prediction exists.
 
-## 4. Dashboard state
+## 5. Dashboard / UI state
 
 Repository: `ElDon-Hanzy/football-intelligence-engine`.
 Main page: `index.html`.
-Pages workflow: `.github/workflows/pages.yml`, deploys repository root on pushes to `main`.
+GitHub Pages workflow deploys repository root on pushes to `main`.
 
-Earlier audit/search fix commit:
-`6115f3307895b49c80067affcaacd03f9e3550e7`.
+Latest dashboard contract repair commit:
+`aab8189426c51716eae48a4a99443a7e600a7998`.
 
-Latest dashboard repair commit:
-`aab8189426c51716eae48a4a99443a7e600a7998` — `Render fixture scores and betting research data`.
+Current dashboard can render:
+- fixture predictions vs actuals;
+- player prediction vs actual FPL points;
+- current bookmaker feed health;
+- Correct Score odds;
+- robust research-edge rows;
+- price tracking and CLV research.
 
-The latest dashboard now:
-- displays a GW fixture Predictions vs Actuals table;
-- shows frozen top expected score, probability, model lambdas/xG, actual score and fixture status;
-- highlights an exact top-score hit;
-- displays current squad/all-player actual FPL points from snapshot-safe `fpl-api` semantics;
-- no longer depends on obsolete betting fields such as `market_picks.correct_score` / `homepage_correct_score`;
-- displays bookmaker-feed health, odds/bookmaker counts, robust research edges, price tracking and CLV research;
-- surfaces Betting API failures explicitly instead of silently showing an empty tab;
-- keeps Mispricing Intelligence clearly labelled observational with `model_effect_enabled=false`.
+The interface is acknowledged as structurally messy. Planned information architecture after the next foundational intelligence work:
+- Home;
+- FPL;
+- Fixtures;
+- Market Intelligence;
+- Performance.
 
-Repository source and API contracts are verified. The exact public GitHub Pages URL still cannot be fetched from the current tool environment (safe-URL/indexing restriction), so **do not call the browser runtime independently verified yet**. A push to `main` has occurred and the Pages workflow is configured to deploy it.
+Do not spend heavily polishing the present table-oriented UI before the remaining foundational data contracts stabilize.
 
-## 5. Historical team intelligence / Mispricing base
+Independent browser/runtime verification of the exact public Pages URL is still unavailable from the current tool environment. Repository source/API state is verified; browser rendering must not be claimed independently verified until actually observed.
 
-Production Mispricing objects include:
+## 6. Historical team intelligence / existing Mispricing base
+
+Production objects include:
 - `team_match_intelligence`;
 - `fixture_intelligence_signals`;
 - `team_intelligence_features`;
 - `generate_observational_intelligence(gameweek)`.
 
-New tables/views are hardened with RLS/service-role-only access where designed.
+Existing observational families:
+- Recent Performance / attacking xG trend;
+- Recent Performance / defensive xGA trend;
+- Schedule / Fatigue / rest-congestion.
 
-Current observational families:
-- Recent Performance;
-- Schedule / Fatigue.
-
-The offseason-rest bug was corrected by appending a corrected observation; no historical signal was rewritten. No lambda/xPts effect has been enabled.
+All remain `model_effect_enabled=false`.
 
 Historical adapters remain production-verified:
 - Football-Data: 932 source matches parsed, 784 current-team historical rows, all 20 current teams, xG correctly NULL;
 - Understat: 380 EPL source matches, 646 current-team xG rows, 17 teams; promoted teams without prior EPL xG remain missing, not zero;
 - canonical reconciliation: 784 team-dates, 646 provider overlaps, 138 Football-Data-only promoted-team dates, zero duplicate source/match/team groups.
 
-## 6. Protected ingestion path
+## 7. Expected XI / Availability Intelligence v0.1 — DEPLOYED + VERIFIED
+
+### Storage
+Production table:
+`public.player_fixture_availability_observations`
+
+Properties:
+- append-only observational rows;
+- tied to match/team/opponent/player/kickoff;
+- stores official FPL status, chance of playing, news, latest known player-state P(start)/xMin, candidate-XI membership and confidence;
+- observation hash prevents unchanged evidence from generating duplicate rows;
+- RLS enabled;
+- anon/authenticated revoked;
+- service role has SELECT/INSERT only;
+- `model_effect_enabled` is constrained to `false`.
+
+Current view:
+`public.current_player_fixture_availability` with `security_invoker=true`.
+
+### Hard kickoff guard
+Trigger:
+`private.guard_player_fixture_availability_preko()`
+
+It rejects:
+- execution after fixture kickoff;
+- `captured_at >= kickoff`;
+- kickoff mismatches;
+- team/opponent mismatches.
+
+The guard was tested with a deliberate invalid post-kickoff insert attempt; zero test rows persisted.
+
+### Edge Function
+Production `refresh-availability-intelligence`: **v4 ACTIVE**.
+Package import pinned to `npm:@supabase/supabase-js@2.112.3`.
+
+Authentication:
+- custom `x-engine-token`;
+- compares against `FOOTBALL_ENGINE_ADMIN_TOKEN` obtained through the existing backend-secret RPC;
+- protected SQL wrapper allowlist now includes `refresh-availability-intelligence`.
+
+Behavior:
+- processes only fixtures whose kickoff is still in the future;
+- refreshes the complete official FPL player dimension before evaluating the fixture;
+- official status mapping: AVAILABLE / DOUBTFUL / INJURED / SUSPENDED / UNAVAILABLE / UNKNOWN;
+- hard unavailable statuses receive zero XI score;
+- otherwise candidate XI score uses the latest pre-existing player-state start probability;
+- chooses 11 candidate players under a legal FPL positional shape;
+- stores the shape and ranks for auditability;
+- does not alter xPts, lambdas or fixture probabilities.
+
+### Candidate shape is NOT tactical formation
+Current selection shapes are generated by maximizing summed P(start) under valid FPL formation constraints such as 4-5-1 or 5-4-1.
+
+They are **not tactical formation predictions** and must not be presented as such. Evidence explicitly records:
+`formation_is_candidate_shape_not_tactical_prediction=true`.
+
+A separate Tactical / Formation Intelligence layer is required before tactical-shape claims are allowed.
+
+### First live snapshot
+For the only remaining pre-kickoff GW1 fixture at introduction time, Fulham vs Chelsea:
+- 61 player observations inserted;
+- Chelsea: 38 candidates, exactly 11 selected, candidate shape 4-5-1, 2 doubtful, 3 unavailable;
+- Fulham: 23 candidates, exactly 11 selected, candidate shape 5-4-1, 0 doubtful, 2 unavailable;
+- model-effect rows: 0.
+
+Idempotency rerun: **0 new rows**.
+
+Final contamination audit:
+- total rows: 61;
+- retrospective rows for already-started fixtures: **0**;
+- rows captured at/after kickoff: **0**;
+- `model_effect_enabled=true` rows: **0**.
+
+Production cron:
+`football_intelligence_availability_refresh` = `0 */4 * * *` (every four hours).
+Unchanged evidence does not create duplicate observation rows.
+
+## 8. Replacement quality — DELIBERATELY NOT MODELED YET
+
+Do not infer replacement quality merely from FPL position or positional rank.
+
+Current `player_role_intelligence` / player-state role/formation coverage is not reliable enough to identify true tactical replacements and their football consequences.
+
+Every availability observation currently records:
+`replacement_quality_status='NOT_MODELED_NO_RELIABLE_ROLE_MAP'`.
+
+Replacement quality should be implemented only after a reliable role/tactical map exists.
+
+## 9. Current player-state limitation
+
+This is the most important immediate gap after the new availability layer.
+
+The currently deployed player-state refresh logic still derives current P(start)/xMin primarily from:
+- 2025/26 historical data;
+- external season data;
+- preseason `fpl_core_insights` friendlies;
+- current availability metadata.
+
+It **does not yet incorporate completed 2026/27 official FPL match minutes/starts from `player_gameweek_actuals` into future player-state priors**.
+
+Therefore the new Expected-XI layer is useful and chronology-safe, but its base P(start)/xMin is not yet fully current-season-aware.
+
+Next plumbing task must fix this before we treat Expected XI confidence as mature.
+
+## 10. Protected ingestion path
 
 `private.invoke_engine_ingest(p_function text, p_body jsonb)` remains the protected production wrapper.
 
-Allowlist:
+Current allowlist:
 - `ingest-team-history`;
 - `ingest-understat-xg`;
-- `ingest-bookmaker-odds`.
+- `ingest-bookmaker-odds`;
+- `refresh-availability-intelligence`.
 
-It retrieves `FOOTBALL_ENGINE_ADMIN_TOKEN` internally from Vault and never returns the secret. EXECUTE is limited to postgres/service_role.
+It retrieves `FOOTBALL_ENGINE_ADMIN_TOKEN` internally from Vault and never returns the secret. EXECUTE remains limited to trusted backend roles.
 
-## 7. Bookmaker Layer 1 — PASSED
+## 11. Bookmaker Layer 1 — PASSED
 
 Primary provider: Odds-API.io.
-Observed Correct Score bookmaker families: Bet365 and Unibet. `Bet365 (no latency)` remains a raw provider source but canonicalizes into the Bet365 family for counts.
+Observed Correct Score bookmaker families: Bet365 and Unibet. `Bet365 (no latency)` is preserved as a raw provider source but canonicalized into the Bet365 family for counts.
 
-Verified safeguards/fixes:
+Verified invariants:
 - deterministic event mapping by teams + kickoff;
 - append-only raw snapshots;
-- corrected normalizer and insert-error handling;
-- corrected betting read schema/credentials;
-- paged reads beyond PostgREST's 1,000-row default;
-- current API uses latest valid pre-kickoff raw snapshot per fixture/bookmaker source;
-- missing current markets are not silently backfilled from stale older snapshots;
-- missing bookmaker data remains missing, never zero;
-- zero post-kickoff raw, normalized or source-timestamp contamination in validated Layer-1 data.
+- latest-valid-pre-kickoff read semantics;
+- complete paged normalized reads;
+- missing current markets are not backfilled from stale older snapshots;
+- missing data remains missing, not zero;
+- zero validated post-kickoff raw/normalized/source-timestamp contamination.
 
-## 8. Correct Score Layer 2 — de-vig / edge / EV
+## 12. Correct Score Layer 2 — de-vig / edge / EV
 
-Production table: `betting_edge_observations`.
-It is append-only, internal, chronology-aware, `research_classification='UNVALIDATED'`, `model_effect_enabled=false`.
+Production `betting_edge_observations` remains append-only, chronology-aware, `research_classification='UNVALIDATED'`, `model_effect_enabled=false`.
 
-Two independent de-vig methods:
+De-vig methods:
 - `proportional_offered_set`;
 - `power_offered_set`.
 
 Correct Score semantics:
-- bookmaker fair probability is conditional on the bookmaker's actually offered exact-score set;
-- model raw/unconditional probability is retained;
-- model conditional probability is computed on the same offered set;
-- `conditional_edge` compares conditional vs conditional;
-- actual wager EV is `model_probability_raw * decimal_odds - 1`.
+- bookmaker fair probability conditional on offered score set;
+- model raw/unconditional probability retained;
+- conditional model probability computed on same offered set;
+- conditional edge compares like-for-like conditional probabilities;
+- actual wager EV = raw model probability × decimal odds − 1.
 
-Consensus view: `correct_score_edge_consensus`.
-Research labels such as `ROBUST_POSITIVE_EV` are organizational research statuses only, not recommendations.
+Research status such as `ROBUST_POSITIVE_EV` is not a betting recommendation.
+`value_edge_available` remains false.
 
-The optimized snapshot-scoped generator is production-verified and prevents the earlier GW-wide timeout. Automatic ingestion can generate Layer-2 observations without invalidating Layer-1 success if Layer 2 fails.
-
-## 9. Price history and CLV research
-
-Price-history / CLV views are now production-applied and exposed by the betting API.
+## 13. Price history / CLV
 
 Important semantics:
-- all raw bookmaker snapshots remain immutable;
-- `first_observed` is explicitly **not claimed to be the true market open**;
-- pre-kickoff current price is the latest valid observed price;
-- after kickoff, the final valid observed price becomes a **closing proxy**, not an asserted exact market close;
-- the exact seconds-before-kickoff gap is retained;
-- CLV research is derived from frozen historical entry observations and the later closing proxy;
-- it never rewrites the original edge observation.
+- `first_observed` is not claimed to be true market open;
+- last valid pre-kickoff observation becomes a closing proxy after kickoff;
+- exact capture gap is retained;
+- CLV derives from immutable historical observations and never rewrites them.
 
-For Newcastle vs Liverpool (match 9), the final database capture currently present is approximately **412 seconds before kickoff** for Bet365 and Unibet. The separately scheduled ~90-second capture did not appear in raw storage and must **not** be claimed as successful.
+For Newcastle vs Liverpool, final stored Bet365/Unibet capture was about **412 seconds before kickoff**. The scheduled ~90-second capture did not persist and must not be claimed as successful.
 
-Post-kickoff validation for match 9:
-- raw post-kickoff contamination: 0;
-- normalized/source-timestamp post-kickoff contamination: 0;
-- edge observations captured post-kickoff: 0;
-- CLV research exists and remains `model_effect_enabled=false`.
+Post-kickoff Newcastle audit remained clean:
+- raw post-KO: 0;
+- normalized post-KO: 0;
+- edge post-KO: 0;
+- CLV research remains observational.
 
-## 10. Betting read API
+Current deployed `betting-api`: **v9 ACTIVE** with bookmaker, research edge, price tracking and CLV exposure.
 
-Current deployed `betting-api`: **v9 ACTIVE**.
+## 14. Repository parity from this pass
 
-Verified HTTP behavior:
-- status 200;
-- `odds_status='connected'`;
-- 10 GW1 fixtures;
-- `research_edge_available=true`;
-- `value_edge_available=false`;
-- `price_tracking_available=true`;
-- `clv_research_available=true`.
+New files/updates committed:
+- migration `20260823185500_expected_xi_availability_v01.sql` — commit `de20ef96ee303f46d4cdae36bcbaaa98475faee4`;
+- availability cron migration `20260823185600_schedule_availability_refresh.sql` — commit `1e00b2a959993c945b8303b1e9674b757420116b`;
+- availability function import config — commit `b318db912f87181299a17b55d2182fdaf9cf6d3e`;
+- availability function source — commit `a22678d08f7db352d5c4bc4f904394630b2f3198`;
+- result-sync current-season evidence hook — commit `760935a68233b45aeac11c3b2d4d5f0ec9e9985e`.
 
-Per fixture it exposes latest valid odds, Correct Score rows, canonical bookmaker/source counts, frozen prediction, `edge_research`, `price_tracking` and `clv_research`.
+Earlier important commits remain:
+- dashboard audit/search fix `6115f3307895b49c80067affcaacd03f9e3550e7`;
+- dashboard fixture/betting render repair `aab8189426c51716eae48a4a99443a7e600a7998`;
+- optimized Correct Score edge generation `a62d4925f930b9a6ecae7ec951802352cd7daf64`;
+- price/CLV migration evolution is present in current repository migrations.
 
-The dashboard must consume this current schema rather than old `market_picks` fields.
+## 15. Security state
 
-## 11. Key repository commits from this production pass
+The new availability table is RLS-enabled and internal; advisor reports `rls_enabled_no_policy`, which is intentional for a service-role-only internal table after anon/authenticated grants were revoked.
 
-- Dashboard audit/search fix: `6115f3307895b49c80067affcaacd03f9e3550e7`
-- Betting ingestion edge hook: `c2d7ad2e71cd9e53d6530b895216f61791b1d870`
-- Betting API research exposure / later price-CLV source evolution is present in current repo source.
-- Price/CLV migration commit: `4ab8668451a5e519719665b906aada2b9ad3398b`
-- Result sync source: `2ba9621b782950cc0e5e7c75ca9a5785631c697a`
-- Result sync import map: `8b0f74a3ad9ed127c192f120fb247aa0d8cf156b`
-- FPL API v8 source: `1c7b666c983ab287066876f601fe584eadb01fc7`
-- FPL API import map: `9f21fe6609d8ec926d2dbbf13595968bc3b34fde`
-- Dashboard fixture/betting render repair: `aab8189426c51716eae48a4a99443a7e600a7998`
+Known legacy security errors remain on several exposed public tables, including `player_role_intelligence`, `fixture_prediction_snapshots`, and legacy odds tables with RLS disabled. Do not blindly harden them before mapping dashboard/API dependencies.
 
-Key migrations committed include:
-- `20260823160500_mispricing_intelligence_v01.sql`
-- `20260823160600_fix_tmi_upsert_index.sql`
-- `20260823173500_correct_score_devig_edge_v01.sql`
-- `20260823173600_correct_score_power_devig_v01.sql`
-- `20260823173700_correct_score_edge_consensus_v01.sql`
-- `20260823175100_optimize_correct_score_edge_generation_v01.sql`
-- price-history/CLV migrations added later in the same pass.
+Security cleanup remains a separate workstream from model validation.
 
-## 12. Regression safeguards learned today
+## 16. Exact next-action queue
 
-1. **Never determine whether a stored player-actual row is final using a newer live fixture state.** Finality must be evaluated against the result snapshot that produced the row.
-2. Every result snapshot should persist its exact finished-fixture set.
-3. Mutable factual results (`matches` score/finished) may be reconciled from official FPL; frozen predictions remain immutable.
-4. Frontend/API field contracts must be treated as explicit interfaces. Backend schema evolution must include a dashboard contract check.
-5. A healthy backend is not evidence that the webpage renders it; source/API/deployment/runtime are separate verification states.
-6. Result polling every six hours is too stale for an in-progress GW. Current cadence is every 15 minutes with hash-idempotent writes.
+1. **Make player-state current-season-aware**: ingest completed 2026/27 player minutes/starts (and suitable official stats) into future P(start)/xMin priors, append-only and without changing frozen GW1 forecasts.
+2. Re-run/validate Expected XI after that state refresh; measure how much candidate XI and P(start) change.
+3. Build reliable role/tactical mapping; only then add replacement-quality intelligence.
+4. Build Tactical / Formation Intelligence observationally: actual shape, pressing/build-up tendencies, attack channels and matchup interactions where evidence exists.
+5. Freeze the main API contracts for Home / FPL / Fixtures / Market Intelligence / Performance.
+6. Rebuild the UI/UX around those stable contracts.
+7. Continue forward odds/edge/CLV sampling and add a third Correct Score source.
+8. Only after forward validation define live betting recommendation thresholds.
+9. Map legacy direct client access and harden RLS/grants safely.
 
-## 13. Known security hardening item
-
-Legacy/public tables still have overly broad anon/authenticated grants and/or RLS disabled. Do not blindly revoke them before mapping direct client dependencies. New Mispricing/Edge objects are already hardened.
-
-Future security sequence:
-1. map direct client table dependencies;
-2. move writes behind trusted Edge Functions where needed;
-3. reduce anon/authenticated grants;
-4. enable/verify RLS without breaking the application.
-
-## 14. Exact next-action queue
-
-1. Have the user/browser confirm the newly deployed Pages UI; independently browser-verify when the tool environment can access the Pages endpoint.
-2. Audit the first Newcastle-Liverpool CLV cohort by original research status, bookmaker, probability bucket, overround and de-vig agreement; do not promote recommendations yet.
-3. Ensure result-sync source/config remains aligned with the 15-minute production cron and add a repository migration/config record for that cron change if desired.
-4. Collect a larger forward pre-kickoff odds/edge/CLV sample across fixtures and GWs.
-5. Add/validate a third Correct Score source.
-6. Continue observational Mispricing Intelligence with expected-XI / availability, injuries/suspensions, replacement quality and tactical signal families.
-7. Only after forward validation define NO BET / WATCH / EDGE / STRONG EDGE thresholds.
-8. Map legacy client access and harden RLS/grants safely.
-
-## 15. Operational instruction for future conversations
+## 17. Operational instruction for future conversations
 
 When resuming:
 1. read this file and `DECISIONS_AND_HISTORY.md`;

@@ -1,0 +1,4 @@
+/* Research styling must not imply a validated recommendation. */
+.signal-chip.advantage{color:var(--blue);border-color:rgba(86,168,255,.22);background:var(--blue-soft)}
+.signal-chip.lean{color:var(--amber);border-color:rgba(255,209,102,.22);background:var(--amber-soft)}
+.signal-chip.risk{color:var(--amber);border-color:rgba(255,209,102,.22);background:var(--amber-soft)}

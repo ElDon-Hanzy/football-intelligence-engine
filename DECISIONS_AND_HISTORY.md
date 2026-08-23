@@ -147,7 +147,7 @@ New intelligence objects are hardened immediately. Legacy public objects with br
 
 Official FPL availability/status/news and the latest P(start)/xMin state are sufficient to create an observational candidate-XI layer without pretending to possess full tactical lineup knowledge.
 
-Candidate shapes such as 4-5-1 are FPL-valid selection shapes only, not tactical formation predictions. Replacement quality was explicitly deferred rather than inferred from simple positional rank.
+Candidate shapes such as 4-5-1 are FPL-valid selection shapes only, not tactical formation predictions. Replacement quality was initially deferred rather than inferred from simple positional rank.
 
 ## 23. Current-season player-state lineage
 
@@ -157,108 +157,110 @@ Completed-match starts/minutes/xG/xA may influence future state only. Defensive-
 
 ## 24. Automated Role Intelligence is an archetype model, not positional tracking
 
-The new automated Role Intelligence layer deliberately classifies **event-profile archetypes**, not asserted exact tactical positions.
+Automated Role Intelligence classifies event-profile archetypes, not asserted exact tactical positions. The rich source provides detailed events but not reliable per-player x/y tracking or exact tactical labels. Calling an event signature an inverted FB, half-space 8, etc. would create false precision.
 
-Why: the current rich source provides detailed events but not reliable per-player x/y positional tracking or exact formation-role labels. Calling an event signature an exact inverted FB, half-space 8, etc. would create false precision.
-
-Current broad taxonomy:
-- DEF: CENTRE_BACK / WIDE_BACK / HYBRID_DEFENDER;
-- MID: HOLDING_MIDFIELDER / BOX_TO_BOX / CREATOR_10 / WIDE_ATTACKER;
-- FWD: CENTRAL_STRIKER / LINK_FORWARD / WIDE_FORWARD / TARGET_FORWARD.
-
-FPL position is currently a guardrail only. This is a known limitation, especially for players whose FPL listing differs from their tactical function.
+FPL position remains a broad family guardrail, not tactical truth.
 
 ## 25. `UNRESOLVED` is a correct output
 
-The engine must prefer uncertainty to false certainty.
+The engine must prefer uncertainty to false certainty. A role remains `UNRESOLVED` when evidence, feature coverage or separation between plausible archetypes is insufficient.
 
-Role profile rules therefore intentionally produce `UNRESOLVED` when weighted evidence is thin or no archetype separates meaningfully from alternatives. Confidence rises with weighted minutes, competitive evidence and separation between the top two archetype scores.
-
-The first production audit had 406 profiles but 371 UNRESOLVED and zero >=0.75 confidence. This was accepted as healthy conservative behavior, not a reason to lower thresholds artificially.
+Do not reduce thresholds simply because a familiar player's football role seems obvious to a human observer.
 
 ## 26. Competitive evidence outranks preseason evidence
 
-Role profiles blend rich current-season competitive events with preseason/friendly evidence, but at different weights:
-- Premier League = 1.0;
-- friendlies = 0.3.
+Current competitive event evidence must progressively override preseason and historical priors. Partial upstream player data is skipped rather than converted into zeros.
 
-The competitive importer also requires `player_stats_processed=true` before accepting player-event rows. Partial upstream data is skipped rather than converted into zeros.
-
-As more competitive matches become fully processed, the same append-only profile engine can evolve without retroactively altering prior fixture snapshots.
+This chronology allows future profiles to evolve without retroactively altering prior fixture snapshots.
 
 ## 27. Manual role research remains separate from automated role profiles
 
-The existing manually researched Bruno/Isak `player_role_intelligence` rows were not overwritten or merged silently with the new automated profile table. v0.1.3 continues to consume the existing manual layer exactly as before.
-
-Reason: the automated archetypes are not yet validated enough to become model effects. Research evidence and active model inputs must remain distinguishable.
+The manually researched Bruno/Isak `player_role_intelligence` rows are not silently merged into the automated training data. They can be used later as external validation evidence, but v0.1.3 active model inputs and automated observational research remain distinguishable.
 
 ## 28. Team tactics are modeled as orthogonal axes, not a guessed formation
 
-The team layer stores multiple style dimensions:
-- possession control;
-- directness;
-- width/delivery;
-- attacking box occupation;
-- set-piece emphasis;
-- defensive-block tendency.
-
-A dominant style label is an organizational summary of those axes, not an asserted formation, manager instruction or full tactical identity.
-
-This avoids compressing a team into one simplistic label and allows future interaction modeling to use the individual axes directly.
+Team style stores possession control, directness, width/delivery, attacking box occupation, set-piece emphasis and defensive-block tendency. A dominant label is an organizational summary, not a claimed formation or full tactical identity.
 
 ## 29. Box occupation is not pressing
 
-The first taxonomy called the attacking-box axis `HIGH_BOX_PRESSURE`. That wording was rejected because it could be misread as defensive pressing intensity.
+The initial `HIGH_BOX_PRESSURE` wording was rejected because it could be misread as defensive pressing. Taxonomy `team_style_v0.1.1` uses `HIGH_BOX_OCCUPATION`; the legacy physical column name is retained only for compatibility.
 
-The correction is append-only:
-- taxonomy `team_style_v0.1.1`;
-- dominant label `HIGH_BOX_OCCUPATION`;
-- evidence explicitly states the existing `box_pressure_score` column measures attacking box occupation/pressure, **not defensive pressing**.
-
-True pressing-vs-buildup intelligence remains a future, separate feature family.
+True pressing-vs-buildup intelligence remains a separate future feature family.
 
 ## 30. Fixture Role/Tactical snapshots obey the same chronology law as odds
 
-Learned player/team profiles can update after completed matches, but a fixture decision-state role/tactical snapshot may only use evidence whose cutoff is before that fixture's kickoff. Fixture snapshot tables have database-level kickoff guards.
+Learned profiles can update after completed matches, but fixture decision-state role/tactical snapshots may only use evidence known before that fixture's kickoff. Database-level guards enforce this.
 
-Validated invariants:
-- zero post-kickoff player-role snapshots;
-- zero post-kickoff team-tactical snapshots;
-- zero fixture snapshots using profile evidence with cutoff at/after kickoff;
-- deliberate post-kickoff guard test persisted zero rows.
+A tactically correct inference built with hindsight is still invalid decision intelligence.
 
-This is essential because a correct tactical model built with hindsight would still be invalid decision intelligence.
+## 31. Replacement quality remains disabled as a model effect
 
-## 31. Replacement quality remains gated by role calibration
+Replacement quality must not alter xPts/lambdas merely because a plausible substitute can be identified. The current replacement layer is research-only and `model_effect_enabled=false`.
 
-The new role layer is useful enough for research but not reliable enough to determine every true replacement path. Cross-listed roles remain the main weakness.
+Promotion requires forward evidence that role fit, replacement ability and tactical consequence are predictive rather than narratively plausible.
 
-Replacement quality stays disabled until:
-1. stronger historical/positional-zone role priors exist;
-2. automated roles are validated against actual lineups/functions over forward fixtures;
-3. role-distance between absent player and likely replacement is defined;
-4. only then is replacement player quality/tactical consequence estimated.
+## 32. Why Role v0.2 uses source-capped multi-source blending
 
-Do not shortcut this by comparing FPL positions or simple rank.
+v0.1 relied too heavily on sparse preseason/current event samples. The 2025/26 FPL-Core-Insights archive contains detailed player-match events across all 38 EPL gameweeks, so it is a useful prior for current players.
 
-## 32. Role/Tactical debugging lessons
+Decision:
+- historical 2025/26 events provide a capped prior, not permanent truth;
+- preseason is only a weak bridge;
+- current 2026/27 competitive evidence gains weight quickly and can override both;
+- missing event fields are excluded from the corresponding rate calculation, never converted to zero.
 
-Three implementation failures produced useful architecture rules:
+This avoids both cold-start instability and historical anchoring.
 
-1. Null preseason team IDs were accidentally coerced to numeric 0 in the first JS generator and hit an FK. Fix: require canonical team joins and never coerce missing IDs to zero.
-2. A SQL refresh joined on nullable feature columns and silently produced zero refreshed profiles. Fix: join role aggregates by stable player identity, not nullable metric equality.
-3. An ambiguous `kickoff_time` reference caused the first decomposed fixture-role call to fail. Fix: name fixture chronology fields explicitly (`fixture_kickoff`) at boundaries.
+## 33. Absolute role scoring was rejected after taxonomy collapse
 
-No corrupted historical forecast was written by any of these failures.
+The first v0.2 behavioral axes were useful, but absolute archetype scoring collapsed too many defenders into CENTRE_BACK and too many midfielders into HOLDING_MIDFIELDER. That was a calibration failure, not evidence that the league contains almost no wide/creative roles.
 
-## 33. Current Role/Tactical orchestration decision
+Decision: retain raw v0.2 axes as evidence, then create v0.2.1 archetypes from **position-relative behavioral percentiles**. This asks whether a defender is unusually wide/creative/box-active relative to defenders, and whether a midfielder is unusually defensive/creative/wide relative to midfielders.
 
-The Edge Function is intentionally thin. The production v3 orchestrator authenticates, then calls four database RPCs in order:
-1. refresh player role profiles;
-2. refresh team tactical profiles;
-3. snapshot player fixture roles;
-4. snapshot team fixture tactics.
+Do not tune taxonomy solely by absolute event volume when positional baselines differ structurally.
 
-This is preferred to embedding the full heuristic model in Edge code because SQL-side computation gives clearer idempotency, easier chronology enforcement and better failure diagnosis.
+## 34. Familiar players are not forced into familiar labels
 
-The rich source is ingested twice daily, then Role/Tactical profiles refresh twenty minutes later. All outputs remain `model_effect_enabled=false`.
+v0.2.1 deliberately leaves Haaland unresolved when CENTRAL_STRIKER and TARGET_FORWARD are effectively tied, and leaves Isak unresolved when the top candidate does not clear the separation threshold.
+
+The manual Isak research agreeing with a number-9 interpretation is useful validation evidence but is not allowed to leak into training just to make the automated output look correct.
+
+This is an anti-confirmation-bias rule.
+
+## 35. Replacement Quality v0.1.1 is a role-cover proxy, not tactical truth
+
+The first replacement prototype used unrestricted behavioral-vector similarity across outfield positions. Audit exposed implausible candidates: a defender could rank as cover for a forward or centre-back because normalized vectors happened to be close.
+
+That approach was rejected.
+
+v0.1.1 candidate compatibility is now:
+- same FPL position by default;
+- explicit role bridges only: WIDE_BACK <-> WING_BACK, WIDE_ATTACKER <-> WIDE_FORWARD, HOLDING_MIDFIELDER -> HYBRID_DEFENDER;
+- goalkeeper only to goalkeeper.
+
+A high replacement score means “behaviorally similar role-cover candidate under this proxy,” not “manager will start him” and not “equal football quality.”
+
+## 36. Absence relevance must be sample-size aware
+
+The first replacement pass could overstate the importance of a backup with a high starts/matches fraction in a tiny historical sample.
+
+Fix: historical and preseason start shares are multiplied by minute-based evidence strength before deciding whether an injured/suspended/unavailable player is materially relevant.
+
+A tiny sample may inform a prior but cannot by itself establish that an absence materially changes the expected XI.
+
+## 37. Forward role validation must use genuinely pre-match snapshots
+
+Role validation is only valid when the predicted role vector was captured before kickoff and the realized event vector comes from the subsequent completed match.
+
+Do not backfill historical “predictions” from data already containing the match being evaluated. Current forward-validation storage can remain empty until the first legitimate sample arrives; zero rows is preferable to hindsight contamination.
+
+## 38. Replacement proxy promotion gate
+
+Before replacement quality can affect the active model:
+1. validate role axes and confidence against forward realized roles;
+2. validate replacement candidate ranks against actual lineup/substitution paths;
+3. add player ability/quality separately from behavioral role fit;
+4. quantify team tactical consequence, including formation/system changes;
+5. test out of sample for incremental predictive value.
+
+Until then all replacement outputs remain observational research only.

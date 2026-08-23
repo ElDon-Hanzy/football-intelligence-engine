@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Decisions & History
 
-_Last updated: 2026-08-23_
+_Last updated: 2026-08-24_
 
 This file preserves the reasoning, rejected approaches, debugging lessons and implementation decisions that are easy to lose between conversations. `PROJECT_STATE.md` is the operational source of truth; this file explains why the project reached that state.
 
@@ -306,17 +306,9 @@ The existing `fpl-api` v8 contract is tied to frozen FPL prediction/actual seman
 
 Decision: do not mutate that contract just to add unvalidated tactical research.
 
-Create a separate additive `fixture-intelligence-api` that exposes:
-- tactical profile;
-- matchup signals;
-- Expected XI/availability;
-- player-role research;
-- replacement research;
-- explicit research-only limitations.
+Create a separate additive `fixture-intelligence-api` that exposes tactical profile, matchup signals, Expected XI/availability, player-role research, replacement research and explicit research-only limitations.
 
-Historical fixtures with no genuine pre-kickoff research remain empty rather than being reconstructed after the fact.
-
-This API is the stable read boundary for the future Fixtures UI.
+Historical fixtures with no genuine pre-kickoff research remain empty rather than being reconstructed after the fact in this genuine-fixture contract.
 
 ## 44. Tactical signal labels need lean states and provenance consistency
 
@@ -329,26 +321,114 @@ Decision for ADVANTAGE signals:
 - <=0.38 DEFENSIVE_RESISTANCE;
 - otherwise BALANCED.
 
-A later audit found the calibrated outer direction could differ from the nested technical-evidence direction inherited from v0.1. This was corrected append-only with `evidence_revision=2`.
-
-Permanent rule: displayed direction and stored technical provenance must agree.
+A later audit found the calibrated outer direction could differ from nested technical evidence inherited from v0.1. This was corrected append-only. Permanent rule: displayed direction and stored provenance must agree.
 
 ## 45. Personnel disruption is continuity research, not player ability
 
-The Tactical Matchup `personnel_disruption` signal uses absence relevance, replacement role fit, candidate collision and availability uncertainty.
+The Tactical Matchup personnel signal uses absence relevance, replacement role fit, candidate collision and availability uncertainty.
 
 It does not prove that a replacement is equally good or worse in absolute football quality, and it does not model manager system changes.
 
-A high disruption score therefore means “current expected personnel path has low continuity under this research proxy,” not “team strength must drop by this amount.”
-
-Before personnel disruption may affect xPts/lambdas:
-1. replacement ranks must be validated against actual lineups/substitutions;
-2. role vectors must be validated forward;
-3. player ability must be added separately;
-4. whole-team tactical consequence must be tested out of sample.
+Before personnel disruption may affect the active model: validate actual lineups/substitutions, validate role vectors forward, add ability separately, and test whole-team consequences out of sample.
 
 ## 46. Foundational-layer stop point reached
 
-With Expected XI, role archetypes, team style, replacement-cover research and fixture-specific Tactical Matchups now behind additive read contracts, the engine has enough foundational structure for the planned product interface.
+With Expected XI, role archetypes, team style, replacement-cover research and fixture-specific Tactical Matchups behind additive read contracts, the engine has enough foundational structure for the product interface.
 
-Decision: do **not** delay the UI rebuild waiting for every future contextual family (pressing, line height, weather, referees, etc.). Freeze the current core read contracts and rebuild the interface around Home / FPL / Fixtures / Market Intelligence / Performance. Future validated intelligence families should plug into that fixture-detail architecture.
+Do not delay UI work waiting for every future family such as pressing, line height, weather or referees.
+
+## 47. Three different chronology concepts must remain separate
+
+There are now three distinct research modes and they must never be conflated:
+
+1. **Genuine forward intelligence** — captured before the real kickoff and later validated. This is the strongest evidence.
+2. **Blind retrospective context replay** — newer logic is reconstructed after the fact using only evidence semantically available before kickoff. Useful for debugging/calibration, but not what the model historically predicted.
+3. **Enriched outcome shadow replay** — a retrospective research model uses the current intelligence stack to make a new shadow outcome forecast from pre-kickoff-safe inputs, freezes it separately, then evaluates it after generation.
+
+Only category 1 can eventually be called true forward validation. Categories 2 and 3 must carry `forward_valid=false`.
+
+## 48. Historical baseline reconstruction has a strict hierarchy
+
+For Original-vs-Shadow comparison, use in order:
+1. genuine saved pre-kickoff fixture snapshot;
+2. exact reconstruction from a genuine pre-kickoff player-prediction batch using the original fixture generator;
+3. otherwise no original comparison.
+
+Hull–Man Utd qualifies for step 2: pre-kickoff team lambdas 1.035 / 2.037 were preserved in the player-prediction batch and can be passed through the original Poisson fixture function.
+
+Arsenal–Coventry does not qualify. The earliest archived model/team state and current Elo/team metadata are post-kickoff. Those inputs are forbidden for reconstructing an “original” forecast.
+
+For shadow-only research, Arsenal–Coventry may use a clearly marked safe prior/preseason baseline that excludes post-kickoff Elo, but it must never be scored as Original-vs-Shadow evidence.
+
+## 49. Enriched Shadow v0.1 coefficients were frozen before evaluation
+
+The purpose of the first enriched outcome rerun is to test whether plausible current layers improve the outcome forecast, not to fit GW1 after seeing results.
+
+Therefore v0.1 fixed conservative bounded log-lambda coefficients before running the evaluator:
+- wide 0.04 max;
+- aerial/set piece 0.035;
+- central creation/block 0.05;
+- recent attack xG trend 0.05;
+- opponent defensive xGA trend 0.04;
+- positive transition opportunity 0.025;
+- schedule/fatigue 0.03;
+- personnel own attack 0.05;
+- opponent personnel defence 0.04;
+- total log-lambda adjustment capped ±0.12.
+
+Transition is upside-only: a low counter-attacking score does not penalize a possession side for not being a transition team.
+
+Personnel effects are position-aware but still role-continuity proxies, not ability effects.
+
+Missing layers apply no shadow adjustment because their effect is unknown; this is a neutral mathematical operation, not an assertion that missing football evidence equals zero strength.
+
+These coefficients must not be altered in run 2 after evaluation.
+
+## 50. Enriched Shadow v0.1 produced a negative/neutral aggregate result and must be preserved
+
+GW1 enriched shadow run 2 generated 10 fixtures with no actual-data use and no chronology violations, then separately evaluated 9 finished fixtures.
+
+Eight finished matches had a defensible Original baseline.
+
+Result:
+- Original result-direction hits: 5/8;
+- Shadow result-direction hits: 5/8;
+- Original exact top-score hits: 1/8;
+- Shadow exact top-score hits: 1/8;
+- Original average 1X2 Brier: 0.617461;
+- Shadow average Brier: 0.628945;
+- average Shadow-minus-Original Brier: +0.011484, therefore worse;
+- Original actual-score log loss: 3.013640;
+- Shadow actual-score log loss: 3.042677, also worse;
+- 1 fixture improved by more than 0.01 Brier, 3 were similar, 4 worsened.
+
+This is not a failure to hide. It is evidence that the current explanatory layers are **not yet correctly integrated into outcome probabilities**.
+
+Do not retune v0.1 to make GW1 look successful. Preserve run 2 as a fixed calibration result.
+
+## 51. Current outcome integration is dominated by recent xG trend, not tactical matchups
+
+Audit of run 2 shows the largest lambda movements are usually caused by recent attacking/defensive xG trends, while the tactical matchup axes are generally much smaller because they are confidence/coverage weighted and deliberately conservative.
+
+Examples:
+- Hull–Man Utd worsened because recent evidence pushed United materially higher and Hull lower;
+- Forest–Leeds worsened because Forest received strong recent-attack and opponent-defence boosts;
+- Brentford–Spurs worsened because the new layer narrowed Brentford's advantage despite the eventual 3-0 result;
+- Everton–Palace improved because Palace's recent defensive trend shifted the model toward Everton, though not enough to flip the 1X2 leader;
+- Newcastle–Liverpool was the only leader flip: Liverpool → Newcastle, while the actual result was a draw.
+
+Before Enriched Shadow v0.2, run component ablations on a broader chronological sample: base + form, base + tactics, base + personnel, and combinations. Compare incremental Brier/log loss rather than tuning to result hit rate.
+
+## 52. Shadow-model UI must show evidence, not imply promotion
+
+Performance now exposes Original → Enriched Shadow → Actual so the product can visibly answer whether new intelligence changed the model's opinion.
+
+The interface must show:
+- original/safe baseline provenance;
+- original and shadow lambdas/probabilities;
+- actual result only after the forecast comparison;
+- human-readable reasons for movement;
+- calibration change where an original comparison is legitimate;
+- research-only / no-model-effect wording.
+
+A shadow model looking more sophisticated is not enough. Promotion depends on out-of-sample improvement.

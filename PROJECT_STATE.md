@@ -1,341 +1,337 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-08-24_
+_Last updated: 2026-08-25_
 
 ## 1. Purpose and immutable rules
 
 Build one football-intelligence engine for FPL decision quality and betting-market mispricing research.
 
-Non-negotiable rules:
-- historical FPL and betting forecasts are append-only and never rewritten after results;
-- genuine fixture/model intelligence may update only pre-kickoff and hard-freezes at kickoff;
-- retrospective replay/shadow work is stored separately and can never masquerade as a historical prediction;
-- missing data is not zero;
-- preserve source/provenance and known-at/evidence-cutoff timestamps;
-- never commit secrets/API keys;
-- new intelligence remains `model_effect_enabled=false` until validated out of sample;
-- distinguish planned / coded / committed / deployed / executed / verified;
-- betting quality is judged by calibration, EV and closing-line behaviour, not raw hit rate alone.
+Permanent rules:
+- Historical FPL and betting forecasts are append-only and never rewritten after results.
+- Genuine fixture/model intelligence may update only pre-kickoff and hard-freezes at kickoff.
+- Retrospective replay/shadow work is always stored separately and never presented as a genuine historical prediction.
+- Missing data is not zero.
+- Preserve source/provenance plus `known_at` / `captured_at` / `evidence_cutoff` timestamps.
+- Never commit secrets/API keys.
+- New intelligence remains `model_effect_enabled=false` until it passes genuine out-of-sample forward validation.
+- Distinguish planned / coded / committed / deployed / executed / verified.
+- Do not tune a model on GW1 and then call the same GW1 rerun independent validation.
+- Process quality (realized xG/chance process) and result quality must be evaluated separately.
 
-## 2. Active FPL model/state architecture
+## 2. Change-management source of truth
 
-Model evolution:
-- v0.1.1 — initial engine; fixture-strength compression defect identified;
-- v0.1.2 — multiplicative matchup-strength recalibration and base player state;
-- v0.1.2b — starter minutes/P(start), penalties, latent BPS/bonus, opponent-adjusted Defensive Contributions;
-- v0.1.3 — consumes v0.1.2 player state and overlays older manual role research.
+Working change ledger: `public.change_tracker_working` in Supabase project `knooiwezzsxcwhtjtdap`.
 
-Historical GW1 forecasts remain frozen. None of the newer Role/Tactical/Replacement/Matchup/Replay research alters v0.1.3 today.
+This is now the working implementation tracker during engineering. Update this table as work progresses.
 
-Permanent weekly FPL rule: project all 15 players before XI/bench/captain decisions, including xMin, xPts, P(blank), P(5+), P(10+), P(15+), P(20+), Defensive Contributions and Captaincy Haul distributions.
+Excel tracker rule:
+- Excel is generated/updated locally from the working ledger and the fuller historical register.
+- **Do not push the Excel tracker to GitHub.**
+- GitHub contains project handover/docs/code/migrations only.
 
-Current player dimension: 604 players, zero missing team/position mappings at latest verification.
+Latest tracker IDs run through **C0113**.
 
-## 3. Results and evidence ingestion
+For any new/resumed session:
+1. Read this file.
+2. Read `DECISIONS_AND_HISTORY.md`.
+3. Query `change_tracker_working`.
+4. Independently inspect current Supabase/GitHub production state before executing.
+5. Do not blindly trust chat-history summaries.
 
-- `sync-gw-results` v4 ACTIVE, cron `*/15 * * * *`.
-- Latest GW1 state at shadow-run evaluation: 9 finished fixtures; Fulham–Chelsea still future.
-- `refresh-current-player-state` v3 ACTIVE, cron `0 */4 * * *`.
-- `ingest-competitive-core-stats` v1 ACTIVE, cron `0 8,18 * * *`.
-- Upstream recognized 9 finished GW1 matches, but only Arsenal–Coventry had fully processed detailed player stats at the last forced ingest; 40 competitive player-event rows were available.
-- `ingest-historical-role-evidence` v1 ACTIVE: 10,205 mapped 2025/26 detailed player-event rows, 419 current players, 38/38 GWs, zero duplicate groups, zero model-effect rows.
+## 3. Current forward pipeline
 
-Completed-match evidence may influence future forecasts only. It may not rewrite prior decision state.
+The forward chain is running early enough to accumulate genuine pre-match evidence for future GWs:
 
-## 4. Expected XI / Availability v0.1 — DEPLOYED + VERIFIED
+- availability / Expected XI;
+- fixture roles;
+- team tactical snapshots;
+- replacement research;
+- tactical matchups;
+- structural/base fixture forecast;
+- enriched research forecast;
+- canonical C0050 feature snapshot;
+- market/odds capture where available.
 
-Storage: `player_fixture_availability_observations`, pre-kickoff guarded, RLS/internal, model-effect false.
+GW2 and GW3 were both seeded before kickoff rather than waiting for the nearest unfinished GW to clear.
 
-`refresh-availability-intelligence` v4 ACTIVE, cron `10 */4 * * *`.
+Verified GW2/GW3 coverage from this implementation phase:
+- GW2 availability observations: 609;
+- GW3 availability observations: 609;
+- GW2 fixture-role rows: 609;
+- GW3 fixture-role rows: 609;
+- GW2 team tactical snapshots: 20;
+- GW3 team tactical snapshots: 20;
+- GW2 replacement observations: 224+ (later quality/absence layer is separate);
+- GW3 replacement observations: 234+;
+- GW2/GW3 tactical matchup rows: full five-signal framework;
+- GW2 base forecasts: 10/10 pre-kickoff;
+- GW3 base forecasts: 10/10 pre-kickoff;
+- GW2 enriched research forecasts: 10/10 valid canonical rows;
+- GW3 enriched research forecasts: 10/10, v2 automation, idempotent;
+- latest C0050 canonical snapshots: 20/20 fixture-sides with base forecast, 11-player Expected XI, roles and all 5 matchup signals; replacement evidence may remain unavailable rather than zero.
 
-Candidate shapes are FPL-valid selection constraints, not claimed tactical formations.
+A faulty early enriched automation cohort that coerced a missing tactical score to zero was not deleted; it is preserved and excluded through an append-only invalidation ledger. Corrected v2 preserves null as unavailable and reruns idempotently.
 
-Fulham–Chelsea has a genuine pre-kickoff Expected XI snapshot and is the first clean forward cohort for the newer stack.
+## 4. Validation/sample infrastructure — C0049
 
-## 5. Role Intelligence v0.2 / v0.2.1 — DEPLOYED + VERIFIED
+### C0050 — Unified pre-match feature snapshot — VERIFIED
+Canonical append-only fixture-team feature snapshots with provenance and chronology.
 
-Raw behavioral axes: shot threat, box occupation, creation, width, defensive load, progression, aerial involvement.
+Key fixes:
+- history features are recomputed from rows whose capture time is at/before the snapshot cutoff;
+- dedup hash no longer changes merely because the snapshot cutoff clock changed;
+- tactical dedup uses `signal_key`, not broad `signal_family`;
+- unchanged reruns insert zero.
 
-v0.2.1 uses position-relative calibration. `UNRESOLVED` remains valid when evidence or role separation is weak.
+### C0051 — Experiment registry — VERIFIED
+Immutable `E000x` experiment definitions with feature/model/version/training/validation metadata. Materially different experiment = new ID.
 
-Latest audit:
-- 472 profiles;
-- 162 unresolved;
-- average confidence 0.6253;
-- max confidence 0.92;
-- 31 profiles with current competitive evidence.
+### C0052 — Walk-forward engine — VERIFIED
+`W0001` freezes:
+- GW2 = VALIDATION;
+- GW3 = TEST;
+- 20/20 fixtures complete;
+- zero actual-data/model-effect/chronology violations.
 
-Manual Bruno/Isak role research remains separate from automated role training.
+### C0053 — Ablation framework — VERIFIED
+Multiple immutable ablation cohorts exist. Latest important forward cohort is **A0005**, tied to the v0.3 Elo team-strength candidate and frozen before outcomes.
 
-## 6. Team Tactical Intelligence v0.1.1 — DEPLOYED + VERIFIED
+### C0054 — Calibration backend — EXECUTED / presentation still pending
+Backend supports:
+- Brier;
+- score log loss;
+- direction accuracy;
+- exact-score rate;
+- process MAE;
+- xG-gap error;
+- total-xG error;
+- reliability bins/calibration;
+- market disagreement;
+- genuinely captured CLV context where a closing proxy exists.
 
-Axes:
-- possession control;
-- directness;
-- width/delivery;
-- attacking box occupation;
-- set-piece emphasis;
-- defensive-block tendency.
+CLV remains null when no captured closing proxy exists; never reconstruct it.
 
-Current team profiles: 19.
+### C0055 — Promotion gate — VERIFIED
+`P0001` cannot auto-activate a model. Requires documented validation/test improvement, no log-loss regression, process tolerance, zero chronology/policy violations, and a sufficiently large genuine forward sample. Current sample remains insufficient.
 
-`box_pressure_score` physically means attacking box occupation, not defensive pressing. True pressing, defensive line height and exact formation are not modeled.
+### C0056 — Historical pre-match archive — VERIFIED
+- 964 reconstructed historical team-side snapshots;
+- 905 training-eligible;
+- training-only retrospective-safe data;
+- `forward_valid=false`;
+- zero chronology/policy violations;
+- cannot be presented as forward validation.
 
-## 7. Replacement Quality v0.1.1 — RESEARCH ONLY
+### C0057 — Version registry — VERIFIED
+Predictions/manifests can be tied to exact component versions. GW2/GW3 manifests exist for the main forward candidates.
 
-Storage: `player_replacement_quality_observations`, pre-kickoff guarded, model-effect false.
+## 5. Team-strength calibration — C0104
 
-Same FPL position is default with explicit role bridges only. Absence relevance is sample-size aware. A high score means behavioral role-cover continuity under the proxy, not manager selection or equal player ability.
+GW1 post-mortem found that the old engine often got total fixture goal volume roughly right but allocated expected goals too evenly between the two teams.
 
-## 8. Tactical Matchup Intelligence v0.1.1 — RESEARCH ONLY
+Important rejected ideas:
+- blindly amplify lambda separation: rejected by historical holdout;
+- blanket global home uplift: looked good on GW1 but failed a 141-match chronological holdout;
+- simple exponent retuning alone: not stable enough;
+- naive full-strength Championship→PL translation: failed leave-one-promotion-out validation.
 
-Storage: `fixture_tactical_matchup_observations`; current view uses `security_invoker=true`.
+### C0107 — Promoted-team priors — VERIFIED
+Promoted teams use a conservative research prior, not a generic identical baseline and not a raw Championship translation.
 
-Signal families:
-1. wide attacking threat;
-2. aerial/set-piece matchup;
-3. central creativity vs defensive block;
-4. counter-attacking opportunity — not high-line-vs-pace;
-5. personnel disruption / continuity.
+Three promoted research means were differentiated (Coventry, Hull, Ipswich). Lower-division evidence gets only a small-sample shrunk mean contribution; uncertainty stays wide. These priors are research-only.
 
-Score types remain distinct: ADVANTAGE, OPPORTUNITY, DISRUPTION. UI translates backend enums into plain football language.
+### C0108 — Cross-season form decay — VERIFIED
+Stale May L5/L10 trends are exponentially downweighted across the summer. This improved GW1 calibration/process modestly. Form remains a small residual effect.
 
-Limitations:
-- no left/right flank assignment;
-- no defensive pressing intensity;
-- no defensive line height;
-- no validated replacement-ability effect;
-- missing components ignored rather than zero-filled;
-- model-effect false.
+### C0111 — Uncertainty layer — VERIFIED
+Historical residuals show large next-match process variance. Promoted/sparse teams are marked higher uncertainty. This is observational and does not yet alter active probabilities.
 
-## 9. Role/Tactical orchestration
+### C0105 / C0112 — stronger team-strength candidates
+A learned linear xG model materially beat the old structural formula across chronological historical holdouts.
 
-`refresh-role-tactical-intelligence` v5 ACTIVE, pinned Supabase JS 2.112.3.
+Long-term version (`team_strength_linear_v0.2_long_term`) combined recent and long-horizon xG strength plus venue context.
 
-Order:
-1. raw Role v0.2;
-2. calibrated Role v0.2.1;
-3. Team Tactical v0.1.1;
-4. player fixture-role snapshots;
-5. team fixture-tactical snapshots;
-6. Replacement Quality v0.1.1;
-7. Tactical Matchups v0.1.1;
-8. forward role validation v0.2.
+A persistent Elo enhancement was then built:
+- historical Elo rows: 3,496 team-side observations;
+- research candidate: `team_strength_linear_v0.3_elo`;
+- it beat v0.2 on multiple historical holdouts;
+- 10/10 GW2 and 10/10 GW3 forward candidate forecasts are frozen;
+- associated forward experiment/ablation: `E0006` / `A0005`.
 
-Production cadence: competitive ingest `0 8,18 * * *`; role/tactical refresh `20 8,18 * * *`.
+**Do not promote v0.3 Elo from GW1 retrospective performance. Its genuine test is GW2/GW3.**
 
-## 10. Genuine forward validation
+## 6. Goal/outcome distribution — C0058 — VERIFIED decision
 
-`refresh_role_forward_validation_v02()` requires a role vector genuinely captured before kickoff and subsequent realized detailed events.
+Tested with fixed lambdas:
+- independent Poisson;
+- Dixon–Coles;
+- bivariate Poisson;
+- negative-binomial / generic over-dispersion.
 
-Latest forward-validation rows: 0. This is correct. Do not manufacture hindsight rows.
+Result:
+- Dixon–Coles slightly helped 1X2 Brier in one holdout but worsened scoreline log loss and made 1–1 concentration worse;
+- bivariate Poisson gain was microscopic;
+- negative-binomial optimum approached the Poisson limit.
 
-Fulham–Chelsea is the first clean forward cohort when post-match rich events become available.
+Decision: **retain independent Poisson for now.** The larger weakness is upstream team-strength estimation, not lack of a fashionable distribution.
 
-## 11. Blind GW1 Context Replay v0.1 — DEPLOYED + EXECUTED
+## 7. Learned residual effects — C0066
 
-Purpose: reconstruct current contextual signals for every GW1 match from pre-kickoff-safe evidence, without claiming the newer layers existed historically.
+Historical residual testing shows:
+- short-term form gives at most a very small incremental benefit;
+- schedule/fatigue heuristic worsens holdout metrics and is disabled in newer research candidates;
+- tactical/personnel/quality coefficients remain unlearned because genuine forward outcome sample is still too small.
+
+Do not increase form weight based on GW1 anecdotes.
+
+## 8. Player quality / absence consequence — C0091
+
+Separate from role fit.
+
+Current research layer:
+- 372 outfield player-quality priors;
+- position-normalized;
+- minutes-shrunk;
+- separate attack/defence quality dimensions;
+- goalkeepers intentionally unscored until goalkeeper-specific evidence exists;
+- GW2 absence-consequence observations: 53;
+- GW3 absence-consequence observations: 55.
+
+A role-compatible replacement is not assumed to be equal player quality.
+
+Quality effect in forward ablation is deliberately tiny/pre-specified and remains research-only until genuine results.
+
+For retrospective GW1 quality use, later-created player-quality priors can be used only where the underlying player history was already knowable pre-match **and** genuine pre-kickoff availability/replacement evidence existed. Do not backfill missing availability from hindsight.
+
+## 9. Tactical interactions / spatial evidence
+
+### C0074 — interactions — MONITORING
+20/20 GW2 and 20/20 GW3 observational interaction rows exist. `learned_effect=false`. No interaction term may affect active forecasts before forward validation.
+
+### C0082 — spatial/tactical evidence — BLOCKED for full implementation
+Available Core Insights support a spatial-lite layer using defensible fields such as territorial activity, possession, sprints, long balls, crosses, duels and opposition-box touches.
+
+Spatial-lite rows: 18/20 fixture-sides in both GW2 and GW3 at the tested capture point.
+
+Still **not available**:
+- true pressing intensity / PPDA;
+- defensive line height;
+- true event-coordinate left/right channel geometry;
+- tracking-level speed/space interactions.
+
+Do not relabel proxies as pressing or high line.
+
+## 10. Market intelligence
+
+- Correct Score remains research-only; `value_edge_available=false` until validated.
+- Bet365 + Unibet remain the main captured sources.
+- Third Correct Score source C0034 is blocked: Pinnacle test returned no usable selections from the current provider.
+- `ingest-bookmaker-odds` v5 includes the Leeds/Leeds United alias fix.
+- GW2 market coverage reached 10/10 fixtures after the alias fix.
+- C0110 compares the research team-strength candidate with de-vigged bookmaker 1X2 consensus; it is a confidence/diagnostic signal only and never auto-overrides the model.
+- A very large Villa–Arsenal model/market disagreement was the trigger to investigate persistent team quality; this helped motivate the long-horizon/Elo work.
+- Correct-score CLV uses captured closing proxies only.
+
+## 11. Blind current-engine GW1 replay — C0113
+
+This is the latest retrospective test requested by the product vision.
 
 Storage:
-- `blind_fixture_replay_runs`;
-- `blind_fixture_replay_matches`;
-- `blind_fixture_replay_signals`;
-- `blind_fixture_replay_evaluations`.
+- `blind_current_engine_runs`;
+- `blind_current_engine_predictions`;
+- `blind_current_engine_evaluations`.
 
-RPCs:
-- `generate_blind_gw_replay_v01(gameweek)`;
-- `evaluate_blind_gw_replay_v01(run_id)`.
+Generation/evaluation separation:
+1. freeze all blind predictions using pre-kickoff-safe evidence;
+2. audit for leakage;
+3. only then reveal actual results to the evaluation table.
 
-GW1 run id 1:
-- 10/10 fixture rows;
-- 100 side-level signals;
-- actual data used during generation: 0;
-- evidence-cutoff violations: 0;
-- model-effect false;
-- forward-valid false.
+All 10 GW1 fixtures are now finished; Fulham–Chelsea finished **2–3**.
 
-Historical base coverage was improved after the initial replay:
-- matches 3–10: genuine saved pre-kickoff fixture snapshots;
-- match 2 Hull–Man Utd: reconstructed exactly from a genuine pre-kickoff player-prediction batch using the original fixture Poisson generator; lambdas 1.035 / 2.037, origin `RECONSTRUCTED_FROM_PREKICKOFF_PLAYER_PREDICTIONS`;
-- match 1 Arsenal–Coventry: no defensible original model-state archive exists before kickoff, so no original-comparison claim is allowed.
+### Run 1 — `blind_current_v0.3_strength_long_form_tactical_quality`
+Integrity:
+- 10/10 predictions frozen;
+- `actual_data_used=false`;
+- `model_effect_enabled=false`;
+- no real historical prediction tables rewritten.
 
-The earlier Blind Replay remains context/calibration research, not a rerun that changes outcome probabilities.
+Evaluation:
+- 10/10 fixtures;
+- result direction: **6/10**;
+- average 1X2 Brier: **0.517874**;
+- score log loss: **2.928090**;
+- exact top score: **1/10**;
+- process MAE: **0.699162**;
+- xG-gap error: **1.056865**;
+- total-xG error: **0.796039**.
 
-## 12. Enriched Shadow Outcome Replay v0.1 — DEPLOYED + EXECUTED + EVALUATED
+### Run 2 — `blind_current_v0.4_elo_strength`
+This follow-up keeps the same no-outcome-input replay discipline but changes the base strength to the historically validated Elo-enhanced candidate.
 
-This is the experiment requested by the product vision: run GW1 as though each match were still future, let the **current added intelligence layers actually move the outcome forecast**, freeze that separate shadow forecast, then reveal the result and compare:
+Evaluation:
+- 10/10 fixtures;
+- result direction: **8/10**;
+- average 1X2 Brier: **0.495188**;
+- score log loss: **2.928976**;
+- exact top score: **1/10**;
+- process MAE: **0.677928**;
+- xG-gap error: **0.996323**;
+- total-xG error: **0.812167**.
 
-**Original GW1 → Enriched Shadow → Actual**.
+**Critical interpretation:** run 2 is NOT independent validation. The Elo investigation was motivated after diagnosing run 1/GW1 team-strength compression. The Elo coefficients themselves were selected from historical holdouts, not GW1 scores, but the hypothesis selection was post-GW1. Preserve this result as retrospective follow-up evidence only.
 
-Storage:
-- `enriched_shadow_runs`;
-- `enriched_shadow_predictions`;
-- `enriched_shadow_evaluations`.
+The genuine independent test is the already-frozen GW2/GW3 forward cohort (`W0001`, `A0005`).
 
-Functions:
-- `private.shadow_poisson_bundle(home_lambda, away_lambda)`;
-- `generate_enriched_shadow_gw_v01(gameweek)`;
-- `evaluate_enriched_shadow_gw_v01(run_id)`.
+## 12. Previous GW1 replays that must remain distinct
 
-GW1 shadow run: **id 2**, version `enriched_shadow_v0.1`.
+Do not conflate:
+- original frozen v0.1.3 GW1 predictions;
+- Blind Context Replay run 1;
+- Enriched Shadow v0.1 run 2;
+- form-decay / venue research shadows;
+- Blind Current Engine v0.3 run 1;
+- Blind Current Engine Elo v0.4 run 2.
 
-Generation integrity:
-- 10/10 fixtures generated;
-- `actual_data_used=false` on run and every prediction;
-- `model_effect_enabled=false` throughout;
-- `forward_valid=false` by design;
-- input-cutoff violations: 0;
-- new real `fixture_prediction_snapshots`: 0;
-- new real `model_predictions`: 0;
-- new real `gameweek_prediction_runs`: 0.
+Each experiment has different provenance and validity. Never present a later retrospective run as the original GW1 forecast.
 
-### Fixed integration policy
+## 13. Current major pending work
 
-Coefficients were fixed before shadow generation and were not tuned after viewing the evaluation:
-- wide matchup: max log-lambda effect 0.04;
-- aerial/set-piece: 0.035;
-- central creation/block: 0.05;
-- recent attacking xG trend: 0.05;
-- opponent defensive xGA trend: 0.04;
-- positive transition opportunity: 0.025, upside-only;
-- schedule/fatigue: 0.03;
-- own personnel/role-continuity attack effect: 0.05;
-- opponent personnel defensive-continuity effect: 0.04;
-- total log-lambda adjustment capped at ±0.12.
+Highest priority:
+1. Let GW2 validation and GW3 test results arrive; evaluate `A0005` without changing its frozen definitions.
+2. Compare BASE / FORM / TACTICAL / PERSONNEL / QUALITY / combined variants using proper scores and process metrics.
+3. Run promotion gate only after enough genuine forward sample exists. Current sample is far below the required threshold.
+4. Keep v0.3 Elo, quality and interaction layers research-only until that forward evidence exists.
+5. Finish C0054 presentation/dashboard layer and CLV population as closing captures become available.
+6. Continue collecting future GWs under the same canonical feature/version/market pipeline.
+7. Third Correct Score source remains blocked pending a provider/source that actually returns data.
+8. True pressing/defensive-line work remains blocked pending suitable spatial/tracking data.
+9. Legacy security/RLS findings on older public objects remain a separate hardening task; do not mix them into forecast-model changes without dependency mapping.
 
-Effects are confidence/coverage weighted where available. Low transition opportunity does not penalize possession attacks. Personnel is position-aware and remains a continuity proxy, not ability. Missing contribution applies no shadow adjustment and remains explicitly unavailable; missing is not interpreted as football weakness.
+Do **not** retune A0005 or the GW2/GW3 candidate after seeing results. New tuning requires a new experiment/version/Change ID.
 
-### Match 1 limitation
+## 14. UI / API state
 
-Arsenal–Coventry has no genuine pre-kickoff original state archive. Present Elo/team metadata was refreshed after kickoff and was therefore rejected for reconstruction.
+Static GitHub Pages frontend remains a live-data shell over Supabase APIs.
 
-To keep all 10 fixtures in the shadow experiment, match 1 uses a lower-confidence `SAFE_PREMATCH_PRIOR_RECONSTRUCTION_NO_ELO` built from prior-season semantics plus friendlies before kickoff. Approximate safe baseline: Arsenal 1.895 / Coventry 0.853. It is **not scored as an original-vs-shadow comparison**.
+Existing product surfaces include Home / FPL / Fixtures / Market Intelligence / Performance.
 
-### Shadow movement before outcome reveal
+UI work already includes:
+- human football wording for backend enums;
+- FPL pitch layout;
+- pagination over 20;
+- actual-result pre-match odds where genuinely captured;
+- retrospective replay/performance views.
 
-The shadow engine numerically changed all fixtures. Most changes were deliberately small. The only 1X2 leader flip among the comparable fixtures was Newcastle–Liverpool:
-- original lambdas 1.489 / 1.565, original lean Liverpool;
-- shadow lambdas 1.527 / 1.487, shadow lean Newcastle;
-- top score remained 1-1.
+Live browser/device visual QA and the latest validation-dashboard presentation can still be improved later. Do not prioritize UI ahead of genuine forward model validation.
 
-Other notable lambda movement:
-- Hull–Man Utd: 1.035 / 2.037 → 1.009 / 2.132;
-- Everton–Palace: 1.394 / 1.592 → 1.440 / 1.581;
-- Forest–Leeds: 1.384 / 1.478 → 1.462 / 1.486;
-- Brentford–Spurs: 1.688 / 1.155 → 1.639 / 1.204;
-- City–Bournemouth: 2.157 / 1.452 → 2.070 / 1.404;
-- Fulham–Chelsea, still pre-match at evaluation time: 1.288 / 1.585 → 1.325 / 1.506.
+## 15. Resume command for the next conversation
 
-### Evaluation after separate result reveal
+When the user says to continue this project:
 
-9 finished fixtures were evaluated; **8** had a defensible original baseline for direct comparison.
-
-Comparable finished matches:
-- original result-direction hits: **5/8**;
-- shadow result-direction hits: **5/8**;
-- original exact top-score hits: **1/8**;
-- shadow exact top-score hits: **1/8**;
-- average original 1X2 Brier: **0.617461**;
-- average shadow 1X2 Brier: **0.628945**;
-- average delta shadow-minus-original: **+0.011484** (worse);
-- average original actual-score log loss: **3.013640**;
-- average shadow actual-score log loss: **3.042677** (worse);
-- status counts using ±0.01 Brier threshold: **1 better / 3 similar / 4 worse**.
-
-Per-fixture calibration status:
-- Hull–Man Utd: SHADOW_WORSE; enriched layer strengthened United, but Hull won 2-0;
-- Everton–Crystal Palace: SHADOW_BETTER; shifted toward Everton but did not flip the result leader; Everton won 2-0;
-- Ipswich–Sunderland: SIMILAR;
-- Forest–Leeds: SHADOW_WORSE; shifted strongly toward Forest, but Leeds won 1-0;
-- Brentford–Spurs: SHADOW_WORSE; narrowed Brentford's edge, but Brentford won 3-0;
-- Brighton–Villa: SIMILAR with a small Brier improvement;
-- Man City–Bournemouth: SHADOW_WORSE by the ±0.01 threshold despite retaining the correct 2-1 top score;
-- Newcastle–Liverpool: SIMILAR; outcome leader flipped Liverpool→Newcastle but actual was 2-2;
-- Arsenal–Coventry: shadow-only, not original-comparable.
-
-**Conclusion of v0.1:** the added intelligence demonstrably changes the model opinion, but this first conservative integration did **not** improve GW1 aggregate calibration. Do not promote these coefficients into the active model. Preserve run 2 as the fixed negative/neutral calibration result and learn from it.
-
-Major diagnostic: recent xG trend currently drives much more of the lambda movement than the new tactical matchup axes. Examples include United/Hull, Forest/Leeds and Brentford/Spurs. This weighting deserves investigation on broader pre-match samples before any active effect.
-
-## 13. Read API contracts
-
-Current UI read boundaries:
-- `fpl-api` v8 ACTIVE;
-- `fixture-intelligence-api` v1 ACTIVE;
-- `betting-api` v10 ACTIVE;
-- `research-replay-api` **v2 ACTIVE**.
-
-`research-replay-api` v2 preserves the Blind Replay contract and additively exposes `enriched_shadow` with:
-- run/policy metadata;
-- Original/Shadow lambdas, 1X2, score matrices and top score;
-- adjustment evidence/reasons;
-- separate evaluation;
-- aggregate summary.
-
-Verified HTTP 200 for GW1 after deployment: enriched shadow available=true, run=2, 10 fixtures, 8 comparable finished matches.
-
-`betting-api` v10 fixes the intermittent `JWT issued at future` Market failure and returns actual-result pre-match correct-score prices where genuinely captured.
-
-## 14. UI/UX v3 — CODED + COMMITTED; LIVE VISUAL QA STILL REQUIRED
-
-Static GitHub Pages remains the frontend; data stays live through Supabase Edge APIs.
-
-Current information architecture: Home / FPL / Fixtures / Market Intelligence / Performance.
-
-Existing v2 improvements remain: human football wording, explanatory matchup text, FPL pitch, pagination over 20, actual-result pre-match odds, blind replay.
-
-v3 adds a separate **Original → Enriched Shadow → Actual** Performance section showing:
-- original/safe baseline opinion;
-- enriched shadow opinion;
-- actual score when finished;
-- original and shadow lambdas;
-- percentage lambda movement;
-- strongest human-readable reasons for each team's movement;
-- Brier original→shadow where a genuine original comparison exists;
-- explicit match-1 warning that the original forecast is unavailable;
-- pending state for unfinished Fulham–Chelsea.
-
-Backend/API paths are verified. Browser/device visual QA remains user-side/current-browser work; do not claim independent rendered verification.
-
-## 15. Security / performance
-
-New blind and enriched-shadow tables are internal: RLS enabled, anon/authenticated revoked, service-role only.
-
-Security advisor reports expected `RLS enabled, no policy` INFO for these service-only tables. Legacy ERROR findings remain on older exposed objects and are not part of this experiment.
-
-Performance advisor reports no unindexed foreign-key warning on the enriched-shadow tables. New covering indexes appear only as unused INFO, expected on a tiny new dataset.
-
-## 16. Repository parity — latest relevant commits
-
-Enriched shadow/UI pass:
-- `0a178eb6abb35e2a4b99b16cacfc9b386ddf848e` — enriched shadow Performance UI;
-- `ef94afc7bfdd268c25c586abeae2081db5723c99` — enriched shadow UI styles;
-- `3e64567f6949fc2e57a9b37f9dfbd5dd073b6181` — activate UI v3 assets;
-- `551a90760cfa11a815525532a3091e3e5dfbd134` — research-replay API v2 source;
-- `031e1f80d28903779c51da51e58cab0ef3a3e531` — enriched shadow storage/generation/evaluation migration.
-
-Earlier key baseline commits remain in history for Tactical Matchups, fixture-intelligence API, betting API v10, Blind Replay and UI v2.
-
-## 17. Exact next-action queue
-
-1. Visually inspect the new **Original → Enriched Shadow → Actual** section in deployed Performance UI and fix any rendered/mobile issues found.
-2. Do **not** tune enriched-shadow coefficients to fit GW1. Preserve run 2 as fixed evidence.
-3. Diagnose why recent xG trend dominated shadow movement and why it worsened Hull–United, Forest–Leeds and Brentford–Spurs; test coefficient families separately on a broader chronological sample.
-4. After Fulham–Chelsea, run the separate shadow evaluation again for match 10 only through the idempotent evaluator and, independently, perform the first genuine forward role/XI/replacement/tactical validation when rich events arrive.
-5. Design Enriched Shadow v0.2 only after component-ablation analysis: base + form only, base + tactics only, base + personnel only, and combinations. Compare incremental Brier/log-loss; do not choose coefficients by GW1 hit rate.
-6. Continue Correct Score forward sampling and add a third source.
-7. Only after sufficient forward/out-of-sample evidence promote any tactical/form/personnel effect into active lambdas/xPts or recommendations.
-8. Later add true left/right channel evidence, pressing and defensive-line height as separate validated feature families.
-9. Map legacy direct client dependencies and then harden older RLS/grants safely.
-
-## 18. Resume instruction
-
-In any fresh conversation:
-1. read this file and `DECISIONS_AND_HISTORY.md`;
-2. independently inspect GitHub and Supabase production state;
-3. preserve frozen forecasts and append-only observations;
-4. never commit secrets;
-5. distinguish planned / coded / committed / deployed / executed / verified;
-6. distinguish genuine forward validation, blind context replay, and enriched outcome shadow replay;
-7. never tune a retrospective shadow model after viewing its evaluation and then report it as unbiased evidence;
-8. continue from the first unresolved queue item unless production has advanced.
+1. Read `PROJECT_STATE.md` and `DECISIONS_AND_HISTORY.md`.
+2. Query `public.change_tracker_working`.
+3. Verify current GW2/GW3 result state and whether any W0001/A0005 fixtures have finished.
+4. If results exist, evaluate the frozen forward ablations **without modifying them first**.
+5. Preserve all retrospective-vs-forward distinctions above.
+6. Update Supabase working ledger during engineering.
+7. Regenerate/update the Excel tracker locally at the end of the work block only; **never push the Excel tracker to GitHub**.

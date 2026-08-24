@@ -29,7 +29,7 @@ Excel tracker rule:
 - **Do not push the Excel tracker to GitHub.**
 - GitHub contains project handover/docs/code/migrations only.
 
-Latest tracker IDs run through **C0113**.
+Latest tracker IDs run through **C0114**.
 
 For any new/resumed session:
 1. Read this file.
@@ -72,6 +72,8 @@ Verified GW2/GW3 coverage from this implementation phase:
 
 A faulty early enriched automation cohort that coerced a missing tactical score to zero was not deleted; it is preserved and excluded through an append-only invalidation ledger. Corrected v2 preserves null as unavailable and reruns idempotently.
 
+As of 2026-08-25, GW2 and GW3 have not produced any result evidence. `W0001` / `A0005` therefore remains untouched with 140 frozen ablation predictions, 20 complete cohort fixtures and zero forward evaluations.
+
 ## 4. Validation/sample infrastructure — C0049
 
 ### C0050 — Unified pre-match feature snapshot — VERIFIED
@@ -96,8 +98,8 @@ Immutable `E000x` experiment definitions with feature/model/version/training/val
 ### C0053 — Ablation framework — VERIFIED
 Multiple immutable ablation cohorts exist. Latest important forward cohort is **A0005**, tied to the v0.3 Elo team-strength candidate and frozen before outcomes.
 
-### C0054 — Calibration backend — EXECUTED / presentation still pending
-Backend supports:
+### C0054 — Calibration dashboard — VERIFIED
+Backend and live presentation support:
 - Brier;
 - score log loss;
 - direction accuracy;
@@ -108,6 +110,21 @@ Backend supports:
 - reliability bins/calibration;
 - market disagreement;
 - genuinely captured CLV context where a closing proxy exists.
+
+`calibration-summary` v3 is live and the Performance page includes the C0114 forward-validation control room. The selected independent cohort is intentionally pinned to `W0001` / `A0005` so a later experiment cannot silently replace it.
+
+Verified live state on 2026-08-25:
+- 140 A0005 frozen predictions;
+- 20 complete cohort fixtures;
+- GW2 validation = 10 fixtures;
+- GW3 test = 10 fixtures;
+- forward evaluations = 0;
+- prediction/cohort actual-data violations = 0;
+- prediction/cohort model-effect violations = 0;
+- live API HTTP 200;
+- deployed GitHub Pages serves `ui-v4.js` / `ui-v4.css`.
+
+The UI renders unavailable forward metrics as **Pending**, not zero, and labels the two GW1 blind-current replays as retrospective reference only.
 
 CLV remains null when no captured closing proxy exists; never reconstruct it.
 
@@ -124,6 +141,22 @@ CLV remains null when no captured closing proxy exists; never reconstruct it.
 
 ### C0057 — Version registry — VERIFIED
 Predictions/manifests can be tied to exact component versions. GW2/GW3 manifests exist for the main forward candidates.
+
+### C0114 — Forward calibration presentation — VERIFIED
+New live Performance surface presents:
+- W0001/A0005 cohort coverage;
+- validation vs test ablation scoreboard across all seven A0005 variants;
+- explicit chronology/model-effect integrity state;
+- market-disagreement and captured-CLV state;
+- promotion-gate status without implying an old gate assessment applies to A0005;
+- retrospective GW1 replay metrics in a clearly separate reference table.
+
+Implementation:
+- Supabase Edge Function `calibration-summary` v3;
+- repository-tracked `supabase/functions/calibration-summary/` source;
+- `ui-v4.js`;
+- `ui-v4.css`;
+- `index.html` asset wiring.
 
 ## 5. Team-strength calibration — C0104
 
@@ -301,7 +334,7 @@ Highest priority:
 2. Compare BASE / FORM / TACTICAL / PERSONNEL / QUALITY / combined variants using proper scores and process metrics.
 3. Run promotion gate only after enough genuine forward sample exists. Current sample is far below the required threshold.
 4. Keep v0.3 Elo, quality and interaction layers research-only until that forward evidence exists.
-5. Finish C0054 presentation/dashboard layer and CLV population as closing captures become available.
+5. Let the verified C0054 dashboard populate naturally as forward evaluations and genuinely captured near-close CLV become available; do not fabricate missing values.
 6. Continue collecting future GWs under the same canonical feature/version/market pipeline.
 7. Third Correct Score source remains blocked pending a provider/source that actually returns data.
 8. True pressing/defensive-line work remains blocked pending suitable spatial/tracking data.
@@ -315,14 +348,16 @@ Static GitHub Pages frontend remains a live-data shell over Supabase APIs.
 
 Existing product surfaces include Home / FPL / Fixtures / Market Intelligence / Performance.
 
-UI work already includes:
+UI work now includes:
 - human football wording for backend enums;
 - FPL pitch layout;
 - pagination over 20;
 - actual-result pre-match odds where genuinely captured;
-- retrospective replay/performance views.
+- retrospective replay/performance views;
+- a verified forward-validation control room on Performance backed by `calibration-summary` v3;
+- explicit A0005 validation/test scoreboard, integrity flags, market/CLV state and retrospective-vs-forward labeling.
 
-Live browser/device visual QA and the latest validation-dashboard presentation can still be improved later. Do not prioritize UI ahead of genuine forward model validation.
+The static deployment and API boundaries were verified live with HTTP 200 on 2026-08-25. Browser/device visual QA can still be improved later, but do not prioritize cosmetic work ahead of genuine forward model validation.
 
 ## 15. Resume command for the next conversation
 

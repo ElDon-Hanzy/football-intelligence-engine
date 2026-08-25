@@ -28,7 +28,7 @@ Excel tracker rule:
 - **Do not push the Excel tracker to GitHub.**
 - GitHub contains code, migrations, project handover and decision/history documentation.
 
-Latest engineering Change ID is **C0129**. Substantive implementation work is verified through **C0128**; C0129 is the reconciliation pass that synchronizes Supabase, GitHub handover/decision docs and the local Excel tracker.
+Latest engineering Change ID is **C0130**. Substantive model/data implementation remains verified through **C0128**; C0129 reconciled Supabase, GitHub and the local tracker, and C0130 repaired a missing finalized local tracker artifact detected by the post-reconciliation audit. Neither C0129 nor C0130 changes model forecasts or experiment definitions.
 
 Database governance from C0118 remains machine-checkable:
 - `private.enforce_change_tracker_governance_v01()` rejects invalid Change IDs;
@@ -379,17 +379,17 @@ Do not invent more model complexity merely to create work. The highest-value nex
 8. Apply C0125 effect-family promotion gates only when genuine forward sample thresholds exist.
 9. Do not auto-promote any model/effect.
 
-## 16. C0129 reconciliation state
+## 16. C0129/C0130 reconciliation state
 
-C0129 exists solely to synchronize documentation and the fuller local tracker after overnight execution.
+C0129 synchronized Supabase execution truth, GitHub handover/decision documentation and the fuller local tracker after overnight execution. C0130 was opened by the first post-reconciliation audit because the finalized `FIE_Tracker_C0129.xlsx` referenced by C0129 was missing from the current local runtime while the pre-final working workbook was present.
 
-Required reconciliation outcomes:
-- Supabase remains the execution truth;
-- GitHub handover reflects C0121–C0128 and removes stale unresolved labels;
-- `DECISIONS_AND_HISTORY.md` records the overnight retain/reject decisions;
-- the fuller Excel tracker is rebuilt from the latest 121-item register plus C0122–C0129 and corrected historical statuses;
-- cited Git references are verified rather than fabricated;
-- A0005/W0002/E0007 definitions remain unchanged.
+C0130 recovery outcomes:
+- regenerated the finalized `FIE_Tracker_C0129.xlsx` from the reconciled working artifact;
+- finalized the C0129 workbook row to `Completed / Verified`;
+- emitted `FIE_Tracker_C0130.xlsx` as the current local tracker including C0130;
+- formula-error scan remained clean;
+- no forecast/model/experiment data changed;
+- A0005, E0007 and W0002 remained frozen and integrity-clean.
 
 ## 17. Resume command for the next conversation
 

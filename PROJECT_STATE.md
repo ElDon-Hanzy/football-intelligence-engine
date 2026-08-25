@@ -29,7 +29,7 @@ Excel tracker rule:
 - **Do not push the Excel tracker to GitHub.**
 - GitHub contains project handover/docs/code/migrations only.
 
-Latest tracker IDs run through **C0114**.
+Latest tracker IDs run through **C0115**.
 
 For any new/resumed session:
 1. Read this file.
@@ -73,6 +73,8 @@ Verified GW2/GW3 coverage from this implementation phase:
 A faulty early enriched automation cohort that coerced a missing tactical score to zero was not deleted; it is preserved and excluded through an append-only invalidation ledger. Corrected v2 preserves null as unavailable and reruns idempotently.
 
 As of 2026-08-25, GW2 and GW3 have not produced any result evidence. `W0001` / `A0005` therefore remains untouched with 140 frozen ablation predictions, 20 complete cohort fixtures and zero forward evaluations.
+
+C0115 is now operational in production: it guards near-close bookmaker capture in a 5–20 minute pre-kickoff window and automatically runs the append-only A0005 evaluator shortly after the existing 15-minute official-result sync. It does not tune, promote or rewrite A0005. Missing CLV remains null rather than reconstructed.
 
 ## 4. Validation/sample infrastructure — C0049
 
@@ -157,6 +159,32 @@ Implementation:
 - `ui-v4.js`;
 - `ui-v4.css`;
 - `index.html` asset wiring.
+
+### C0115 — A0005 forward-validation readiness & near-close capture — VERIFIED
+Operational hardening for the frozen independent cohort is deployed.
+
+Production functions:
+- `private.capture_a0005_near_close_v01()` checks only complete A0005 cohort fixtures, refuses dirty run/prediction flags, and triggers Bet365/Unibet ingestion only when a fixture is 5–20 minutes from kickoff and no genuine 25-minute closing-proxy snapshot already exists;
+- `private.evaluate_a0005_forward_v01()` pins evaluation to A0005, refuses integrity violations, and calls the existing append-only/idempotent walk-forward evaluator;
+- `private.a0005_forward_validation_status_v01()` reports coverage, integrity, near-close capture coverage, split-level variant metrics and the allowed decision state.
+
+Production schedules:
+- `football_intelligence_a0005_near_close`: every 5 minutes, but the database guard makes it a no-op outside the capture window;
+- `football_intelligence_a0005_evaluator`: at :08/:23/:38/:53, shortly after the existing official result sync at */15 minutes.
+
+Verified on 2026-08-25:
+- 140 frozen predictions / 20 cohort fixtures / 0 finished fixtures / 0 evaluations;
+- zero run, prediction or duplicate-evaluation integrity violations;
+- pre-result evaluator inserts zero and leaves all 140 predictions pending;
+- near-close function currently no-ops because no fixture is inside the capture window;
+- a no-write retrospective metric recomputation exactly matched stored Brier, score-log-loss and direction metrics on a finished blind-current replay fixture.
+
+Decision states are intentionally constrained:
+- incomplete GW2 → `ACCUMULATING_GW2_VALIDATION`;
+- complete GW2 but incomplete GW3 → `GW2_COMPLETE_REVIEW_ONLY_NO_TUNING`;
+- complete GW2 + GW3 → `GW3_COMPLETE_PROMOTION_GATE_ELIGIBLE`.
+
+Repository migration: `sql/a0005_forward_validation_readiness_v01.sql`.
 
 ## 5. Team-strength calibration — C0104
 
@@ -262,6 +290,7 @@ Do not relabel proxies as pressing or high line.
 - `ingest-bookmaker-odds` v5 includes the Leeds/Leeds United alias fix.
 - GW2 market coverage reached 10/10 fixtures after the alias fix.
 - C0110 compares the research team-strength candidate with de-vigged bookmaker 1X2 consensus; it is a confidence/diagnostic signal only and never auto-overrides the model.
+- C0115 now schedules guarded Bet365/Unibet near-close capture for A0005 fixtures. Only genuinely captured pre-kickoff prices may become closing proxies.
 - A very large Villa–Arsenal model/market disagreement was the trigger to investigate persistent team quality; this helped motivate the long-horizon/Elo work.
 - Correct-score CLV uses captured closing proxies only.
 
@@ -330,15 +359,16 @@ Each experiment has different provenance and validity. Never present a later ret
 ## 13. Current major pending work
 
 Highest priority:
-1. Let GW2 validation and GW3 test results arrive; evaluate `A0005` without changing its frozen definitions.
-2. Compare BASE / FORM / TACTICAL / PERSONNEL / QUALITY / combined variants using proper scores and process metrics.
-3. Run promotion gate only after enough genuine forward sample exists. Current sample is far below the required threshold.
-4. Keep v0.3 Elo, quality and interaction layers research-only until that forward evidence exists.
-5. Let the verified C0054 dashboard populate naturally as forward evaluations and genuinely captured near-close CLV become available; do not fabricate missing values.
-6. Continue collecting future GWs under the same canonical feature/version/market pipeline.
-7. Third Correct Score source remains blocked pending a provider/source that actually returns data.
-8. True pressing/defensive-line work remains blocked pending suitable spatial/tracking data.
-9. Legacy security/RLS findings on older public objects remain a separate hardening task; do not mix them into forecast-model changes without dependency mapping.
+1. Let C0115 collect genuine near-close prices and automatically append A0005 evaluations as GW2 fixtures finish. Do not alter A0005 before or during scoring.
+2. Once all 10 GW2 validation fixtures are evaluated, compare BASE / FORM / TACTICAL / PERSONNEL / QUALITY / combined variants using proper scores and process metrics **without tuning from GW2**.
+3. Preserve GW3 as the separately frozen TEST confirmation. Only after GW3 is complete should the promotion gate become eligible for a decision.
+4. Run promotion gate only after enough genuine forward sample exists; the existing historical/retrospective results do not substitute for this.
+5. Keep v0.3 Elo, quality and interaction layers research-only until that forward evidence exists.
+6. Let the verified C0054/C0114 dashboard populate naturally as forward evaluations and genuinely captured near-close CLV become available; do not fabricate missing values.
+7. Continue collecting future GWs under the same canonical feature/version/market pipeline.
+8. Third Correct Score source remains blocked pending a provider/source that actually returns data.
+9. True pressing/defensive-line work remains blocked pending suitable spatial/tracking data.
+10. Legacy security/RLS findings on older public objects remain a separate hardening task; do not mix them into forecast-model changes without dependency mapping.
 
 Do **not** retune A0005 or the GW2/GW3 candidate after seeing results. New tuning requires a new experiment/version/Change ID.
 
@@ -365,8 +395,9 @@ When the user says to continue this project:
 
 1. Read `PROJECT_STATE.md` and `DECISIONS_AND_HISTORY.md`.
 2. Query `public.change_tracker_working`.
-3. Verify current GW2/GW3 result state and whether any W0001/A0005 fixtures have finished.
-4. If results exist, evaluate the frozen forward ablations **without modifying them first**.
-5. Preserve all retrospective-vs-forward distinctions above.
-6. Update Supabase working ledger during engineering.
-7. Regenerate/update the Excel tracker locally at the end of the work block only; **never push the Excel tracker to GitHub**.
+3. Query `private.a0005_forward_validation_status_v01()` or independently reproduce its checks, and verify current GW2/GW3 result state.
+4. C0115 should automatically evaluate finished A0005 fixtures. If a finished fixture exists but its seven A0005 evaluations are missing, investigate the result-sync/evaluator pipeline before doing any model analysis.
+5. If GW2 is complete, analyze validation results without retuning; preserve GW3 as the independent TEST confirmation.
+6. Preserve all retrospective-vs-forward distinctions above.
+7. Update Supabase working ledger during engineering.
+8. Regenerate/update the Excel tracker locally at the end of the work block only; **never push the Excel tracker to GitHub**.

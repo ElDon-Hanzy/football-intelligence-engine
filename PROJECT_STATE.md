@@ -17,6 +17,7 @@ Permanent rules:
 - Distinguish planned / coded / committed / deployed / executed / verified.
 - Do not tune on GW1 and then call a same-GW rerun independent validation.
 - Process quality and result quality are evaluated separately.
+- Negative experiments are first-class evidence and must not be hidden or retuned until they look successful.
 
 ## 2. Change management and source of truth
 
@@ -27,61 +28,43 @@ Excel tracker rule:
 - **Do not push the Excel tracker to GitHub.**
 - GitHub contains code, migrations, project handover and decision/history documentation.
 
-Latest tracker IDs now run through **C0120**.
+Latest engineering Change ID is **C0129**. Substantive implementation work is verified through **C0128**; C0129 is the reconciliation pass that synchronizes Supabase, GitHub handover/decision docs and the local Excel tracker.
 
-### C0116 — Tracker reconciliation — VERIFIED
-The fuller Excel register was reconciled against Supabase, `PROJECT_STATE.md` and production evidence. Stale Pending/Planned labels were corrected without falsely completing partially implemented work.
-
-### C0118 — Governance enforcement & traceability audit — VERIFIED
-Database-level governance is now machine-checkable.
-
-Production controls:
+Database governance from C0118 remains machine-checkable:
 - `private.enforce_change_tracker_governance_v01()` rejects invalid Change IDs;
 - `Completed` requires `delivery_stage='Verified'`;
 - `Completed` requires at least one implementation reference;
 - decision-bearing rows marked `decision_required=true` require explicit `decision_refs`;
 - `private.audit_change_tracker_governance_v01()` reports ledger violations.
 
-Verified state on 2026-08-25:
-- 35 working-ledger rows at audit time;
-- 10 explicit decision-bearing rows;
-- 0 bad Change IDs;
-- 0 Completed-not-Verified rows;
-- 0 Completed-without-implementation-ref rows;
-- 0 decision-bearing rows without decision refs;
-- negative tests rejected invalid writes and rolled back cleanly.
-
-C0100, C0101 and C0102 are therefore **Completed / Verified**. Ongoing compliance is an operating rule, not unfinished implementation.
-
 For every new/resumed session:
 1. Read this file.
 2. Read `DECISIONS_AND_HISTORY.md`.
 3. Query `public.change_tracker_working`.
-4. Independently inspect current Supabase/GitHub production state before executing.
-5. Do not blindly trust chat-history summaries.
+4. Run `private.audit_change_tracker_governance_v01()`.
+5. Independently inspect current Supabase/GitHub production state before executing.
+6. Do not blindly trust chat-history summaries or an old Excel filename.
 
-## 3. Current forward-validation cohort
+## 3. Genuine forward-validation cohorts
 
-Independent forward cohort: `W0001` / `A0005`, experiment `E0006`.
+### W0001 / A0005 / E0006 — primary independent cohort
 
 `W0001`:
 - GW2 = `VALIDATION`;
 - GW3 = `TEST`;
 - 20 complete fixtures total;
-- training_end = `2026-08-28 19:00:00+00`;
 - actual data was not used in generation;
 - model effects remain disabled.
 
 `A0005`:
 - ablation run id 5;
 - engine `walk_forward_ablation_v0.4_elo`;
-- change C0112;
 - 7 frozen variants across 20 fixtures;
 - 140 frozen predictions total;
 - `actual_data_used=false`;
 - `model_effect_enabled=false`.
 
-As of the latest 2026-08-25 verification:
+Latest verified state on 2026-08-25:
 - 140 predictions;
 - 20 complete cohort fixtures;
 - 0 finished cohort fixtures;
@@ -90,233 +73,260 @@ As of the latest 2026-08-25 verification:
 
 Do not modify A0005 before or during scoring.
 
-GW2 and GW3 were seeded before kickoff. Current pre-match chain includes availability/Expected XI, fixture roles, team tactical snapshots, replacement research, tactical matchups, base forecasts, enriched research forecasts, canonical C0050 feature snapshots and market capture where available.
+C0115 remains operational:
+- `private.capture_a0005_near_close_v01()` guards genuine 5–20 minute pre-kickoff bookmaker capture;
+- `private.evaluate_a0005_forward_v01()` pins scoring to A0005 and appends finished-fixture evaluations;
+- `private.a0005_forward_validation_status_v01()` reports coverage/integrity/decision state;
+- unavailable CLV remains `NULL` and is never reconstructed;
+- GW2 is validation-only with no retuning;
+- GW3 is separate TEST confirmation;
+- no automatic promotion.
 
-## 4. C0115 — Forward-validation readiness & near-close capture — VERIFIED
+### W0002 / E0008 — second independently precommitted cohort
 
-C0115 is operational in production.
+C0121 created a second forward cohort **before GW2 outcomes were known**:
+- GW4 = `VALIDATION`;
+- GW5 = `TEST`;
+- 20/20 fixtures complete;
+- full pre-kickoff chain populated for both weeks: availability, roles, team tactics, replacement research, tactical matchups, canonical feature snapshots, structural forecasts, Elo candidates and enriched forecasts;
+- dedicated near-close capture/evaluator cron jobs are active;
+- 0 evaluations so far;
+- 0 integrity violations;
+- A0005 remains untouched.
 
-Functions:
-- `private.capture_a0005_near_close_v01()` checks only complete A0005 cohort fixtures and triggers bookmaker ingestion only inside the protected pre-kickoff window;
-- `private.evaluate_a0005_forward_v01()` pins scoring to A0005 and uses the append-only/idempotent evaluator;
-- `private.a0005_forward_validation_status_v01()` reports coverage, integrity, capture state and decision state.
+Production functions:
+- `private.capture_w0002_near_close_v01()`;
+- `private.evaluate_w0002_forward_v01()`;
+- `private.w0002_forward_validation_status_v01()`.
 
-Schedules:
-- `football_intelligence_a0005_near_close`: every 5 minutes, with a database guard allowing work only 5–20 minutes before kickoff;
-- `football_intelligence_a0005_evaluator`: at :08/:23/:38/:53, after the existing official-result sync.
+## 4. Validation infrastructure — C0049
 
-Rules:
-- no reconstructed closing odds;
-- unavailable CLV remains `NULL`;
-- finished fixtures only are evaluated;
-- duplicate evaluation rows are prevented;
-- GW2 is validation-only and cannot be used for same-cohort retuning;
-- GW3 remains separate TEST confirmation;
-- no automatic model promotion.
+C0049 remains **In Progress / Executed** only because genuine forward outcomes have not accumulated yet. The infrastructure itself is operational.
 
-Decision states:
-- incomplete GW2 → `ACCUMULATING_GW2_VALIDATION`;
-- complete GW2 / incomplete GW3 → `GW2_COMPLETE_REVIEW_ONLY_NO_TUNING`;
-- complete GW2 + GW3 → `GW3_COMPLETE_PROMOTION_GATE_ELIGIBLE`.
+Verified components include:
+- C0050 canonical chronology-safe pre-match feature snapshots;
+- C0051 immutable experiment registry;
+- C0052 walk-forward cohort engine;
+- C0053 immutable ablation framework;
+- C0054/C0114 calibration backend and live Performance control room;
+- C0055 model-promotion gate;
+- C0056 retrospective historical pre-match archive;
+- C0057 version registry;
+- C0109 process-vs-outcome scoring;
+- C0115 guarded near-close capture and automatic forward evaluation;
+- C0121 second forward cohort.
 
-## 5. Validation infrastructure — C0049
+The historical archive remains retrospective-safe training evidence, not genuine historical prediction evidence and not forward validation.
 
-### C0050 — Unified pre-match feature snapshot — VERIFIED
-Canonical append-only fixture-team feature snapshots with chronology/provenance. Historical features are recomputed only from evidence available by cutoff. Missing data remains missing.
+## 5. Learned signal effects — current decision state
 
-### C0051 — Experiment registry — VERIFIED
-Immutable `E000x` experiment definitions with feature/model/version/training/validation metadata.
+### C0068 / C0123 — regularized signal-effect model — VERIFIED
 
-### C0052 — Walk-forward engine — VERIFIED
-`W0001` freezes GW2 VALIDATION and GW3 TEST with 20/20 complete cohort fixtures and zero chronology/model-effect violations.
+A chronology-safe ridge residual model used:
+- 688 training rows;
+- a six-row Jan-31 temporal gap;
+- an untouched 210-row Feb–May holdout.
 
-### C0053 — Ablation framework — VERIFIED
-Multiple immutable ablation cohorts exist. A0005 is the independent forward cohort of interest.
+Inner validation tested penalties from 0 to 1.0. No non-zero candidate improved both MAE and RMSE. On the untouched holdout, non-zero fits produced tiny MAE gains but worse RMSE.
 
-### C0054 / C0114 — Calibration backend + live dashboard — VERIFIED
-Performance surface supports Brier, score log loss, direction accuracy, exact-score rate, process MAE, xG-gap error, total-xG error, reliability/calibration, market disagreement and genuine captured CLV context.
+Decision: **shrink currently supported learned residual effects to zero**. Unsupported tactical/personnel/quality families remain *unlearned*, not zero-filled. `model_effect_enabled=false`.
 
-The live forward-validation control room is intentionally pinned to W0001/A0005 so later experiments cannot silently replace the independent cohort. Missing forward metrics display Pending rather than zero. Retrospective GW1 evidence is shown separately.
+### C0072 / C0124 — manual vs learned ablation — VERIFIED
 
-### C0055 — Promotion gate — VERIFIED
-No model can auto-activate. Promotion requires sufficient genuine validation/test evidence, no chronology/policy violations and no unacceptable proper-score/process regression.
+On the same 210-row untouched holdout:
+- baseline: MAE 0.639759, RMSE 0.817821;
+- combined small manual recent-form package: MAE 0.637791, RMSE 0.817136;
+- opponent-defence trend alone improved both metrics modestly;
+- own-form alone improved MAE but worsened RMSE;
+- regularized learned effects remain zero;
+- schedule/fatigue remains rejected from C0066.
 
-### C0056 — Historical pre-match archive — VERIFIED
-- 964 reconstructed historical team-side snapshots;
-- 905 training-eligible;
-- `forward_valid=false`;
-- retrospective-safe training evidence only;
-- cannot be presented as genuine forward validation.
+Decision:
+- retain only the **small combined manual form package as a research comparator**;
+- do not retain own-form standalone;
+- do not activate any learned or manual residual effect from retrospective evidence.
 
-### C0057 — Version registry — VERIFIED
-Forward predictions/manifests are tied to exact component versions.
+### C0073 / C0125 — signal-effect promotion gate — VERIFIED
 
-C0049 remains **In Progress** only because genuine forward outcome accumulation is incomplete. The infrastructure itself is operational.
+Current effect-family promotion requires genuine forward evidence:
+- at least 50 VALIDATION observations;
+- at least 30 TEST observations;
+- at least 0.005 absolute Brier improvement in both windows;
+- log loss must not worsen;
+- process MAE must stay within 2% tolerance;
+- zero integrity violations;
+- historical retrospective evidence alone cannot pass;
+- automatic activation is impossible.
 
-## 6. Team-strength calibration — C0104 / C0112
+Current states correctly block all existing effect families. Recent form is `NOT_ENOUGH_FORWARD_SAMPLE`; other families are historical-not-eligible or lack isolated forward variants.
 
-GW1 diagnostics showed the old engine often got total fixture goal volume roughly right but allocated expected goals too evenly between teams.
+### C0069 / C0126 — nonlinear response curves — VERIFIED / REJECTED
 
-Rejected ideas include:
-- blind lambda-separation amplification;
-- blanket global home uplift;
-- simple exponent retuning without stability;
-- naive full-strength Championship→Premier League translation.
+Fixed linear-unclipped, clipped-linear, tanh and softsign responses were tested over three chronology-separated historical windows (120 / 200 / 210 rows).
 
-Verified supporting work:
-- C0107 promoted-team priors — conservative and shrunk;
-- C0108 cross-season form decay — offseason stale form downweighted;
-- C0111 uncertainty layer — sparse/promoted teams carry wider uncertainty;
-- C0109 process-vs-outcome evaluation — process and result errors separated.
+Every candidate had one pass window, one fail window and one mixed window. No response curve improved both MAE and RMSE consistently.
+
+Decision: **REJECT_NO_CROSS_WINDOW_STABILITY**. No nonlinear response is activated.
+
+### C0070 / C0127 — coverage shrinkage policy — VERIFIED
+
+Coverage audit found partial weighting did not rescue sparse evidence:
+- `sample_l10` missing → remains missing;
+- 1–9 prior-match L10 coverage → residual research effect weight 0;
+- >=10 → weight 1.
+
+In the 5–7 and 8–9 coverage bins, zero effect beat linear/quadratic/cubic partial weighting on both MAE and RMSE. The 1–4 bin had only six rows and is also suppressed.
+
+This policy is research-only and is not wired to active forecasts.
+
+## 6. Team-strength calibration — C0104 / C0112 / C0106
+
+The key historical diagnosis remains that the old engine often estimated total goal volume reasonably but allocated expected goals too evenly between teams.
 
 Persistent Elo candidate:
 - 3,496 historical team-side Elo observations;
 - research model `team_strength_linear_v0.3_elo`;
-- beat v0.2 across multiple historical holdouts;
-- 10/10 GW2 and 10/10 GW3 candidate forecasts frozen;
-- forward experiment/ablation `E0006` / `A0005`.
+- beats v0.2 across multiple historical holdouts;
+- 10/10 GW2 and 10/10 GW3 forward candidates frozen;
+- retrospective GW1 follow-up: 8/10 direction, Brier 0.495188, process MAE 0.677928;
+- GW1 is reference only, not independent validation.
 
-C0112 remains **Monitoring** until genuine GW2/GW3 evidence exists. Do not promote it from retrospective GW1 evidence.
+C0112 remains **Monitoring** pending genuine GW2/GW3 evidence.
 
-## 7. Goal/outcome distribution — C0058 — VERIFIED decision
+### C0106 / C0128 — venue/home-context calibration — VERIFIED / REJECTED
 
-Compared with fixed lambdas:
-- independent Poisson;
-- Dixon–Coles;
-- bivariate Poisson;
-- negative-binomial / generic over-dispersion.
+The earlier blanket global home uplift was already rejected. C0128 then tested fixed context-specific venue blends (25%, 50%, 100%) across four chronology-separated historical windows with 312 / 234 / 130 / 152 team-side observations.
 
-Result:
-- Dixon–Coles slightly helped 1X2 Brier in one holdout but worsened scoreline log loss and 1–1 concentration;
-- bivariate Poisson gain was microscopic;
-- negative-binomial optimum approached the Poisson limit.
+No venue formulation improved both MAE and RMSE consistently across windows.
 
-Decision: retain independent Poisson for now. The larger weakness is upstream team-strength estimation.
+A separate retrospective GW1 diagnostic had only six covered team-sides and looked favorable, but it was too sparse and non-independent to override the historical result.
+
+Decision: **no additional venue effect is activated**.
+
+## 7. Goal/outcome distribution — C0058
+
+Independent Poisson remains the retained outcome distribution for now.
+
+Rejected/insufficient alternatives with fixed lambdas:
+- Dixon–Coles: mixed proper-score result and worse scoreline concentration;
+- bivariate Poisson: microscopic gain;
+- negative binomial: optimum approached Poisson limit.
+
+The larger problem remains upstream team-strength estimation rather than the score-distribution family.
 
 ## 8. Player quality / absence consequence — C0091 / C0092 / C0117
 
-Role fit and absolute player quality remain separate concepts.
+Current layer:
+- 372 original outfield quality priors;
+- 341 outfield v2 ability priors;
+- 297/341 v2 rows receive conservative opponent-Elo adjustment after continuity/coverage gates;
+- missing event metrics are excluded rather than zero-filled;
+- goalkeeper quality intentionally remains unscored until goalkeeper-specific evidence exists;
+- GW2/GW3 absence-consequence observations exist and remain observational;
+- `model_effect_enabled=false`.
 
-Original C0091 layer:
-- 372 outfield 2025/26 position-normalized, minutes-shrunk quality priors;
-- separate attack/defence quality dimensions;
-- goalkeeper quality intentionally unscored until goalkeeper-specific evidence exists;
-- GW2 absence-consequence observations: 53;
-- GW3 absence-consequence observations: 55;
-- research-only with `model_effect_enabled=false`.
+C0092 remains **In Progress** because production contains only one genuine historical player season (2025/26). Do not call the prior multi-season until a second historical season is ingested and validated.
 
-### C0117 — Player ability prior v2 evidence expansion — VERIFIED
-C0117 improves the historical player prior without touching frozen forecasts.
+## 9. Spatial / tactical evidence — C0082 / C0083 / C0084
 
-Production table/function:
-- `player_ability_prior_v2_observations`;
-- `refresh_player_ability_priors_v2_2025_26()`.
+### C0083 — spatial data source audit — VERIFIED
 
-Verified results:
-- 341 outfield v2 priors;
-- 297/341 received conservative opponent-Elo adjustment;
-- adjustment requires inferred team continuity >= 0.80 and opponent-Elo coverage >= 0.60;
-- missing event metrics are excluded rather than coerced to zero;
-- append-only mutation guard is active;
-- identical second run inserted 0;
-- `actual_data_used=false`;
-- `model_effect_enabled=false`;
-- A0005 stayed untouched.
+Defensible provider options were audited for true pressure, continuous XY/line-height, channels and speed. Preferred procurement order:
+1. Opta Vision;
+2. Hudl integrated event + tracking;
+3. SkillCorner.
 
-Important limitation: production currently contains only one historical player season (2025/26). Therefore **C0092 remains In Progress**. Do not label the player ability prior “multi-season” until a genuine second historical player season is ingested and validated.
+Public materials do not provide sufficient exact EPL pricing/licensing/storage terms; written vendor confirmation is still required.
 
-## 9. Learned effects and interactions
+### C0084 — vendor-neutral raw spatial schema — VERIFIED
 
-### C0066 — Learned signal effect sizes — MONITORING
-Historical residual testing shows short-term form adds at most a small residual benefit and schedule/fatigue worsens holdout metrics. Tactical/personnel/quality effect sizes remain unlearned pending genuine forward sample.
+Production now has immutable vendor-neutral structures for:
+- match manifests;
+- raw artifacts/chunks;
+- raw event index;
+- provider-native zone definitions.
 
-### C0074 — Signal interactions — MONITORING
-20/20 GW2 and 20/20 GW3 observational interaction rows exist. `learned_effect=false`; interactions cannot affect active forecasts yet.
+Large continuous tracking is checksum-addressed file/chunk oriented. Provider-native coordinates/zones/time semantics are preserved. RLS and append-only guards were verified with a rollback round-trip test.
 
-## 10. Spatial/tactical evidence — C0082 — BLOCKED
+### C0082 — still BLOCKED
 
-Spatial-lite rows exist for 18/20 fixture-sides in both GW2 and GW3 using defensible territorial/workload fields.
+The blocker is now **licensed production data access**, not source discovery or schema design. Do not relabel spatial-lite proxies as true pressing, line height or side-specific geometry.
 
-Still unavailable:
-- true pressing intensity / PPDA;
-- defensive line height;
-- true event-coordinate left/right channel geometry;
-- tracking-level speed/space interactions.
+## 10. Market intelligence
 
-Do not relabel proxies as pressing, high line or side-specific channel evidence.
+Correct Score remains research-only. `value_edge_available=false` until validated.
 
-## 11. Market intelligence
+Bet365 + Unibet remain the main genuine captured sources.
 
-- Correct Score remains research-only; `value_edge_available=false` until validated.
-- Bet365 + Unibet are the main captured sources.
-- C0034 third Correct Score source remains blocked because the tested Pinnacle route returned no usable selections.
-- GW2 market coverage reached 10/10 after the Leeds alias fix.
-- C0110 market-disagreement diagnostic compares the research team-strength candidate with de-vigged bookmaker 1X2 consensus and never auto-overrides the model.
-- C0115 handles guarded near-close capture for A0005.
-- Correct-score CLV uses genuine captured closing proxies only.
+### C0034 — third Correct Score source — BLOCKED
 
-### C0120 — xG–modal-score market edge test — IN PROGRESS / EXECUTED
+Pinnacle produced no usable selections. Genuine GW2 tests of William Hill, Betway and BetVictor through the current Odds-API.io route matched 10/10 events but wrote zero normalized selections; provider responses included 403 and later 429 behavior.
 
-The user hypothesis that a discrepancy between total xG and the modal Correct Score could expose an edge was tested rather than assumed.
+Independent replacement candidate: **Sportmonks Premium Odds powered by TXODDS**, which advertises Correct Score and broad bookmaker coverage. Acceptance still requires real Premium/API access and a successful normalized pre-kickoff capture. Keep C0034 Blocked until that happens.
 
-Structural finding:
-- because the Correct Score matrix is generated from the same independent-Poisson lambdas as total xG, `total xG > top-1 modal score total` is extremely common and is not independent information by itself;
-- the potentially informative variable is the **size of the mean-vs-mode gap**.
+### C0120 / E0007 — xG-modal Correct Score hypothesis — IN PROGRESS / EXECUTED
 
-Historical 2025/26 chronology-safe retrospective test:
-- 271 clean Premier League fixtures;
-- total xG exceeded the top-1 modal score total in 271/271;
-- actual goals finished above the modal total 56.8% of the time;
-- xG total MAE 1.284 vs modal-score-total MAE 1.384;
-- gap quartiles showed actual-above-modal rates of 50.0%, 51.5%, 61.8%, 64.2%, but correlation was only about 0.14.
+Historical O/U interpretation failed:
+- gap >=1.2, n=71;
+- closing-average Over 2.5 ROI -7.92%;
+- Aug–Dec +2.07% vs Jan–May -14.05%;
+- model-vs-market disagreement filters worsened the result.
 
-Historical O/U 2.5 monetization test **failed**:
-- gap >=1.2: n=71, Over 2.5 hit 56.34%;
-- average de-vigged closing-market Over probability 57.47%;
-- average closing odds ~1.654;
-- closing-average ROI -7.92%; Bet365 closing ROI -6.89%;
-- Aug-Dec ROI +2.07% but Jan-May ROI -14.05%, so chronological stability failed;
-- adding model-vs-market disagreement filters made results worse.
+Decision: raw xG-minus-modal gap is **not** a validated O/U edge.
 
-Decision: **do not treat the raw xG-modal gap as a validated O/U edge.** The apparent market disagreement often reflected model error rather than bookmaker error.
-
-Historical bookmaker Correct Score prices for 2025/26 are not available in production and are not fabricated. The narrower Correct Score hypothesis is therefore frozen prospectively as **E0007** under C0120.
-
-Frozen E0007 rule before GW2 outcomes:
+The narrower Correct Score hypothesis remains frozen prospectively as E0007:
 - W0001/A0005 only;
-- gap `total xG - modal score total >= 1.2`;
-- only `BASE_V03_ELO` and `FULL_V04_ELO_NO_SCHEDULE`;
-- Bet365 and Unibet both required;
-- candidate exact score must contain more total goals than the modal score;
-- model exact-score probability >=1%;
-- the same score must have raw EV >0 for both variants at both bookmakers;
-- prefer genuine 5–20 minute near-close Correct Score snapshots; otherwise the latest valid pre-kickoff price is allowed only as `EARLY_FALLBACK`;
-- GW2 is VALIDATION with no threshold retuning;
-- GW3 is separate TEST using the definition frozen before GW2;
-- `model_effect_enabled=false`; no betting recommendation layer is enabled.
+- xG-minus-modal gap >=1.2;
+- BASE_V03_ELO and FULL_V04_ELO_NO_SCHEDULE only;
+- Bet365 + Unibet both required;
+- exact-score model probability >=1%;
+- higher-total scoreline;
+- positive raw EV across both variants and both bookmakers;
+- genuine 5–20 minute near-close price preferred;
+- GW2 validation cannot retune the rule;
+- GW3 remains separate TEST;
+- `model_effect_enabled=false`.
 
-Current early-price state on 2026-08-25:
-- 5 qualifying scorelines across 1 fixture, Aston Villa–Arsenal: 2-1, 3-0, 3-1, 3-2, 4-2;
-- these are all `EARLY_FALLBACK` and can lose/gain eligibility when genuine near-close prices arrive;
-- they are research observations, not recommendations.
+Current early-price state remains five provisional Aston Villa–Arsenal scorelines, all `EARLY_FALLBACK` and not recommendations.
 
-Production functions:
-- `private.c0120_forward_candidates_v01()`;
-- `private.c0120_forward_evaluation_v01()`.
+## 11. Security — C0045 / C0122 — VERIFIED
 
-Experiment/migration:
-- `E0007`;
-- `20260825021022_c0120_xg_modal_correct_score_forward_test_v01`;
-- detailed reasoning in `C0120_XG_MODAL_MARKET_HYPOTHESIS.md`.
+Legacy security is **not an unresolved workstream anymore**.
 
-Do not change E0007's 1.2 threshold, probability floor, required variants/bookmakers, candidate rule or basket evaluation after GW2 results. Any materially changed version requires a new Change ID and experiment key.
+C0045 first mapped dependencies and confirmed the live GitHub Pages frontend uses Edge Function APIs rather than direct table access.
 
-## 12. Retrospective GW1 evidence — reference only
+C0122 then hardened production:
+- seven previously RLS-disabled public tables now have RLS enabled and no anon/auth grants;
+- the additional legacy RLS tables with broad anon/auth grants now have zero direct anon/auth table grants;
+- public sequence grants to anon/auth were removed;
+- mutating replay/research RPCs are no longer executable by anon/auth and remain available to `service_role`;
+- `fpl-api`, `fixture-intelligence-api` and `betting-api` smoke tests remained HTTP 200;
+- A0005 and W0002 stayed integrity-clean;
+- no forecast/model rows were changed.
 
-Do not conflate original frozen GW1 forecasts with later replays/shadows.
+## 12. UI / explainability — C0119 — VERIFIED
 
-Blind current-engine run 1 (`blind_current_v0.3_strength_long_form_tactical_quality`):
-- 10/10 evaluations;
+Performance enriched-shadow cards now:
+- show home/away xG and mean total;
+- show top-three exact-score probabilities rather than implying one modal score is the literal expectation;
+- replace misleading partial movement attribution with a concise result-hidden pre-match thesis;
+- use only preserved pre-kickoff evidence;
+- move actual result into a separate post-match audit;
+- omit personnel/H2H claims when reliable pre-match evidence was not preserved.
+
+Arsenal–Coventry sanity check:
+- shadow xG 1.985–0.767;
+- mean total 2.752;
+- top exact scores: 1–0 12.66%, 2–0 12.57%, 1–1 9.71%;
+- Arsenal win 65.87%;
+- Coventry blank 46.45%;
+- BTTS No 53.86%.
+
+This layer is read-only and does not mutate forecasts.
+
+## 13. Retrospective GW1 evidence — reference only
+
+Blind current-engine run 1:
 - direction 6/10;
 - Brier 0.517874;
 - score log loss 2.928090;
@@ -324,8 +334,7 @@ Blind current-engine run 1 (`blind_current_v0.3_strength_long_form_tactical_qual
 - process MAE 0.699162;
 - xG-gap error 1.056865.
 
-Blind current-engine run 2 (`blind_current_v0.4_elo_strength`):
-- 10/10 evaluations;
+Blind current-engine run 2 with Elo:
 - direction 8/10;
 - Brier 0.495188;
 - score log loss 2.928976;
@@ -333,76 +342,65 @@ Blind current-engine run 2 (`blind_current_v0.4_elo_strength`):
 - process MAE 0.677928;
 - xG-gap error 0.996323.
 
-Run 2 is retrospective follow-up, not independent validation. The Elo hypothesis was investigated after GW1 diagnostics. Genuine independent evidence is W0001/A0005.
+Run 2 is retrospective follow-up, not independent validation. The Elo hypothesis was investigated after GW1 diagnostics.
 
-## 13. Current unresolved work
+C0128 venue GW1 reference also looked favorable but had only six covered team-sides and did not trigger tuning.
 
-Highest priority:
-1. Let C0115 collect genuine near-close prices and automatically append A0005 evaluations as GW2 fixtures finish.
-2. Let C0120/E0007 replace early Correct Score fallbacks with genuine near-close prices and freeze the resulting candidate basket under the already-fixed rule.
-3. Once all 10 GW2 VALIDATION fixtures are evaluated, compare all seven A0005 variants using proper scores and process metrics without retuning from GW2; score E0007 independently without changing its rule.
-4. Preserve GW3 as the separately frozen TEST confirmation for both A0005 and E0007.
-5. Run promotion-gate review only after sufficient genuine forward sample exists.
-6. Keep v0.3 Elo, quality, interactions and C0120 research-only until forward evidence supports them.
-7. Continue future-GW collection under the same canonical feature/version/market pipeline.
-8. Complete C0092 only after a genuine second historical player season is available and the resulting multi-season prior is validated.
-9. C0034 third Correct Score source remains blocked pending a viable source/provider.
-10. C0082 true pressing/line-height/channel work remains blocked pending suitable event/spatial/tracking data.
-11. Legacy security/RLS findings remain a separate hardening workstream.
+## 14. Current unresolved work
 
-Do **not** retune A0005 or E0007 after seeing GW2 results. Any materially changed model or market hypothesis requires a new experiment/version/Change ID.
+### In Progress
+- **C0049** — infrastructure operational; waiting for genuine forward outcome accumulation.
+- **C0092** — player ability prior needs a genuine second historical season.
+- **C0120** — E0007 Correct Score hypothesis waits for genuine GW2/GW3 forward prices/outcomes.
 
-## 14. UI / API state
+### Monitoring / forward-evidence dependent
+- C0066 learned signal effect sizes;
+- C0074 signal interactions;
+- C0091 quality/absence consequence;
+- C0104 team-strength calibration;
+- C0105 lambda/team-strength signal;
+- C0112 persistent Elo signal.
 
-Static GitHub Pages frontend remains a live-data shell over Supabase APIs.
+### Blocked by external access
+- **C0034** — third Correct Score provider requires a viable independent API/source; Sportmonks/TXODDS is the current candidate.
+- **C0082** — true spatial/pressing/line-height/channel work requires licensed tracking/event data.
 
-Current product surfaces include Home / FPL / Fixtures / Market Intelligence / Performance.
+Do not invent more model complexity merely to create work. The highest-value next evidence is genuine forward scoring.
 
-Verified UI capabilities include:
-- human football wording for backend enums;
-- FPL pitch layout;
-- pagination over 20;
-- genuine pre-match odds where captured;
-- retrospective performance views;
-- forward-validation control room on Performance;
-- explicit A0005 validation/test scoreboard and integrity state.
+## 15. Near-term operating sequence
 
-### C0119 — Fixture thesis & score-distribution explanation — VERIFIED
-Performance enriched-shadow fixture cards no longer present a naked “top score” as if it were the expected literal goal total and no longer present a few small adjustment terms as if they explain the full baseline→shadow movement.
+1. Keep A0005, E0007 and W0002 frozen.
+2. Let guarded near-close capture run before GW2 fixtures.
+3. Investigate immediately if a finished A0005 fixture lacks exactly seven evaluation rows.
+4. At 10/10 GW2 VALIDATION, compare all seven A0005 variants without retuning.
+5. Score E0007 independently under its already-frozen rule.
+6. Preserve GW3 as TEST.
+7. Keep GW4/GW5 W0002 separate and precommitted.
+8. Apply C0125 effect-family promotion gates only when genuine forward sample thresholds exist.
+9. Do not auto-promote any model/effect.
 
-The C0119 presentation layer now:
-- shows displayed home/away xG plus the mean total;
-- derives and shows the top three exact-score probabilities from the retained independent-Poisson distribution;
-- replaces “Why X moved” with a concise **result-hidden pre-match thesis**;
-- uses only evidence preserved before kickoff;
-- moves the actual score into a separate **Post-match audit** block after the thesis;
-- treats underdog blank probability / BTTS state as probability, not certainty;
-- surfaces a preserved tactical counter-case where one exists;
-- omits personnel/injury and H2H claims when no reliable pre-match decision-state evidence was preserved.
+## 16. C0129 reconciliation state
 
-Arsenal–Coventry sanity check from the shadow card:
-- shadow xG = 1.985–0.767;
-- mean total = 2.752;
-- top exact scores = 1–0 12.66%, 2–0 12.57%, 1–1 9.71%;
-- Arsenal win = 65.87%;
-- Coventry blank = 46.45%;
-- BTTS No = 53.86%;
-- Coventry transition opportunity remains the main preserved counter-case.
+C0129 exists solely to synchronize documentation and the fuller local tracker after overnight execution.
 
-Implementation: `ui-v5.js`, `ui-v5.css`, `index.html`. GitHub Pages deployment completed successfully on 2026-08-25. This is presentation/read-only; no forecast/model tables were changed and A0005 remains untouched.
+Required reconciliation outcomes:
+- Supabase remains the execution truth;
+- GitHub handover reflects C0121–C0128 and removes stale unresolved labels;
+- `DECISIONS_AND_HISTORY.md` records the overnight retain/reject decisions;
+- the fuller Excel tracker is rebuilt from the latest 121-item register plus C0122–C0129 and corrected historical statuses;
+- cited Git references are verified rather than fabricated;
+- A0005/W0002/E0007 definitions remain unchanged.
 
-Cosmetic browser/device QA can improve later, but should not outrank genuine forward model validation.
-
-## 15. Resume command for the next conversation
+## 17. Resume command for the next conversation
 
 When the user says to continue this project:
 1. Read `PROJECT_STATE.md` and `DECISIONS_AND_HISTORY.md`.
 2. Query `public.change_tracker_working`.
-3. Run `private.audit_change_tracker_governance_v01()` and resolve any ledger violations before new material work.
-4. Query `private.a0005_forward_validation_status_v01()` or independently reproduce its checks.
-5. Query `private.c0120_forward_candidates_v01()` and `private.c0120_forward_evaluation_v01()`; do not change E0007's frozen definition after GW2 outcomes.
-6. If a GW2 fixture is finished but its seven A0005 evaluations are missing, investigate the result-sync/evaluator pipeline before model analysis.
-7. If GW2 is complete, analyze VALIDATION without retuning; preserve GW3 as TEST for both A0005 and E0007.
+3. Run `private.audit_change_tracker_governance_v01()` and resolve any ledger violation before material work.
+4. Query `private.a0005_forward_validation_status_v01()` and `private.w0002_forward_validation_status_v01()`.
+5. Query `private.c0120_forward_candidates_v01()` and `private.c0120_forward_evaluation_v01()`; never change E0007's frozen definition from GW2 evidence.
+6. If a GW2 fixture is finished but its seven A0005 evaluations are missing, investigate result-sync/evaluator integrity before model analysis.
+7. If GW2 is complete, analyze VALIDATION without retuning and preserve GW3 as TEST.
 8. Preserve all retrospective-vs-forward distinctions.
 9. Update the working ledger during engineering.
 10. Regenerate/update the Excel tracker locally at the end of the work block; **never push the Excel tracker to GitHub**.

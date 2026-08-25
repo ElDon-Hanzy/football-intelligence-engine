@@ -27,7 +27,7 @@ Excel tracker rule:
 - **Do not push the Excel tracker to GitHub.**
 - GitHub contains code, migrations, project handover and decision/history documentation.
 
-Latest tracker IDs now run through **C0118**.
+Latest tracker IDs now run through **C0119**.
 
 ### C0116 — Tracker reconciliation — VERIFIED
 The fuller Excel register was reconciled against Supabase, `PROJECT_STATE.md` and production evidence. Stale Pending/Planned labels were corrected without falsely completing partially implemented work.
@@ -83,11 +83,10 @@ Independent forward cohort: `W0001` / `A0005`, experiment `E0006`.
 
 As of the latest 2026-08-25 verification:
 - 140 predictions;
-- 140 distinct prediction hashes;
 - 20 complete cohort fixtures;
 - 0 finished cohort fixtures;
 - 0 forward evaluations;
-- 0 prediction actual-data/model-effect violations.
+- 0 run/prediction/duplicate-evaluation integrity violations.
 
 Do not modify A0005 before or during scoring.
 
@@ -222,7 +221,7 @@ Verified results:
 - identical second run inserted 0;
 - `actual_data_used=false`;
 - `model_effect_enabled=false`;
-- A0005 stayed at 140 distinct frozen hashes with zero integrity violations.
+- A0005 stayed untouched.
 
 Important limitation: production currently contains only one historical player season (2025/26). Therefore **C0092 remains In Progress**. Do not label the player ability prior “multi-season” until a genuine second historical player season is ingested and validated.
 
@@ -310,6 +309,30 @@ Verified UI capabilities include:
 - retrospective performance views;
 - forward-validation control room on Performance;
 - explicit A0005 validation/test scoreboard and integrity state.
+
+### C0119 — Fixture thesis & score-distribution explanation — VERIFIED
+Performance enriched-shadow fixture cards no longer present a naked “top score” as if it were the expected literal goal total and no longer present a few small adjustment terms as if they explain the full baseline→shadow movement.
+
+The C0119 presentation layer now:
+- shows displayed home/away xG plus the mean total;
+- derives and shows the top three exact-score probabilities from the retained independent-Poisson distribution;
+- replaces “Why X moved” with a concise **result-hidden pre-match thesis**;
+- uses only evidence preserved before kickoff;
+- moves the actual score into a separate **Post-match audit** block after the thesis;
+- treats underdog blank probability / BTTS state as probability, not certainty;
+- surfaces a preserved tactical counter-case where one exists;
+- omits personnel/injury and H2H claims when no reliable pre-match decision-state evidence was preserved.
+
+Arsenal–Coventry sanity check from the shadow card:
+- shadow xG = 1.985–0.767;
+- mean total = 2.752;
+- top exact scores = 1–0 12.66%, 2–0 12.57%, 1–1 9.71%;
+- Arsenal win = 65.87%;
+- Coventry blank = 46.45%;
+- BTTS No = 53.86%;
+- Coventry transition opportunity remains the main preserved counter-case.
+
+Implementation: `ui-v5.js`, `ui-v5.css`, `index.html`. GitHub Pages deployment completed successfully on 2026-08-25. This is presentation/read-only; no forecast/model tables were changed and A0005 remains untouched.
 
 Cosmetic browser/device QA can improve later, but should not outrank genuine forward model validation.
 

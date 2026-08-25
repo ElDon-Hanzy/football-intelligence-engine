@@ -27,7 +27,7 @@ Excel tracker rule:
 - **Do not push the Excel tracker to GitHub.**
 - GitHub contains code, migrations, project handover and decision/history documentation.
 
-Latest tracker IDs now run through **C0119**.
+Latest tracker IDs now run through **C0120**.
 
 ### C0116 — Tracker reconciliation — VERIFIED
 The fuller Excel register was reconciled against Supabase, `PROJECT_STATE.md` and production evidence. Stale Pending/Planned labels were corrected without falsely completing partially implemented work.
@@ -255,6 +255,62 @@ Do not relabel proxies as pressing, high line or side-specific channel evidence.
 - C0115 handles guarded near-close capture for A0005.
 - Correct-score CLV uses genuine captured closing proxies only.
 
+### C0120 — xG–modal-score market edge test — IN PROGRESS / EXECUTED
+
+The user hypothesis that a discrepancy between total xG and the modal Correct Score could expose an edge was tested rather than assumed.
+
+Structural finding:
+- because the Correct Score matrix is generated from the same independent-Poisson lambdas as total xG, `total xG > top-1 modal score total` is extremely common and is not independent information by itself;
+- the potentially informative variable is the **size of the mean-vs-mode gap**.
+
+Historical 2025/26 chronology-safe retrospective test:
+- 271 clean Premier League fixtures;
+- total xG exceeded the top-1 modal score total in 271/271;
+- actual goals finished above the modal total 56.8% of the time;
+- xG total MAE 1.284 vs modal-score-total MAE 1.384;
+- gap quartiles showed actual-above-modal rates of 50.0%, 51.5%, 61.8%, 64.2%, but correlation was only about 0.14.
+
+Historical O/U 2.5 monetization test **failed**:
+- gap >=1.2: n=71, Over 2.5 hit 56.34%;
+- average de-vigged closing-market Over probability 57.47%;
+- average closing odds ~1.654;
+- closing-average ROI -7.92%; Bet365 closing ROI -6.89%;
+- Aug-Dec ROI +2.07% but Jan-May ROI -14.05%, so chronological stability failed;
+- adding model-vs-market disagreement filters made results worse.
+
+Decision: **do not treat the raw xG-modal gap as a validated O/U edge.** The apparent market disagreement often reflected model error rather than bookmaker error.
+
+Historical bookmaker Correct Score prices for 2025/26 are not available in production and are not fabricated. The narrower Correct Score hypothesis is therefore frozen prospectively as **E0007** under C0120.
+
+Frozen E0007 rule before GW2 outcomes:
+- W0001/A0005 only;
+- gap `total xG - modal score total >= 1.2`;
+- only `BASE_V03_ELO` and `FULL_V04_ELO_NO_SCHEDULE`;
+- Bet365 and Unibet both required;
+- candidate exact score must contain more total goals than the modal score;
+- model exact-score probability >=1%;
+- the same score must have raw EV >0 for both variants at both bookmakers;
+- prefer genuine 5–20 minute near-close Correct Score snapshots; otherwise the latest valid pre-kickoff price is allowed only as `EARLY_FALLBACK`;
+- GW2 is VALIDATION with no threshold retuning;
+- GW3 is separate TEST using the definition frozen before GW2;
+- `model_effect_enabled=false`; no betting recommendation layer is enabled.
+
+Current early-price state on 2026-08-25:
+- 5 qualifying scorelines across 1 fixture, Aston Villa–Arsenal: 2-1, 3-0, 3-1, 3-2, 4-2;
+- these are all `EARLY_FALLBACK` and can lose/gain eligibility when genuine near-close prices arrive;
+- they are research observations, not recommendations.
+
+Production functions:
+- `private.c0120_forward_candidates_v01()`;
+- `private.c0120_forward_evaluation_v01()`.
+
+Experiment/migration:
+- `E0007`;
+- `20260825021022_c0120_xg_modal_correct_score_forward_test_v01`;
+- detailed reasoning in `C0120_XG_MODAL_MARKET_HYPOTHESIS.md`.
+
+Do not change E0007's 1.2 threshold, probability floor, required variants/bookmakers, candidate rule or basket evaluation after GW2 results. Any materially changed version requires a new Change ID and experiment key.
+
 ## 12. Retrospective GW1 evidence — reference only
 
 Do not conflate original frozen GW1 forecasts with later replays/shadows.
@@ -283,17 +339,18 @@ Run 2 is retrospective follow-up, not independent validation. The Elo hypothesis
 
 Highest priority:
 1. Let C0115 collect genuine near-close prices and automatically append A0005 evaluations as GW2 fixtures finish.
-2. Once all 10 GW2 VALIDATION fixtures are evaluated, compare all seven A0005 variants using proper scores and process metrics without retuning from GW2.
-3. Preserve GW3 as the separately frozen TEST confirmation.
-4. Run promotion-gate review only after sufficient genuine forward sample exists.
-5. Keep v0.3 Elo, quality and interaction layers research-only until forward evidence supports them.
-6. Continue future-GW collection under the same canonical feature/version/market pipeline.
-7. Complete C0092 only after a genuine second historical player season is available and the resulting multi-season prior is validated.
-8. C0034 third Correct Score source remains blocked pending a viable source/provider.
-9. C0082 true pressing/line-height/channel work remains blocked pending suitable event/spatial/tracking data.
-10. Legacy security/RLS findings remain a separate hardening workstream.
+2. Let C0120/E0007 replace early Correct Score fallbacks with genuine near-close prices and freeze the resulting candidate basket under the already-fixed rule.
+3. Once all 10 GW2 VALIDATION fixtures are evaluated, compare all seven A0005 variants using proper scores and process metrics without retuning from GW2; score E0007 independently without changing its rule.
+4. Preserve GW3 as the separately frozen TEST confirmation for both A0005 and E0007.
+5. Run promotion-gate review only after sufficient genuine forward sample exists.
+6. Keep v0.3 Elo, quality, interactions and C0120 research-only until forward evidence supports them.
+7. Continue future-GW collection under the same canonical feature/version/market pipeline.
+8. Complete C0092 only after a genuine second historical player season is available and the resulting multi-season prior is validated.
+9. C0034 third Correct Score source remains blocked pending a viable source/provider.
+10. C0082 true pressing/line-height/channel work remains blocked pending suitable event/spatial/tracking data.
+11. Legacy security/RLS findings remain a separate hardening workstream.
 
-Do **not** retune A0005 or the GW2/GW3 candidate after seeing results. Any materially changed model requires a new experiment/version/Change ID.
+Do **not** retune A0005 or E0007 after seeing GW2 results. Any materially changed model or market hypothesis requires a new experiment/version/Change ID.
 
 ## 14. UI / API state
 
@@ -343,8 +400,9 @@ When the user says to continue this project:
 2. Query `public.change_tracker_working`.
 3. Run `private.audit_change_tracker_governance_v01()` and resolve any ledger violations before new material work.
 4. Query `private.a0005_forward_validation_status_v01()` or independently reproduce its checks.
-5. If a GW2 fixture is finished but its seven A0005 evaluations are missing, investigate the result-sync/evaluator pipeline before model analysis.
-6. If GW2 is complete, analyze VALIDATION without retuning; preserve GW3 as TEST.
-7. Preserve all retrospective-vs-forward distinctions.
-8. Update the working ledger during engineering.
-9. Regenerate/update the Excel tracker locally at the end of the work block; **never push the Excel tracker to GitHub**.
+5. Query `private.c0120_forward_candidates_v01()` and `private.c0120_forward_evaluation_v01()`; do not change E0007's frozen definition after GW2 outcomes.
+6. If a GW2 fixture is finished but its seven A0005 evaluations are missing, investigate the result-sync/evaluator pipeline before model analysis.
+7. If GW2 is complete, analyze VALIDATION without retuning; preserve GW3 as TEST for both A0005 and E0007.
+8. Preserve all retrospective-vs-forward distinctions.
+9. Update the working ledger during engineering.
+10. Regenerate/update the Excel tracker locally at the end of the work block; **never push the Excel tracker to GitHub**.

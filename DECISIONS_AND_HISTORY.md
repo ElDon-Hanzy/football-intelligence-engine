@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Decisions & History
 
-_Last updated: 2026-08-24_
+_Last updated: 2026-08-25_
 
 This file preserves the reasoning, rejected approaches, debugging lessons and implementation decisions that are easy to lose between conversations. `PROJECT_STATE.md` is the operational source of truth; this file explains why the project reached that state.
 
@@ -432,3 +432,128 @@ The interface must show:
 - research-only / no-model-effect wording.
 
 A shadow model looking more sophisticated is not enough. Promotion depends on out-of-sample improvement.
+
+## 53. Security hardening must follow dependency mapping, then actually close the exposure
+
+C0045 first mapped live dependencies before touching legacy grants. The frontend was confirmed to use Edge Function APIs backed by service-role access rather than direct browser-table reads.
+
+Only after that evidence existed did C0122 harden production:
+- seven previously RLS-disabled tables were protected;
+- legacy anon/auth direct table and sequence grants were removed;
+- mutating research/replay RPCs were removed from anon/auth execution while service-role paths remained intact;
+- FPL, Fixtures and Betting API smoke tests stayed HTTP 200.
+
+Permanent lesson: **security work starts observationally, but once dependencies are understood the known exposure should be closed and verified rather than left indefinitely Deferred.**
+
+## 54. Regularization may correctly choose zero
+
+C0068/C0123 reconstructed the intended chronology-safe residual target and used an inner chronological selection window plus an untouched Feb–May holdout.
+
+Non-zero ridge effects produced only tiny MAE gains and worse RMSE. The correct model-selection result was therefore to set currently supported learned residual coefficients to zero.
+
+Permanent lesson: **zero is a valid learned coefficient. Do not force a signal into the model merely because the engineering item is called “learned effects.”** Unsupported tactical/personnel/quality families remain unlearned rather than imputed as zero.
+
+## 55. Manual form effects survive only as small research comparators
+
+C0072/C0124 compared all variants on the same untouched 210-row holdout.
+
+Findings:
+- combined small recent-form package improved both MAE and RMSE modestly;
+- opponent-defence trend alone improved both metrics modestly;
+- own-form alone improved MAE but worsened RMSE;
+- schedule/fatigue had already worsened its historical holdout;
+- regularized learned effects stayed zero.
+
+Decision: retain the **small combined manual form package only as a research comparator**. Own-form alone and schedule/fatigue are not retained as active effects. No retrospective comparator is activated.
+
+## 56. Effect-family promotion requires genuine validation and test evidence
+
+C0073/C0125 makes the signal-family gate explicit.
+
+A family cannot pass from retrospective evidence alone. Current policy requires at least:
+- 50 genuine VALIDATION observations;
+- 30 genuine TEST observations;
+- at least 0.005 absolute Brier improvement in both windows;
+- no log-loss regression;
+- process MAE within 2% tolerance;
+- zero integrity violations.
+
+Automatic activation is impossible. A positive historical ablation result can at most justify continuing a forward comparator.
+
+## 57. Nonlinear curves are rejected when regime stability fails
+
+C0069/C0126 tested fixed linear-unclipped, clipped-linear, tanh and softsign responses across three chronology-separated historical windows.
+
+Every curve had one pass window, one fail window and one mixed window. That is evidence of regime instability, not a reason to tune a fifth curve until one happens to fit.
+
+Decision: **REJECT_NO_CROSS_WINDOW_STABILITY**. Do not activate nonlinear response curves without a new independently justified experiment.
+
+## 58. Sparse L10 evidence is suppressed, not smoothly promoted
+
+C0070/C0127 tested whether partial confidence scaling could rescue residual form effects when L10 history is incomplete.
+
+It did not. In the 5–7 and 8–9 prior-match bins, zero effect beat linear/quadratic/cubic partial weighting on both MAE and RMSE. The 1–4 bin was too small to justify promotion.
+
+Decision:
+- missing `sample_l10` remains missing;
+- 1–9 observations receive residual research weight 0;
+- >=10 receives weight 1.
+
+Permanent lesson: **a smooth confidence function is not automatically better than a hard evidence floor.**
+
+## 59. Venue effects must survive multiple historical windows; GW1 cannot rescue them
+
+The blanket global home uplift was already rejected. C0106/C0128 then tested context-specific venue blends at 25%, 50% and 100% across four chronology-separated historical windows.
+
+No candidate improved both MAE and RMSE consistently.
+
+A separate retrospective GW1 diagnostic favored venue weighting, but it covered only six team-sides and was not independent. It was explicitly prevented from overriding the historical decision.
+
+Decision: no additional venue effect is activated.
+
+## 60. A third Correct Score source remains a real external dependency
+
+Pinnacle did not produce usable normalized Correct Score selections through the current route. William Hill, Betway and BetVictor were then tested genuinely pre-kickoff for GW2 through Odds-API.io: all 10 events matched, but zero normalized selections were written and responses included 403/429 behavior.
+
+The current independent candidate is Sportmonks Premium Odds powered by TXODDS, but the project does not yet have the required paid/API access.
+
+Decision: keep C0034 **Blocked** until an actual third provider produces normalized pre-kickoff Correct Score selections. Do not mark source research as implementation success.
+
+## 61. The second forward cohort was precommitted before the first cohort produced results
+
+C0121 created E0008/W0002 for GW4/GW5 before GW2 outcomes existed.
+
+This was deliberate. It prevents the project from seeing GW2 validation results and then defining the next cohort around what looked successful.
+
+W0002 is separate from W0001/A0005:
+- GW4 VALIDATION;
+- GW5 TEST;
+- full pre-kickoff intelligence chain already frozen;
+- dedicated capture/evaluator automation;
+- no A0005 mutation.
+
+Permanent lesson: **future cohorts should be defined before prior validation outcomes whenever practical.**
+
+## 62. Mean-vs-mode discrepancy is not automatically a betting edge
+
+The xG-minus-modal-score idea produced a useful statistical question but failed as a simple O/U betting rule.
+
+Historical chronology-safe test at gap >=1.2 gave closing-average Over 2.5 ROI of -7.92%, with clear chronological instability. Model-vs-market disagreement filters worsened rather than rescued the result.
+
+Decision: do not call the raw xG-modal gap a validated O/U edge.
+
+The narrower Correct Score hypothesis remains frozen prospectively as E0007 and must be judged only under its precommitted GW2 VALIDATION / GW3 TEST rule.
+
+## 63. Supabase execution truth outranks stale documentation filenames
+
+Overnight autonomous execution moved production materially ahead of the local Excel tracker and `PROJECT_STATE.md`. C0129 exists to reconcile that drift.
+
+Permanent reconciliation order:
+1. query Supabase working ledger and integrity/status functions;
+2. verify GitHub implementation artifacts/commits;
+3. update operational handover and decision ledger;
+4. rebuild the fuller local Excel register from the latest valid register plus verified production changes;
+5. run formula/governance/integrity checks;
+6. never assume a file named `CURRENT` is actually current.
+
+Documentation must reflect production truth, but documentation drift must never be “fixed” by changing production to match an old document.

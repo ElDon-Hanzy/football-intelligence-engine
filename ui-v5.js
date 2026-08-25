@@ -12,8 +12,7 @@
     const h=num(homeLambda),a=num(awayLambda);if(h==null||a==null)return [];
     const rows=[];
     for(let hg=0;hg<=8;hg++)for(let ag=0;ag<=8;ag++){
-      const p=poisson(hg,h)*poisson(ag,a);
-      rows.push({score:`${hg}-${ag}`,probability:p});
+      rows.push({score:`${hg}-${ag}`,probability:poisson(hg,h)*poisson(ag,a)});
     }
     return rows.sort((x,y)=>y.probability-x.probability);
   }
@@ -67,9 +66,10 @@
 
     const sentences=[];
     if(fav){
-      sentences.push(`${esc(fav)} were the clear pre-match favourite: <strong>${pct(favProb)}</strong> to win, with a <strong>${hl.toFixed(2)}–${al.toFixed(2)}</strong> expected-goal profile ${max===hp?'in their favour':'across the fixture'}.`);
+      const favXg=max===hp?hl:al,oppXg=max===hp?al:hl;
+      sentences.push(`${esc(fav)} were the clear pre-match favourite: <strong>${pct(favProb)}</strong> to win, with a <strong>${favXg.toFixed(2)}–${oppXg.toFixed(2)}</strong> expected-goal edge.`);
       if(venue?.total_preserved===true){
-        sentences.push(`The historical home/away calibration did not increase the match's total goal expectation; it shifted a larger share of the same <strong>${(hl+al).toFixed(2)}</strong> expected goals toward ${esc(fav)}.`);
+        sentences.push(`Historical home/away evidence did not raise the match's total goal expectation; it shifted a larger share of the same <strong>${(hl+al).toFixed(2)}</strong> expected goals toward ${esc(fav)}.`);
       }else if(sideAdj){
         sentences.push(`${esc(fav)} also had a material pre-match ${esc(sideAdj.label)} signal (${sideAdj.effect>0?'supportive':'negative'} by about ${Math.abs(sideAdj.effect*100).toFixed(1)}%).`);
       }
@@ -77,8 +77,7 @@
         sentences.push(`${esc(underdog)} had a <strong>${pct(underdogBlank)}</strong> chance of being held scoreless${bttsNo!=null?`, with BTTS No at <strong>${pct(bttsNo)}</strong>`:''}; a blank was plausible, not certain.`);
       }
       if(counter){
-        const d=rawDirection(counter);
-        const phrase=counter.signal_key==='direct_transition_opportunity'?'transition opportunity':signalName(counter.signal_key);
+        const d=rawDirection(counter),phrase=counter.signal_key==='direct_transition_opportunity'?'transition opportunity':signalName(counter.signal_key);
         sentences.push(`${esc(underdog)}'s clearest counter-case was ${esc(phrase)}${d.includes('OPPORTUNITY')?'':' in the preserved matchup evidence'}, so the clean-sheet view still carried meaningful risk.`);
       }
     }else{
@@ -93,20 +92,28 @@
   function upgrade(html){
     if(!state.replay?.enriched_shadow?.fixtures?.length)return html;
     const host=document.createElement('div');host.innerHTML=html;
-    const cards=[...host.querySelectorAll('.shadow-match-card')];
-    const fixtures=state.replay.enriched_shadow.fixtures||[];
+    const cards=[...host.querySelectorAll('.shadow-match-card')],fixtures=state.replay.enriched_shadow.fixtures||[];
     cards.forEach((card,i)=>{
       const f=fixtures[i];if(!f)return;
-      const states=card.querySelectorAll('.shadow-state');
+      const grid=card.querySelector('.shadow-compare-grid'),states=grid?[...grid.querySelectorAll('.shadow-state')]:[];
       if(states[0]){const small=states[0].querySelector('small');if(small)small.innerHTML=scoreSummary(f.baseline);}
       if(states[1]){const small=states[1].querySelector('small');if(small)small.innerHTML=scoreSummary(f.shadow);}
+
+      let postMatch=null;
+      if(states[2]){
+        postMatch=document.createElement('div');postMatch.className='c0119-postmatch';
+        postMatch.innerHTML=`<b>Post-match audit <span>revealed after the thesis was fixed</span></b><div class="c0119-postmatch-body">${states[2].innerHTML}</div>`;
+        states[2].remove();
+        const arrows=grid?[...grid.querySelectorAll('.shadow-arrow')]:[];if(arrows.length)arrows.at(-1).remove();
+      }
       card.querySelector('.shadow-movement')?.remove();
       const reasons=card.querySelector('.shadow-reasons');
       if(reasons){
         const thesis=document.createElement('div');thesis.className='c0119-thesis';
         thesis.innerHTML=`<b>Pre-match thesis <span>result-hidden reasoning</span></b>${preMatchThesis(f)}`;
         reasons.replaceWith(thesis);
-      }
+        if(postMatch)thesis.insertAdjacentElement('afterend',postMatch);
+      }else if(postMatch){card.appendChild(postMatch);}
     });
     return host.innerHTML;
   }

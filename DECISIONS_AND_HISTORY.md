@@ -229,3 +229,10 @@ Decision: C0136 is accepted for **future rolling FPL only**. W0001/A0005, E0007 
 Material implementation moved production beyond the last consolidated handover. A new reconciliation therefore requires its own Change ID before documentation/tracker writes.
 
 Decision: Supabase remains authoritative, GitHub handover/history must be brought forward to verified production, and the local Excel tracker is regenerated afterward. Reconciliation never changes model forecasts merely to match stale documentation.
+
+## 70. A candidate that fails the training screen does not earn access to the holdout — C0133
+C0133 tested a predeclared 3×3 grid of mean-preserving two-regime mismatch mixtures on 344 chronology-safe training fixtures. The equal 50/50 opposite-regime construction preserves each team’s unconditional lambda; thresholds were 0.50/0.75/1.00 and regime deltas 0.10/0.20/0.30.
+
+Every non-control candidate worsened training exact-score likelihood. The least-bad candidate, gap >=1.00 / delta 0.10, was still +0.014895 NLL worse than Poisson and affected only one training fixture. The 105-fixture Feb–May holdout therefore remained untouched.
+
+Decision: `REJECT_TRAINING_LIKELIHOOD`. Do not open a reserved holdout merely to rescue a candidate that already failed the predeclared training screen, and do not expand the grid after seeing failure. Independent Poisson remains retained; upstream lambda quality remains the higher-priority modeling problem.

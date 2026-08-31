@@ -1,0 +1,48 @@
+.fixture-card-v13{padding:20px 20px 18px}
+.fixture-card-v13 .fixture-top{margin-bottom:14px}
+.fixture-card-v13 .fixture-time{font-size:13px;font-weight:650}
+.fixture-card-v13 .badge{font-size:12px;padding:7px 11px}
+.fixture-outcome-pick{display:flex;align-items:center;justify-content:center;gap:9px;margin:0 0 16px;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--panel-2);text-align:center}
+.fixture-outcome-pick>span{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--muted)}
+.fixture-outcome-pick>strong{font-size:17px;line-height:1.2;color:var(--text);letter-spacing:.01em}
+.fixture-outcome-pick>i{display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;border-radius:50%;background:rgba(44,192,137,.16);color:var(--green);font-size:16px;font-style:normal;font-weight:900}
+.fixture-outcome-pick.hit{border-color:rgba(44,192,137,.35);background:rgba(44,192,137,.07)}
+.fixture-outcome-pick.miss{border-color:rgba(255,100,100,.25)}
+.fixture-outcome-pick>i.miss{background:rgba(255,100,100,.10);color:var(--red)}
+.fixture-card-v13 .fixture-teams{gap:14px}
+.fixture-card-v13 .fixture-team-link strong,.fixture-card-v13 .team-block strong{font-size:22px;line-height:1.05}
+.fixture-card-v13 .fixture-team-link span,.fixture-card-v13 .team-block span{margin-top:5px;font-size:13px;line-height:1.3}
+.fixture-card-v13 .fixture-score-pair{min-width:145px}
+.fixture-card-v13 .fixture-score-line>span{font-size:11px;font-weight:800;letter-spacing:.06em}
+.fixture-card-v13 .fixture-score-line>strong{font-size:29px;line-height:1.05}
+.fixture-card-v13 .fixture-score-line.actual>strong{font-size:23px}
+.fixture-card-v13 .score-edge-note{max-width:190px;margin:4px auto 0;font-size:10px;line-height:1.35}
+.fixture-facts{display:grid;gap:8px;margin-top:17px;padding-top:14px;border-top:1px solid var(--border)}
+.fixture-facts>b{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.fixture-facts>span{display:block;padding:9px 11px;border-radius:10px;background:var(--panel-2);color:var(--text);font-size:13px;line-height:1.4;font-weight:560}
+@media(max-width:760px){
+  .fixture-card-v13{padding:17px 15px 15px}
+  .fixture-card-v13 .fixture-time{font-size:14px}
+  .fixture-card-v13 .badge{font-size:12px;padding:7px 10px}
+  .fixture-outcome-pick{justify-content:flex-start;flex-wrap:wrap;margin-bottom:15px;padding:11px 12px;text-align:left}
+  .fixture-outcome-pick>span{font-size:11px}
+  .fixture-outcome-pick>strong{font-size:16px;flex:1;min-width:0}
+  .fixture-card-v13 .fixture-teams{grid-template-columns:minmax(0,1fr) 120px minmax(0,1fr);gap:7px;align-items:center}
+  .fixture-card-v13 .fixture-team-link strong,.fixture-card-v13 .team-block strong{font-size:20px}
+  .fixture-card-v13 .fixture-team-link span,.fixture-card-v13 .team-block span{font-size:12px;overflow-wrap:anywhere}
+  .fixture-card-v13 .fixture-score-pair{min-width:0;width:120px}
+  .fixture-card-v13 .fixture-score-line>span{font-size:10px}
+  .fixture-card-v13 .fixture-score-line>strong{font-size:27px}
+  .fixture-card-v13 .fixture-score-line.actual>strong{font-size:22px}
+  .fixture-card-v13 .score-edge-note{font-size:9px;max-width:115px}
+  .fixture-facts{gap:7px;margin-top:14px;padding-top:12px}
+  .fixture-facts>b{font-size:11px}
+  .fixture-facts>span{padding:9px 10px;font-size:13px;line-height:1.35}
+}
+@media(max-width:390px){
+  .fixture-card-v13 .fixture-teams{grid-template-columns:minmax(0,1fr) 108px minmax(0,1fr)}
+  .fixture-card-v13 .fixture-score-pair{width:108px}
+  .fixture-card-v13 .fixture-team-link strong,.fixture-card-v13 .team-block strong{font-size:18px}
+  .fixture-card-v13 .fixture-team-link span,.fixture-card-v13 .team-block span{font-size:11px}
+  .fixture-outcome-pick>strong{font-size:15px}
+}

@@ -2,7 +2,7 @@
   // C0148 — live-visible shadow intelligence + actual outcomes. Production forecasts remain unchanged.
   const HUMAN_API='https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1/human-insights-api';
   const OBS_API='https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1/observation-results-api';
-  const priorLoad=load,priorRender=render;
+  const priorLoad=load,priorRender=render,priorOpenFixture=window.openFixture;
   let h9=null,o9=null,gw9=null,busy=false;
 
   const pc9=(v,d=0)=>num(v)==null?'—':`${(Number(v)*100).toFixed(d)}%`;
@@ -88,6 +88,16 @@
     });
   }
   function enhance(){if(Number(state.gw)!==gw9)return;addBanner();enhancePlayers();enhanceBets()}
+
+  if(typeof priorOpenFixture==='function')window.openFixture=async function(id){
+    await priorOpenFixture(id);
+    const fx=fixtureMap().get(Number(id));if(!fx?.under_observation)return;
+    const root=document.querySelector('#drawerContent');if(!root||root.querySelector('.modal-observation'))return;
+    const d=document.createElement('div');d.className='drawer-section modal-observation';
+    const o=fx.under_observation,b=fx.baseline;
+    d.innerHTML=`<h3>Matchup model · under observation</h3><div class="observation-banner"><div><strong>Shadow forecast</strong><span>This uses the C0147 matchup layer but remains excluded from production decisions.</span></div><b>Research only</b></div><div class="intel-stat-grid"><div><span>Production xG</span><b>${b?`${n9(b.home_lambda)}–${n9(b.away_lambda)}`:'—'}</b></div><div><span>Observed xG</span><b>${n9(o.home_lambda)}–${n9(o.away_lambda)}</b></div><div><span>Home win</span><b>${pc9(o.markets?.home_win)}</b></div><div><span>Draw</span><b>${pc9(o.markets?.draw)}</b></div><div><span>Away win</span><b>${pc9(o.markets?.away_win)}</b></div><div><span>Over 2.5</span><b>${pc9(o.markets?.over_2_5)}</b></div></div>`;
+    root.appendChild(d);
+  };
 
   const boot=setInterval(()=>{if(state.gw&&gw9!==Number(state.gw)&&!busy)sync9();if(gw9===Number(state.gw))clearInterval(boot)},350);
   setTimeout(()=>clearInterval(boot),12000);

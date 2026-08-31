@@ -1,7 +1,6 @@
 (function(){
-  // C0142 — actual-manager action overlay.
-  // Historical model decisions remain immutable. Where the manager confirms a real action,
-  // present that action as primary while keeping the frozen model recommendation visible for audit.
+  // C0142/C0144 — actual-manager action + full-pool advisory overlays.
+  // Historical model decisions remain immutable. Actual actions and advisory plans live in separate append-only lineages.
   const ACTUAL_API='https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1/fpl-actual-decision-api';
   const priorLoad=load;
   const priorRenderFpl=renderFpl;
@@ -29,11 +28,12 @@
       const r=await fetch(`${ACTUAL_API}?gw=${gw}`,{cache:'no-store'});
       const j=await r.json();
       if(r.ok&&j?.ok){
-        const changed=applyActual(j.actual_decision||null);
+        const actualChanged=applyActual(j.actual_decision||null);
+        state.fpl.manager_plan=j.manager_plan||null;
         lastGw=gw;
-        if(changed)render();
+        if(actualChanged||j.manager_plan)render();
       }
-    }catch(e){console.warn('Actual FPL decision overlay unavailable',e)}finally{syncing=false}
+    }catch(e){console.warn('FPL manager overlay unavailable',e)}finally{syncing=false}
   }
 
   load=async function(gw=0){
@@ -41,20 +41,29 @@
     await syncActual();
   };
 
-  renderFpl=function(){
-    const html=priorRenderFpl();
+  function actualBanner(){
     const actual=state.fpl?.actual_decision,model=state.fpl?.model_decision;
-    if(!actual?.captain_player_id||!model)return html;
+    if(!actual?.captain_player_id||!model)return '';
     const actualCap=findPlayer(actual.captain_player_id),modelCap=findPlayer(model.captain_player_id);
-    const banner=`<div class="insight-card"><div class="insight-icon green">A</div><div><strong>Actual manager action</strong><p>Captain ${esc(actualCap?.name||'confirmed')} · frozen model recommendation: ${esc(modelCap?.name||'—')}. The historical model snapshot has not been rewritten.</p></div></div>`;
-    return banner+html;
-  };
+    return `<div class="insight-card"><div class="insight-icon green">A</div><div><strong>Actual manager action</strong><p>Captain ${esc(actualCap?.name||'confirmed')} · frozen model recommendation: ${esc(modelCap?.name||'—')}. The historical model snapshot has not been rewritten.</p></div></div>`;
+  }
+
+  function planBanner(){
+    const p=state.fpl?.manager_plan;if(!p)return '';
+    const transfers=(p.transfers||[]).map(t=>`${esc(t.out||'—')} → ${esc(t.in||'—')}`).join(' · ')||'Hold';
+    const cap=findPlayer(p.captain_player_id),vice=findPlayer(p.vice_player_id);
+    const status=String(p.status||'').replaceAll('_',' ');
+    const x=Number(p.gw_expected_xi_points),g=Number(p.expected_gain_current_gw),h=Number(p.expected_gain_horizon);
+    const budget=esc(p.rationale?.budget_after_plan||'');
+    return `<div class="insight-card"><div class="insight-icon amber">P</div><div><strong>Full-pool manager plan · ${esc(status)}</strong><p>${transfers} · C ${esc(cap?.name||'—')} / VC ${esc(vice?.name||'—')}${Number.isFinite(x)?` · projected XI ${x.toFixed(1)}`:''}${Number.isFinite(g)?` · +${g.toFixed(1)} GW${state.gw}`:''}${Number.isFinite(h)?` · +${h.toFixed(1)} over horizon`:''}${budget?` · ${budget}`:''}</p>${p.rationale?.red_team?`<small>${esc(p.rationale.red_team)}</small>`:''}</div></div>`;
+  }
+
+  renderFpl=function(){return actualBanner()+planBanner()+priorRenderFpl();};
 
   // app.js may have started its initial async load before this deferred script executed.
-  // Reconcile once that first state is available, without forcing a second data load.
   const timer=setInterval(()=>{
     const gw=Number(state.gw||0);
-    if(state.fpl&&gw&&gw!==lastGw){syncActual()}
+    if(state.fpl&&gw&&gw!==lastGw)syncActual();
     if(state.fpl&&lastGw===gw)clearInterval(timer);
   },250);
   setTimeout(()=>clearInterval(timer),5000);

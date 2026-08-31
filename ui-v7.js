@@ -23,10 +23,7 @@
     }catch(e){console.warn('Human insights unavailable',e)}finally{humanLoading=false}
   }
 
-  load=async function(gw=0){
-    await priorLoad(gw);
-    await syncHuman();
-  };
+  load=async function(gw=0){await priorLoad(gw);await syncHuman();};
 
   function p(v,d=0){return num(v)==null?'—':`${(Number(v)*100).toFixed(d)}%`}
   function n2(v,d=2){return num(v)==null?'—':Number(v).toFixed(d)}
@@ -60,16 +57,21 @@
     if(Number(x.penalties_order)===2||Number(x.direct_freekicks_order)===2||Number(x.corners_order)===2)return 'secondary set pieces';
     return 'no major set-piece edge';
   }
-  function captainCard(x,i){
+  function captainCard(x){
     return `<article class="human-card captain-card" data-player="${x.id}">
-      <div class="human-rank">${i+1}</div>
       <div class="captain-head"><div><h3>${esc(x.name)}</h3><p>${esc(cleanName(x.team))} · ${esc(x.position)}</p></div><strong>${n2(x.expected_points,1)} xPts</strong></div>
       <div class="evidence-grid">
         <div><span>xG</span><b>${n2(x.xg)}</b></div><div><span>xA</span><b>${n2(x.xa)}</b></div><div><span>xMins</span><b>${n2(x.expected_minutes,0)}</b></div>
-        <div><span>Ceiling</span><b>${p(x.p_10_plus)} 10+</b><small>${p(x.p_15_plus)} 15+</small></div>
+        <div><span>xCeiling</span><b>${p(x.p_10_plus)} 10+</b><small>${p(x.p_15_plus)} 15+</small></div>
       </div>
       <div class="set-piece-line"><span>Set pieces</span><b>${esc(setPieces(x))}</b></div>
     </article>`;
+  }
+  function captainNoise(caps){
+    if(!caps||caps.length<2)return '';
+    const a=caps[0],b=caps[1],gap=Math.abs(Number(a.expected_points||0)-Number(b.expected_points||0));
+    if(gap<=0.3)return `<div class="captain-noise"><strong>No meaningful raw xPts edge:</strong> ${esc(a.name)} and ${esc(b.name)} are separated by only ${gap.toFixed(2)} projected points. Use minutes, role, set pieces and haul/blank risk to break the tie — not the decimal ranking.</div>`;
+    return '';
   }
 
   function humanPageHead(kicker,title,text){return `<div class="human-page-head"><span>${esc(kicker)}</span><h2>${esc(title)}</h2><p>${esc(text)}</p></div>`}
@@ -82,21 +84,21 @@
         <article class="story-card"><span>Last gameweek</span><h3>What actually mattered</h3><p>${esc(previousStory())}</p></article>
         <article class="story-card"><span>Next gameweek</span><h3>What the model expects</h3><p>${esc(nextStory())}</p></article>
       </div>
-      <section class="human-section"><div class="human-section-head"><div><span>Captaincy</span><h2>Top ${caps.length||4} candidates</h2></div><p>xPts plus minutes, attacking expectation and set-piece role.</p></div>
+      <section class="human-section"><div class="human-section-head"><div><span>Captaincy</span><h2>${caps.length||4} serious candidates</h2></div><p>xPts plus minutes, attacking expectation, ceiling and set-piece role. Cards are candidates, not fake-precision rankings.</p></div>
+        ${captainNoise(caps)}
         <div class="captain-grid">${caps.map(captainCard).join('')||'<div class="empty-state">Captaincy candidates are still syncing.</div>'}</div>
       </section>`;
   };
 
   function planTransferText(plan){
-    const ts=Array.isArray(plan?.transfers)?plan.transfers:[];if(!ts.length)return 'Roll the transfer / hold the squad.';
-    return ts.map(t=>`${t.out||t.out_name||'—'} → ${t.in||t.in_name||'—'}`).join(' · ');
+    const ts=Array.isArray(plan?.transfers)?plan.transfers:[];if(!ts.length)return 'Hold the squad for now. Keep the free transfers until a move shows a robust edge over doing nothing.';
+    return `Recommended moves: ${ts.map(t=>`${t.out||t.out_name||'—'} → ${t.in||t.in_name||'—'}`).join(' · ')}.`;
   }
   function planPlayer(id){const x=findPlayer(id)||(human?.top_players||[]).find(p=>Number(p.id)===Number(id));return x?.name||'—'}
   function planBrief(){
     const plan=human?.manager_plan||state.fpl?.manager_plan;if(!plan)return 'No current manager plan has been published yet. The default is to avoid forcing a move until a robust edge appears.';
-    const status=String(plan.status||'provisional').replaceAll('_',' '),moves=planTransferText(plan),cap=planPlayer(plan.captain_player_id),vc=planPlayer(plan.vice_player_id);
-    const suffix=status.toLowerCase().includes('provisional')?' This is provisional and should move only if the edge survives the noise-control gate.':'';
-    return `${moves} Captain ${cap}; vice-captain ${vc}. Status: ${status}.${suffix}`;
+    const moves=planTransferText(plan),cap=planPlayer(plan.captain_player_id),vc=planPlayer(plan.vice_player_id),provisional=String(plan.status||'').toLowerCase().includes('provisional');
+    return `${moves} Captain ${cap}; vice-captain ${vc}.${provisional?' This is provisional: no action is final until it survives the noise-control gate.':''}`;
   }
 
   function topRow(x,i){
@@ -108,7 +110,7 @@
     const top=human?.top_players||[];
     return `${humanPageHead(`GW${state.gw} FPL`,'Our squad decision','A short recommendation first; the model ranking underneath it.')}
       <article class="decision-brief"><span>Recommended action</span><h2>${esc(planBrief())}</h2></article>
-      <section class="human-section"><div class="human-section-head"><div><span>Player model</span><h2>Top 10 by expected points</h2></div><p>Ranking is xPts only; final transfers still require minutes, role, price and squad-level robustness.</p></div>
+      <section class="human-section"><div class="human-section-head"><div><span>Player model</span><h2>Top 10 by expected points</h2></div><p>This is a raw xPts table, not an automatic transfer ranking. Final decisions still need minutes, role, price, squad structure and robustness.</p></div>
         <div class="human-player-list"><div class="human-player-row human-header"><span>#</span><span>Player</span><b>xPts</b><span>xMins</span><span>Ceiling</span></div>${top.map(topRow).join('')||'<div class="empty-state">Top-player model is still syncing.</div>'}</div>
       </section>`;
   };

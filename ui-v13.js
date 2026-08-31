@@ -7,8 +7,9 @@
   const f13=(v,d=2)=>num(v)==null?'—':Number(v).toFixed(d);
   const norm13=v=>String(v||'').trim().replaceAll('–','-').replace(/\s+/g,'');
   const scoreOutcome13=s=>{const m=norm13(s).match(/^(\d+)-(\d+)$/);if(!m)return null;const h=Number(m[1]),a=Number(m[2]);return h>a?'H':h<a?'A':'D'};
-  const actualScore13=f=>f?.finished&&f.home_score!=null&&f.away_score!=null?`${f.home_score}-${f.away_score}`:'—';
-  const actualOutcome13=f=>scoreOutcome13(actualScore13(f));
+  const done13=(f,ff)=>Boolean(f?.finished||ff?.finished);
+  const actualScore13=(f,ff)=>{const done=done13(f,ff),h=ff?.home_score??f?.home_score,a=ff?.away_score??f?.away_score;return done&&h!=null&&a!=null?`${h}-${a}`:'—'};
+  const actualOutcome13=(f,ff)=>scoreOutcome13(actualScore13(f,ff));
 
   function thesis13(ff){
     const mk=ff?.prediction?.markets||{};
@@ -84,7 +85,7 @@
     if(out.length<2){
       const sigs=[...(home.matchup_signals||[]),...(away.matchup_signals||[])].filter(s=>num(s?.confidence)!=null&&num(s?.score)!=null).sort((a,b)=>Number(b.confidence)-Number(a.confidence));
       const s=sigs.find(x=>/ADVANTAGE|OPPORTUNITY|MATERIAL_DISRUPTION|DEFENSIVE_RESISTANCE/i.test(String(x.direction||'')));
-      if(s){const side=Number(s.team_id)===Number(away.id)?away:home;add(45,`${side.name}: ${shortSignal(s.signal_key)} — ${String(s.direction||'').replaceAll('_',' ').toLowerCase()}`)}
+      if(s)add(45,`${shortSignal(s.signal_key)} — ${String(s.direction||'').replaceAll('_',' ').toLowerCase()}`);
     }
     return out.sort((a,b)=>b.score-a.score).slice(0,3);
   }
@@ -92,14 +93,15 @@
   renderFixtureCard=function(f){
     const ff=fixtureFpl(f.match_id);
     if(!ff?.prediction)return priorRenderFixtureCard(f);
-    const th=thesis13(ff),sm=scoreMeta13(ff),actual=actualScore13(f),actualOutcome=actualOutcome13(f);
-    const rawOutcome=scoreOutcome13(sm.score),conflict=!!(th&&rawOutcome&&rawOutcome!==th.outcome&&!f.finished);
+    const done=done13(f,ff),th=thesis13(ff),sm=scoreMeta13(ff),actual=actualScore13(f,ff),actualOutcome=actualOutcome13(f,ff);
+    const rawOutcome=scoreOutcome13(sm.score),conflict=!!(th&&rawOutcome&&rawOutcome!==th.outcome&&!done);
     const best=th?bestInOutcome13(sm.rows,th.outcome):null;
-    const exactHit=!!f.finished&&sm.score!=='—'&&norm13(sm.score)===norm13(actual);
-    const outcomeHit=!!f.finished&&th&&actualOutcome===th.outcome;
-    const outcomeMiss=!!f.finished&&th&&actualOutcome&&actualOutcome!==th.outcome;
+    const exactHit=done&&sm.score!=='—'&&norm13(sm.score)===norm13(actual);
+    const outcomeHit=done&&th&&actualOutcome===th.outcome;
+    const outcomeMiss=done&&th&&actualOutcome&&actualOutcome!==th.outcome;
     const facts=factCandidates13(f,th);
-    const [status,cls]=matchStatus(f);
+    const statusFixture={...f,finished:done};
+    const [status,cls]=matchStatus(statusFixture);
     const exactValue=conflict?'Unresolved':sm.score;
     const exactNote=conflict?`Raw mode ${sm.score}${sm.p!=null?` ${p13(sm.p,1)}`:''}${best?` · best ${outcomeName13(th.outcome,f).toLowerCase()} score ${best.score}${best.p!=null?` ${p13(best.p,1)}`:''}`:''}`:(sm.close?'Tight top-score race':'');
 

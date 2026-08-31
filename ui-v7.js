@@ -1,8 +1,8 @@
 (function(){
-  // C0145 — human-first presentation layer. No forecast mutation.
+  // C0145 + C0156 — human-first presentation layer with resilient GW data sync. No forecast mutation.
   const HUMAN_API='https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1/human-insights-api';
   const priorLoad=load;
-  let human=null,humanGw=null,humanLoading=false;
+  let human=null,humanGw=null,humanLoading=false,humanRetries=0,humanRetryTimer=null;
 
   ROUTES.market.title='Betting';
   ROUTES.market.eyebrow='Model betting views';
@@ -13,17 +13,39 @@
   }
   renameNav();
 
+  function scheduleHumanRetry(gw){
+    if(humanGw===gw||humanRetries>=5)return;
+    humanRetries+=1;
+    clearTimeout(humanRetryTimer);
+    humanRetryTimer=setTimeout(()=>{
+      if(Number(state.gw)===gw&&humanGw!==gw&&!humanLoading)syncHuman();
+    },Math.min(6000,1000*humanRetries));
+  }
+
   async function syncHuman(){
-    const gw=Number(state.gw||0);if(!gw||humanLoading)return;
+    const gw=Number(state.gw||0);if(!gw||humanLoading||humanGw===gw)return;
     humanLoading=true;
     try{
       const r=await fetch(`${HUMAN_API}?gw=${gw}`,{cache:'no-store'}),j=await r.json();
-      if(r.ok&&j?.ok){human=j;humanGw=gw;render();}
-      else console.warn('Human insights unavailable',j?.error||r.status);
-    }catch(e){console.warn('Human insights unavailable',e)}finally{humanLoading=false}
+      if(!r.ok||!j?.ok)throw new Error(j?.error||`HTTP ${r.status}`);
+      if(Number(state.gw)!==gw)return;
+      human=j;humanGw=gw;humanRetries=0;clearTimeout(humanRetryTimer);render();
+    }catch(e){
+      console.warn('Human insights unavailable',e);
+      scheduleHumanRetry(gw);
+    }finally{humanLoading=false}
   }
 
-  load=async function(gw=0){await priorLoad(gw);await syncHuman();};
+  function ensureHuman(){
+    const gw=Number(state.gw||0);
+    if(gw&&humanGw!==gw&&!humanLoading)setTimeout(syncHuman,0);
+  }
+
+  load=async function(gw=0){
+    humanRetries=0;clearTimeout(humanRetryTimer);
+    await priorLoad(gw);
+    await syncHuman();
+  };
 
   function p(v,d=0){return num(v)==null?'—':`${(Number(v)*100).toFixed(d)}%`}
   function n2(v,d=2){return num(v)==null?'—':Number(v).toFixed(d)}
@@ -77,6 +99,7 @@
   function humanPageHead(kicker,title,text){return `<div class="human-page-head"><span>${esc(kicker)}</span><h2>${esc(title)}</h2><p>${esc(text)}</p></div>`}
 
   renderHome=function(){
+    ensureHuman();
     if(!state.fpl)return errorBlock('FPL data unavailable',state.errors.fpl);
     const caps=human?.captain_candidates||[];
     return `${humanPageHead(`GW${state.gw}`,'The week in plain English','What happened, what we expect next, and who matters most for captaincy.')}
@@ -106,6 +129,7 @@
   }
 
   renderFpl=function(){
+    ensureHuman();
     if(!state.fpl)return errorBlock('FPL data unavailable',state.errors.fpl);
     const top=human?.top_players||[];
     return `${humanPageHead(`GW${state.gw} FPL`,'Our squad decision','A short recommendation first; the model ranking underneath it.')}
@@ -121,12 +145,18 @@
   }
 
   renderMarket=function(){
+    ensureHuman();
     const bets=human?.betting_recommendations||[];
     return `${humanPageHead(`GW${state.gw} betting`,'Four strongest model views','No bookmaker odds and no price-chasing: these are the model’s highest-conviction views in four core markets.')}
       <div class="betting-note">Probability is not the same as betting value. This page deliberately ranks our football model first; bookmaker comparison can be layered on later.</div>
       <div class="bet-grid">${bets.map(betCard).join('')||'<div class="empty-state">Betting model views are still syncing.</div>'}</div>`;
   };
 
-  const boot=setInterval(()=>{if(state.fpl&&state.gw&&humanGw!==Number(state.gw)&&!humanLoading)syncHuman();if(humanGw===Number(state.gw))clearInterval(boot)},300);
-  setTimeout(()=>clearInterval(boot),10000);
+  // Initial base load starts before this overlay is installed, so keep watching long enough
+  // for slow mobile/network/API responses and trigger the human layer as soon as GW state exists.
+  const boot=setInterval(()=>{
+    if(state.gw&&humanGw!==Number(state.gw)&&!humanLoading)syncHuman();
+    if(humanGw===Number(state.gw)&&humanGw!=null)clearInterval(boot);
+  },500);
+  setTimeout(()=>clearInterval(boot),45000);
 })();

@@ -94,7 +94,7 @@ const OutcomeCodeSchema = z.enum(['H', 'D', 'A']);
 export const RecentTeamResultSchema = z.object({
   team_id: z.number(),
   sequence_no: z.number().int().positive(),
-  opponent_team_id: z.number(),
+  opponent_team_id: z.number().nullable(),
   opponent_name: z.string().nullable().optional(),
   opponent_short: z.string().nullable().optional(),
   fixture_kickoff: z.string(),

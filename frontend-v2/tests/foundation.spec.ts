@@ -4,21 +4,53 @@ import { expect, test } from '@playwright/test';
 const fplPayload = { ok: true, gameweek: 3, model_version: '0.1.3', generated_at: '2026-09-01T20:05:00Z', decision: { captain_player_id: 470, vice_player_id: 471, transfers: [], chip: 'NONE', risk_level: 'MEDIUM', status: 'PROVISIONAL_HOLD_PENDING_PRESSERS' }, squad: [{ id: 470, name: 'Bruno Fernandes', team: 'Man Utd', position: 'MID', expected_points: 6.58, expected_minutes: 82, p_10_plus: 0.225 }, { id: 471, name: 'Mbeumo', team: 'Man Utd', position: 'MID', expected_points: 6.73, expected_minutes: 79, p_10_plus: 0.232 }] };
 const fixturesPayload = { ok: true, gameweek: 3, fixtures: Array.from({ length: 10 }, (_, index) => ({ match_id: 9000 + index, kickoff_time: `2026-09-0${index < 4 ? 4 : 6}T${String(12 + (index % 6)).padStart(2, '0')}:00:00+00:00`, finished: false, home_team: { id: index * 2 + 1, name: index === 0 ? 'Ipswich Town' : `Home ${index}`, short_name: index === 0 ? 'IPS' : `H${index}` }, away_team: { id: index * 2 + 2, name: index === 0 ? 'Liverpool' : `Away ${index}`, short_name: index === 0 ? 'LIV' : `A${index}` }, prediction: null })) };
 
-test.beforeEach(async ({ page }) => { await page.route('**/fpl-api**', async (route) => route.fulfill({ json: fplPayload })); await page.route('**/fixture-intelligence-api**', async (route) => route.fulfill({ json: fixturesPayload })); });
-
-test('command center is responsive, accessible and decision-first', async ({ page }) => {
-  const consoleErrors: string[] = []; page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()); });
-  await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Command Center' })).toBeVisible();
-  await expect(page.getByRole('heading', { level: 2, name: 'HOLD / ROLL' })).toBeVisible();
-  await expect(page.getByText('Bruno Fernandes')).toBeVisible();
-  await expect(page.getByText('0/10')).toBeVisible();
-  await expect(page.getByText('Ipswich Town vs Liverpool')).toBeVisible();
-  const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
-  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
-  for (const control of await page.locator('nav button').all()) { const box = await control.boundingBox(); expect(box?.height ?? 0).toBeGreaterThanOrEqual(44); }
-  const a11y = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
-  expect(a11y.violations).toEqual([]); expect(consoleErrors).toEqual([]);
+test.beforeEach(async ({ page }) => {
+  await page.route('**/fpl-api**', async (route) => route.fulfill({ json: fplPayload }));
+  await page.route('**/fixture-intelligence-api**', async (route) => route.fulfill({ json: fixturesPayload }));
 });
 
-test('navigation changes surfaces without loading unfinished feature modules', async ({ page }) => { await page.goto('/'); const fplNav = page.getByRole('button', { name: 'FPL' }).last(); await fplNav.click(); await expect(page.getByRole('heading', { level: 1, name: 'FPL workspace' })).toBeVisible(); await expect(page).toHaveURL(/view=fpl/); });
+test('command center is responsive, accessible and decision-first', async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()); });
+
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: 'Command Center' })).toBeVisible();
+  const decisionPanel = page.getByRole('region', { name: 'HOLD / ROLL' });
+  await expect(decisionPanel).toBeVisible();
+  await expect(decisionPanel.getByText('Bruno Fernandes')).toBeVisible();
+  await expect(page.getByText('0/10')).toBeVisible();
+  await expect(page.getByText('Ipswich Town vs Liverpool')).toBeVisible();
+
+  const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
+  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+
+  const visibleNavigation = page.locator('nav:visible');
+  await expect(visibleNavigation).toHaveCount(1);
+  for (const control of await visibleNavigation.locator('button').all()) {
+    const box = await control.boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+
+  const width = page.viewportSize()?.width ?? 0;
+  if (width <= 920) {
+    await expect(page.locator('.mobile-nav-wrap')).toBeVisible();
+    await expect(page.locator('.side-rail')).toBeHidden();
+  } else {
+    await expect(page.locator('.side-rail')).toBeVisible();
+    await expect(page.locator('.mobile-nav-wrap')).toBeHidden();
+  }
+
+  const a11y = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(a11y.violations).toEqual([]);
+  expect(consoleErrors).toEqual([]);
+});
+
+test('navigation and gameweek controls update the URL without loading unfinished modules', async ({ page }) => {
+  await page.goto('/');
+  const visibleNavigation = page.locator('nav:visible');
+  await visibleNavigation.getByRole('button', { name: 'FPL' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'FPL workspace' })).toBeVisible();
+  await expect(page).toHaveURL(/view=fpl/);
+  await page.getByLabel('Gameweek').selectOption('3');
+  await expect(page).toHaveURL(/gw=3/);
+});

@@ -2,6 +2,9 @@ import { createClient } from 'supabase';
 
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'GET, OPTIONS','Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'};
 
+const finiteOrNull=(value:any)=>{if(value==null||value==='')return null;const n=Number(value);return Number.isFinite(n)?n:null};
+const distributionMeta=(prediction:any)=>{const pd=prediction?.features?.point_distribution;return{q90:finiteOrNull(pd?.q90),q95:finiteOrNull(pd?.q95),distribution_version:typeof pd?.version==='string'?pd.version:null,tail_semantics:typeof prediction?.features?.tail_semantics==='string'?prediction.features.tail_semantics:null}};
+
 Deno.serve(async(req)=>{if(req.method==='OPTIONS')return new Response('ok',{headers:cors});try{
   const keys=JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')||'{}');
   const serviceKey=keys.default||Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -9,12 +12,12 @@ Deno.serve(async(req)=>{if(req.method==='OPTIONS')return new Response('ok',{head
   const sb=createClient(Deno.env.get('SUPABASE_URL')!,serviceKey,{auth:{persistSession:false}});
   const u=new URL(req.url),requested=Number(u.searchParams.get('gw')||0);
 
-  const {data:runs,error:rune}=await sb.from('gameweek_prediction_runs').select('id,model_version_id,gameweek,generated_at,run_type,frozen,excluded_from_backtest,notes').eq('frozen',true).order('gameweek',{ascending:true}).order('generated_at',{ascending:false});
+  const {data:runs,error:rune}=await sb.from('gameweek_prediction_runs').select('id,model_version_id,gameweek,generated_at,run_type,frozen,excluded_from_backtest,notes').eq('frozen',true).order('gameweek',{ascending:true}).order('generated_at',{ascending:false}).order('id',{ascending:false});
   if(rune)throw rune;if(!runs?.length)throw new Error('No frozen gameweek snapshots');
   const gw=requested>=1&&requested<=38?requested:Math.max(...runs.map((r:any)=>r.gameweek));
-  const run=(runs||[]).filter((r:any)=>r.gameweek===gw).sort((a:any,b:any)=>new Date(b.generated_at).getTime()-new Date(a.generated_at).getTime())[0];
+  const run=(runs||[]).filter((r:any)=>r.gameweek===gw).sort((a:any,b:any)=>new Date(b.generated_at).getTime()-new Date(a.generated_at).getTime()||Number(b.id)-Number(a.id))[0];
   if(!run)throw new Error(`No frozen snapshot for GW${gw}`);
-  const prevRun=(runs||[]).filter((r:any)=>r.gameweek<gw).sort((a:any,b:any)=>b.gameweek-a.gameweek||new Date(b.generated_at).getTime()-new Date(a.generated_at).getTime())[0]||null;
+  const prevRun=(runs||[]).filter((r:any)=>r.gameweek<gw).sort((a:any,b:any)=>b.gameweek-a.gameweek||new Date(b.generated_at).getTime()-new Date(a.generated_at).getTime()||Number(b.id)-Number(a.id))[0]||null;
 
   const [{data:mv},{data:activeMv},{data:dec},{data:rr},fr]=await Promise.all([
     sb.from('model_versions').select('version').eq('id',run.model_version_id).single(),
@@ -36,7 +39,7 @@ Deno.serve(async(req)=>{if(req.method==='OPTIONS')return new Response('ok',{head
 
   const [{data:allPreds},{data:allPlayers},{data:teams},{data:states},prevStatesRes,{data:dbMatches},{data:fixturePreds}]=await Promise.all([
     sb.from('model_predictions').select('player_id,expected_points,p_blank,p_5_plus,p_10_plus,p_15_plus,p_20_plus,p_start,p_goal,p_assist,p_clean_sheet,p_dc,p_bonus,expected_minutes,confidence,features').eq('prediction_run_id',run.id),
-    sb.from('players').select('id,web_name,position,team_id'),
+    sb.from('players').select('id,web_name,position,team_id,now_cost,selected_by_percent,status,chance_of_playing_next_round,news,updated_at'),
     sb.from('teams').select('id,name,short_name'),
     sb.from('player_state').select('player_id,as_of,expected_minutes,start_probability,role,formation,xg90,xa90,xgi90,shots_box90,big_chances90,cbit90,cbirt90,dc_probability').in('player_id',ids).lte('as_of',run.generated_at).order('as_of',{ascending:false}),
     prevRun?sb.from('player_state').select('player_id,as_of,expected_minutes,start_probability,role,formation,xg90,xa90,xgi90,shots_box90,big_chances90,cbit90,cbirt90,dc_probability').in('player_id',ids).lte('as_of',prevRun.generated_at).order('as_of',{ascending:false}):Promise.resolve({data:[]}),
@@ -52,6 +55,7 @@ Deno.serve(async(req)=>{if(req.method==='OPTIONS')return new Response('ok',{head
   }
 
   const tm=new Map((teams||[]).map((x:any)=>[x.id,x])),pmap=new Map((allPlayers||[]).map((x:any)=>[x.id,x])),predMap=new Map((allPreds||[]).map((x:any)=>[x.player_id,x])),actMap=new Map(allActuals.map((x:any)=>[x.player_id,x]));
+  const playerMeta=(p:any)=>({price_tenths:p?.now_cost==null?null:Number(p.now_cost),price:p?.now_cost==null?null:Number(p.now_cost)/10,ownership_percent:finiteOrNull(p?.selected_by_percent),fpl_status:p?.status||null,chance_of_playing_next_round:finiteOrNull(p?.chance_of_playing_next_round),news:p?.news||'',player_metadata_updated_at:p?.updated_at||null});
   const actualValid=(pid:number)=>{
     const a=actMap.get(pid);if(!a||!rr)return null;
     const fids=(a.fixture_ids||[]).map(Number).filter(Number.isFinite);if(!fids.length)return null;
@@ -62,11 +66,11 @@ Deno.serve(async(req)=>{if(req.method==='OPTIONS')return new Response('ok',{head
 
   const currentByPlayer=new Map<number,any>();for(const s of(states||[])){if(!currentByPlayer.has(s.player_id))currentByPlayer.set(s.player_id,s)}
   const prevByPlayer=new Map<number,any>();for(const s of(prevStatesRes?.data||[])){if(!prevByPlayer.has(s.player_id))prevByPlayer.set(s.player_id,s)}
-  const squad=ids.map(id=>{const p=pmap.get(id),pr=predMap.get(id);if(!p||!pr)return null;const cur=currentByPlayer.get(id)||null,prev=prevRun?(prevByPlayer.get(id)||null):null,changes:any={};if(cur&&prev){for(const k of ['expected_minutes','start_probability','xg90','xa90','xgi90','shots_box90','big_chances90','cbit90','cbirt90','dc_probability'])changes[k]=Number(cur[k]||0)-Number(prev[k]||0)}const a=actualValid(id);return{id,name:p.web_name,position:p.position,team:tm.get(p.team_id)?.name,...pr,actual:a,actual_status:a?'final':'pending',state:cur,previous_state:prev,knowledge_changes:changes}}).filter(Boolean);
-  const all_predictions=(allPreds||[]).map((pr:any)=>{const p=pmap.get(pr.player_id);if(!p)return null;const a=actualValid(pr.player_id);const err=a?Number(a.total_points)-Number(pr.expected_points):null;const tol=Math.max(2,.30*Number(pr.expected_points));return{id:p.id,name:p.web_name,position:p.position,team:tm.get(p.team_id)?.name,...pr,actual:a,actual_status:a?'final':'pending',error:err,tolerance:tol,acceptable:a?Math.abs(err!)<=tol:null}}).filter(Boolean).sort((a:any,b:any)=>Number(b.expected_points)-Number(a.expected_points));
+  const squad=ids.map(id=>{const p=pmap.get(id),pr=predMap.get(id);if(!p||!pr)return null;const cur=currentByPlayer.get(id)||null,prev=prevRun?(prevByPlayer.get(id)||null):null,changes:any={};if(cur&&prev){for(const k of ['expected_minutes','start_probability','xg90','xa90','xgi90','shots_box90','big_chances90','cbit90','cbirt90','dc_probability'])changes[k]=Number(cur[k]||0)-Number(prev[k]||0)}const a=actualValid(id);return{id,name:p.web_name,position:p.position,team:tm.get(p.team_id)?.name,...playerMeta(p),...pr,...distributionMeta(pr),actual:a,actual_status:a?'final':'pending',state:cur,previous_state:prev,knowledge_changes:changes}}).filter(Boolean);
+  const all_predictions=(allPreds||[]).map((pr:any)=>{const p=pmap.get(pr.player_id);if(!p)return null;const a=actualValid(pr.player_id);const err=a?Number(a.total_points)-Number(pr.expected_points):null;const tol=Math.max(2,.30*Number(pr.expected_points));return{id:p.id,name:p.web_name,position:p.position,team:tm.get(p.team_id)?.name,...playerMeta(p),...pr,...distributionMeta(pr),actual:a,actual_status:a?'final':'pending',error:err,tolerance:tol,acceptable:a?Math.abs(err!)<=tol:null}}).filter(Boolean).sort((a:any,b:any)=>Number(b.expected_points)-Number(a.expected_points));
 
   let top_double_digit:any[]=[];
-  if(activeMv){const {data:latest}=await sb.from('model_predictions').select('generated_at').eq('model_version_id',activeMv.id).eq('gameweek',gw).order('generated_at',{ascending:false}).limit(1).maybeSingle();if(latest){const {data:cur}=await sb.from('model_predictions').select('player_id,expected_points,expected_minutes,p_10_plus,p_15_plus,p_20_plus,p_start,p_goal,p_assist,p_dc,p_bonus,confidence').eq('model_version_id',activeMv.id).eq('gameweek',gw).eq('generated_at',latest.generated_at);top_double_digit=(cur||[]).map((x:any)=>{const p=pmap.get(x.player_id);return p?{id:p.id,name:p.web_name,position:p.position,team:tm.get(p.team_id)?.name,...x}:null}).filter(Boolean).sort((a:any,b:any)=>Number(b.p_10_plus)-Number(a.p_10_plus)||Number(b.p_15_plus)-Number(a.p_15_plus)||Number(b.expected_points)-Number(a.expected_points)).slice(0,10)}}
+  if(activeMv){const {data:latest}=await sb.from('model_predictions').select('generated_at').eq('model_version_id',activeMv.id).eq('gameweek',gw).order('generated_at',{ascending:false}).limit(1).maybeSingle();if(latest){const {data:cur}=await sb.from('model_predictions').select('player_id,expected_points,expected_minutes,p_10_plus,p_15_plus,p_20_plus,p_start,p_goal,p_assist,p_dc,p_bonus,confidence,features').eq('model_version_id',activeMv.id).eq('gameweek',gw).eq('generated_at',latest.generated_at);top_double_digit=(cur||[]).map((x:any)=>{const p=pmap.get(x.player_id);return p?{id:p.id,name:p.web_name,position:p.position,team:tm.get(p.team_id)?.name,...playerMeta(p),...x,...distributionMeta(x)}:null}).filter(Boolean).sort((a:any,b:any)=>Number(b.p_10_plus)-Number(a.p_10_plus)||Number(b.p_15_plus)-Number(a.p_15_plus)||Number(b.expected_points)-Number(a.expected_points)).slice(0,10)}}
 
   const latestFixturePred=new Map<number,any>();for(const p of fixturePreds||[]){latestFixturePred.set(Number(p.match_id),p)}
   const fixture_results=(dbMatches||[]).map((m:any)=>{

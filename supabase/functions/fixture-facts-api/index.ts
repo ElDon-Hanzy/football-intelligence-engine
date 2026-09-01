@@ -29,8 +29,8 @@ Deno.serve(async(req)=>{
     const [{data:matches,error:me},{data:teams,error:te},{data:card,error:ce},{data:modal,error:moe},{data:recent,error:rre}]=await Promise.all([
       sb.from('matches').select('id,gameweek,kickoff_time,home_team_id,away_team_id').eq('source','fpl').eq('gameweek',gw).order('kickoff_time'),
       sb.from('teams').select('id,name,short_name'),
-      sb.from('fixture_fact_candidates').select('id,match_id,team_id,opponent_team_id,fact_type,usefulness_score,card_rank,alignment,one_liner,payload,evidence_cutoff').eq('snapshot_run_id',run.id).eq('gameweek',gw).eq('alignment','SUPPORTS').not('card_rank','is',null).lte('card_rank',3).order('match_id').order('card_rank'),
-      sb.from('fixture_fact_candidates').select('id,match_id,team_id,opponent_team_id,fact_type,usefulness_score,candidate_rank,card_rank,alignment,one_liner,payload,evidence_cutoff').eq('snapshot_run_id',run.id).eq('gameweek',gw).order('match_id').order('usefulness_score',{ascending:false}),
+      sb.from('current_fixture_card_facts_v01').select('id,snapshot_run_id,match_id,team_id,opponent_team_id,fact_type,usefulness_score,card_rank,alignment,one_liner,payload,evidence_cutoff').eq('snapshot_run_id',run.id).eq('gameweek',gw).order('match_id').order('card_rank'),
+      sb.from('current_fixture_modal_facts_v01').select('id,snapshot_run_id,match_id,team_id,opponent_team_id,fact_type,usefulness_score,candidate_rank,card_rank,alignment,one_liner,payload,evidence_cutoff').eq('snapshot_run_id',run.id).eq('gameweek',gw).order('match_id').order('usefulness_score',{ascending:false}),
       sb.from('team_recent_epl_result_snapshots').select('team_id,sequence_no,opponent_team_id,fixture_kickoff,venue,goals_for,goals_against,result').eq('snapshot_run_id',run.id).order('team_id').order('sequence_no')
     ]);
     if(me)throw me;if(te)throw te;if(ce)throw ce;if(moe)throw moe;if(rre)throw rre;
@@ -45,6 +45,6 @@ Deno.serve(async(req)=>{
       away:{id:Number(m.away_team_id),name:tm.get(Number(m.away_team_id))?.name||null,short_name:tm.get(Number(m.away_team_id))?.short_name||null,recent:recentBy.get(Number(m.away_team_id))||[]},
       card_facts:cardBy.get(Number(m.id))||[],modal_facts:modalBy.get(Number(m.id))||[]
     }));
-    return new Response(JSON.stringify({ok:true,gameweek:gw,facts_available:true,snapshot_run:run,fixtures}),{headers:cors});
+    return new Response(JSON.stringify({ok:true,gameweek:gw,facts_available:true,evidence_source:'dynamic_c0166_views',snapshot_run:run,fixtures}),{headers:cors});
   }catch(e){return new Response(JSON.stringify({ok:false,error:e instanceof Error?e.message:String(e)}),{status:500,headers:cors})}
 });

@@ -1,41 +1,65 @@
-import { Button } from './components/primitives/Button';
-import { Surface } from './components/primitives/Surface';
+import { useEffect, useState } from 'react';
+import { AppShell, type AppView } from './components/layout/AppShell';
+import { HomePage } from './pages/HomePage';
+import { PlaceholderPage } from './pages/PlaceholderPage';
 
-const foundations = [
-  ['Decision-first', 'Primary surfaces will answer the football or FPL decision before exposing diagnostics.'],
-  ['Validated data', 'Production API payloads are parsed at runtime before they can reach presentation components.'],
-  ['Mobile-first', 'Safe areas, 44px interaction targets and no hidden horizontal overflow are baseline rules.'],
-] as const;
+const validViews = new Set<AppView>(['home', 'fixtures', 'fpl', 'performance', 'engine']);
+
+function viewFromLocation(): AppView {
+  const value = new URLSearchParams(window.location.search).get('view') ?? 'home';
+  return validViews.has(value as AppView) ? (value as AppView) : 'home';
+}
+
+function gameweekFromLocation(): number {
+  const raw = Number(new URLSearchParams(window.location.search).get('gw') ?? 0);
+  return Number.isInteger(raw) && raw >= 1 && raw <= 38 ? raw : 0;
+}
+
+const placeholders: Record<Exclude<AppView, 'home'>, { title: string; eyebrow: string; copy: string }> = {
+  fixtures: { title: 'Fixtures', eyebrow: 'C0171', copy: 'Compact fixture scanning and signed evidence arrive in the dedicated Fixtures batch.' },
+  fpl: { title: 'FPL workspace', eyebrow: 'C0173', copy: 'The decision-first squad workspace will be built after Fixtures and the matchup modal are complete.' },
+  performance: { title: 'Performance', eyebrow: 'C0174', copy: 'Model performance, markets and validation views stay out of the command surface until their dedicated batch.' },
+  engine: { title: 'Engine & research', eyebrow: 'C0174', copy: 'Diagnostics, governance and research tracks will live here instead of competing with weekly decisions.' },
+};
 
 export function App() {
+  const [view, setView] = useState<AppView>(viewFromLocation);
+  const [gameweek, setGameweek] = useState(gameweekFromLocation);
+
+  useEffect(() => {
+    const onPopState = () => {
+      setView(viewFromLocation());
+      setGameweek(gameweekFromLocation());
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const navigate = (nextView: AppView) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', nextView);
+    if (gameweek > 0) url.searchParams.set('gw', String(gameweek));
+    window.history.pushState({}, '', url);
+    setView(nextView);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  };
+
+  const changeGameweek = (nextGameweek: number) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', view);
+    if (nextGameweek > 0) url.searchParams.set('gw', String(nextGameweek));
+    else url.searchParams.delete('gw');
+    window.history.pushState({}, '', url);
+    setGameweek(nextGameweek);
+  };
+
   return (
-    <main className="foundation-page">
-      <section className="foundation-hero" aria-labelledby="ui-v2-title">
-        <div className="eyebrow">C0169 · Parallel foundation</div>
-        <h1 id="ui-v2-title">Football Intelligence Engine</h1>
-        <p className="hero-copy">
-          UI v2 is being rebuilt as an isolated decision workspace. The production legacy interface remains untouched until the controlled cutover gate.
-        </p>
-        <div className="hero-actions">
-          <Button as="a" href="../" variant="secondary">Open legacy UI</Button>
-          <span className="status-chip" role="status">Foundation online</span>
-        </div>
-      </section>
-
-      <section className="foundation-grid" aria-label="UI v2 foundation principles">
-        {foundations.map(([title, copy]) => (
-          <Surface key={title}>
-            <span className="surface-kicker">Foundation</span>
-            <h2>{title}</h2>
-            <p>{copy}</p>
-          </Surface>
-        ))}
-      </section>
-
-      <footer className="foundation-footer">
-        <span>Parallel build · no model effect</span>
-        <span>React · TypeScript · Vite</span>
-      </footer>
-    </main>
+    <AppShell view={view} gameweek={gameweek} onNavigate={navigate} onGameweekChange={changeGameweek}>
+      {view === 'home' ? (
+        <HomePage requestedGameweek={gameweek} onNavigate={navigate} />
+      ) : (
+        <PlaceholderPage {...placeholders[view]} />
+      )}
+    </AppShell>
   );
 }

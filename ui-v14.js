@@ -70,7 +70,7 @@
     const ff=fixtureFpl(f.match_id);
     if(f?.finished||ff?.finished||!ff?.prediction)return priorRenderFixtureCard(f);
     const th=thesis14(ff);if(!th)return priorRenderFixtureCard(f);
-    const res=resolveScore14(ff,th),p=ff.prediction;
+    const res=resolveScore14(ff,th);
     const selectedOutcome=th.outcome;
     const shortPick=selectedOutcome==='D'?'DRAW':`${outcomeLabel14(selectedOutcome,f,true)} WIN`;
     const alt=res.alt;
@@ -88,7 +88,11 @@
   };
 
   renderFixtures=function(){
-    const html=priorRenderFixtures();
-    return String(html).replace('Current frozen / updating fixture state','Live pre-match forecast · updates until kickoff');
+    const html=String(priorRenderFixtures());
+    return html
+      .replace('Current frozen / updating fixture state','Live pre-match forecast · updates until kickoff')
+      .replace('Fixture intelligence v0.1','Fixture intelligence · live maturation')
+      .replace('model_effect_enabled = false','Bounded production matchup effect')
+      .replace('Expected XI, player roles, team style, replacement research and tactical matchups appear only where a genuine pre-kickoff snapshot exists. Historical blanks stay blank.','Current pre-match inputs feed the bounded production layer where promoted; frozen research tracks remain separate for validation. Historical blanks stay blank.');
   };
 })();

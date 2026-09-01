@@ -63,7 +63,7 @@ test('command center is responsive, accessible and decision-first', async ({ pag
   await expect(decisionPanel).toBeVisible();
   await expect(decisionPanel.getByText('Bruno Fernandes')).toBeVisible();
   await expect(page.getByText('0/10')).toBeVisible();
-  await expect(page.getByText('Ipswich Town vs Liverpool')).toBeVisible();
+  await expect(page.getByText('Ipswich Town vs Liverpool', { exact: true })).toBeVisible();
   await expect(page.getByText('Liverpool', { exact: true })).toBeVisible();
 
   const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));

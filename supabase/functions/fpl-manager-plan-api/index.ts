@@ -23,14 +23,24 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const requested = Number(url.searchParams.get('gw') || 0);
 
-    const { data: plans, error } = await sb
-      .from('fpl_manager_plans')
-      .select('id,gameweek,captured_at,status,horizon,transfers,captain_player_id,vice_player_id,starting_xi,bench_order,chip,gw_expected_xi_points,expected_gain_current_gw,expected_gain_horizon,risk_level,rationale,source,supersedes_id')
-      .order('gameweek', { ascending: true })
-      .order('captured_at', { ascending: false });
-    if (error) throw error;
+    const [{ data: plans, error: planError }, { data: states, error: stateError }] = await Promise.all([
+      sb
+        .from('fpl_manager_plans')
+        .select('id,gameweek,captured_at,status,horizon,transfers,captain_player_id,vice_player_id,starting_xi,bench_order,chip,gw_expected_xi_points,expected_gain_current_gw,expected_gain_horizon,risk_level,rationale,source,supersedes_id')
+        .order('gameweek', { ascending: true })
+        .order('captured_at', { ascending: false })
+        .order('id', { ascending: false }),
+      sb
+        .from('fpl_manager_state_snapshots')
+        .select('id,gameweek,captured_at,free_transfers,bank_tenths,acquisition_squad_cost_tenths,source,evidence')
+        .order('gameweek', { ascending: true })
+        .order('captured_at', { ascending: false })
+        .order('id', { ascending: false }),
+    ]);
+    if (planError) throw planError;
+    if (stateError) throw stateError;
 
-    const availableGameweeks = [...new Set((plans || [])
+    const availableGameweeks = [...new Set([...(plans || []), ...(states || [])]
       .map((row: any) => Number(row.gameweek))
       .filter((gw: number) => Number.isInteger(gw) && gw >= 1 && gw <= 38))]
       .sort((a, b) => a - b);
@@ -41,13 +51,16 @@ Deno.serve(async (req: Request) => {
         ? availableGameweeks[availableGameweeks.length - 1]
         : null;
 
-    const plan = gameweek == null
+    const latestForGameweek = (rows: any[], gw: number | null) => gw == null
       ? null
-      : (plans || [])
-          .filter((row: any) => Number(row.gameweek) === gameweek)
-          .sort((a: any, b: any) => new Date(b.captured_at).getTime() - new Date(a.captured_at).getTime())[0] || null;
+      : rows
+          .filter((row: any) => Number(row.gameweek) === gw)
+          .sort((a: any, b: any) => new Date(b.captured_at).getTime() - new Date(a.captured_at).getTime() || Number(b.id) - Number(a.id))[0] || null;
 
-    return new Response(JSON.stringify({ ok: true, gameweek, available_gameweeks: availableGameweeks, plan }), { headers: cors });
+    const plan = latestForGameweek(plans || [], gameweek);
+    const managerState = latestForGameweek(states || [], gameweek);
+
+    return new Response(JSON.stringify({ ok: true, gameweek, available_gameweeks: availableGameweeks, plan, manager_state: managerState }), { headers: cors });
   } catch (error) {
     return new Response(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: cors });
   }

@@ -59,8 +59,10 @@ const fplPayload = {
 describe('production API contracts', () => {
   it('accepts the fixture-intelligence shape with or without prediction decoration', () => {
     expect(FixtureApiSchema.parse(validFixturePayload).fixtures).toHaveLength(1);
-    const researchOnly = structuredClone(validFixturePayload);
-    delete researchOnly.fixtures[0]!.prediction;
+    const researchOnly = {
+      ...validFixturePayload,
+      fixtures: validFixturePayload.fixtures.map(({ prediction: _prediction, ...fixture }) => fixture),
+    };
     expect(FixtureApiSchema.parse(researchOnly).fixtures).toHaveLength(1);
   });
 

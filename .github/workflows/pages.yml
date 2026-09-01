@@ -23,14 +23,65 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install UI v2 dependencies
+        working-directory: frontend-v2
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck UI v2
+        working-directory: frontend-v2
+        run: npm run typecheck
+
+      - name: Unit test UI v2
+        working-directory: frontend-v2
+        run: npm test
+
+      - name: Build UI v2
+        working-directory: frontend-v2
+        run: npm run build
+
+      - name: Install Chromium for UI v2 E2E
+        working-directory: frontend-v2
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E and accessibility smoke UI v2
+        working-directory: frontend-v2
+        run: npm run test:e2e
+
+      - name: Capture generated lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-v2-lockfile
+          path: frontend-v2/package-lock.json
+          retention-days: 1
+
+      - name: Prepare Pages artifact
+        run: |
+          mkdir -p _site
+          rsync -a ./ _site/ \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude 'frontend-v2/' \
+            --exclude '_site/' \
+            --exclude 'node_modules/'
+          mkdir -p _site/v2
+          cp -R frontend-v2/dist/. _site/v2/
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
           enablement: true
-      - name: Upload artifact
+
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

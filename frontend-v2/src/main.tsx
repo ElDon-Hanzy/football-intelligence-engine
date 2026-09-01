@@ -5,6 +5,7 @@ import { App } from './App';
 import { queryClient } from './lib/queryClient';
 import './styles/tokens.css';
 import './styles/global.css';
+import './styles/home.css';
 
 const root = document.getElementById('root');
 

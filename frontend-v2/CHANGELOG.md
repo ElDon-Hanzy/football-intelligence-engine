@@ -51,3 +51,15 @@ Append-only implementation narrative for C0168 and child batches.
 - Full green implementation/deployment gate: workflow run `33571479835`; contract fix commit `c293914c5b7a0d4e6a924c10e3ac5efbf851b083`.
 - Known limitation: C0178 only establishes deterministic read truth; the new scan-card UX itself remains C0171 work.
 - Rollback: the underlying append-only prediction snapshots are unchanged; consumers can revert to the previous read path without data migration.
+
+## 2026-09-02 — C0171 Fixtures scan surface completed
+- Replaced the Fixtures placeholder with a compact decision-first scan across all authoritative fixtures for the selected Gameweek.
+- Presentation semantics are explicit and non-model-changing: `Strong` at an 8pp-or-greater lead over the second-most-likely 1X2 outcome, `Lean` at 4–8pp, and `No clear edge` below 4pp.
+- Cards show 1X2 state, selected score call/probability, all three 1X2 probabilities, last-five league form, and finished-match 1X2/exact-score audit without exposing the C0172 deep modal yet.
+- Last-five form controls are keyboard/touch accessible with minimum 44px targets and disclose the selected historical result instead of relying on hover-only tooltips.
+- Expanded evidence is capped at three distinct families/texts and is rendered only when `fixture-facts-api.alignment_basis.snapshot_id` matches the prediction snapshot from `fpl-api`; mismatch fails closed and hides supporting evidence.
+- Fulham–Crystal Palace and Newcastle–Bournemouth naturally exercise the no-edge state; Forest–Spurs exercises the lean state while stronger favourites remain strong calls.
+- Initial CI correctly failed strict TypeScript because chained array sorting widened outcome literals to `string`; the helper was fixed without changing thresholds or semantics in commit `8fe5ef58379eba1c7a09c1cd711d6af495d06ee2`.
+- Full green release gate: strict TypeScript, unit tests, production build, Chromium interaction tests, 390×844 / 430×932 / 768×1024 / 1366×768 responsive coverage, no-horizontal-overflow checks, axe WCAG A/AA/2.1 AA/2.2 AA checks, and existing live API parity/contracts all passed in workflow `33572072004`.
+- Deployed under the parallel `/v2/` route; legacy root remains the rollback target and no model/forecast/history rows were changed.
+- Known limitation: detailed matchup story/support/counter-evidence modal remains intentionally out of scope until C0172.

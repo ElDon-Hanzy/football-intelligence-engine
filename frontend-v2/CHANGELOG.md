@@ -63,3 +63,14 @@ Append-only implementation narrative for C0168 and child batches.
 - Full green release gate: strict TypeScript, unit tests, production build, Chromium interaction tests, 390×844 / 430×932 / 768×1024 / 1366×768 responsive coverage, no-horizontal-overflow checks, axe WCAG A/AA/2.1 AA/2.2 AA checks, and existing live API parity/contracts all passed in workflow `33572072004`.
 - Deployed under the parallel `/v2/` route; legacy root remains the rollback target and no model/forecast/history rows were changed.
 - Known limitation: detailed matchup story/support/counter-evidence modal remains intentionally out of scope until C0172.
+
+## 2026-09-02 — C0172 Matchup modal and evidence narrative completed
+- Added an atomic portal-owned matchup dialog that opens only when the prediction and evidence payloads are already aligned to the same canonical fixture snapshot; stale/mismatched evidence keeps the action disabled.
+- The modal presents the 1X2 thesis and score call first, then a deterministic match story derived from probability separation and counts of distinct signed supporting/counter inputs. The story intentionally does not copy evidence one-liners verbatim.
+- Supporting inputs and counterpoints are independently deduplicated and capped at three per group so a large support set cannot crowd out a valid risk signal; neutral context is shown separately when available.
+- Raw score-mode and selector audit details are kept behind a keyboard-accessible `Technical details` disclosure rather than dominating the football decision surface.
+- The dialog uses one React render-ownership path with body scroll lock/restore, previous-focus restore, Escape/backdrop/close-button dismissal, focus trapping and keyboard-reachable `<summary>` disclosure.
+- Mobile renders as a bounded bottom sheet; desktop/tablet render as a centered dialog. All layouts prevent horizontal overflow and respect safe-area padding.
+- Full green release gate: strict TypeScript, unit tests, build, 390×844 / 430×932 / 768×1024 / 1366×768 browser interaction tests, focus/scroll lifecycle, all three close paths, modal and page axe WCAG A/AA/2.1 AA/2.2 AA checks, existing live API contracts and Pages deployment passed in workflow `33572813192` for commit `17e3c2e5f3f328cc3c5889c3d90945be06e461f8`.
+- No model, probability, manager-plan or historical rows were changed; legacy root remains the rollback target.
+- Next batch: C0173 FPL decision-first workspace.

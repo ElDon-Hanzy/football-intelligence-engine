@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -28,10 +28,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend-v2/package-lock.json
 
       - name: Install UI v2 dependencies
         working-directory: frontend-v2
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Typecheck UI v2
         working-directory: frontend-v2
@@ -52,16 +54,6 @@ jobs:
       - name: E2E and accessibility smoke UI v2
         working-directory: frontend-v2
         run: npm run test:e2e
-
-      - name: Bootstrap UI v2 lockfile into Git
-        run: |
-          if git status --porcelain frontend-v2/package-lock.json | grep -q .; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add frontend-v2/package-lock.json
-            git commit -m "C0169 lock UI v2 dependencies"
-            git push origin HEAD:main
-          fi
 
       - name: Prepare Pages artifact
         run: |

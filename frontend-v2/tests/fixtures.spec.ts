@@ -17,7 +17,22 @@ const fixtureResults = Array.from({ length: 10 }, (_, index) => {
     home_short: index === 0 ? 'FUL' : `H${index}`,
     away_short: index === 0 ? 'CRY' : `A${index}`,
     finished: false,
-    prediction: { snapshot_id: 211 + index, source_change_id: 'C0166', markets, headline_score: '1-1', headline_score_probability: 0.11 },
+    prediction: {
+      snapshot_id: 211 + index,
+      source_change_id: 'C0166',
+      captured_at: '2026-09-01T21:03:00+00:00',
+      markets,
+      home_lambda: index === 0 ? 1.49 : 1.75,
+      away_lambda: index === 0 ? 1.49 : 1.2,
+      headline_score: '1-1',
+      headline_score_probability: 0.11,
+      raw_modal_score: '1-1',
+      raw_modal_probability: 0.112,
+      script_family: index === 2 ? 'AWAY' : 'HOME',
+      script_confidence: Math.max(markets.home_win, markets.draw, markets.away_win),
+      selector: { selector_rule: 'RAW_MODE_RETAINED_UNCERTAIN_CONFLICT' },
+      top_scorelines: [{ score: '1-1', prob: 0.112 }, { score: '1-0', prob: 0.084 }, { score: '2-1', prob: 0.08 }],
+    },
   };
 });
 
@@ -34,16 +49,16 @@ const recent = (teamId: number) => Array.from({ length: 5 }, (_, index) => ({
   result: index % 3 === 0 ? 'W' : index % 3 === 1 ? 'D' : 'L',
 }));
 
-const fact = (id: number, matchId: number, family: string, text: string, rank: number) => ({
+const fact = (id: number, matchId: number, family: string, text: string, rank: number, alignment: 'SUPPORTS' | 'CONTRADICTS' | 'NEUTRAL' = 'SUPPORTS') => ({
   id,
   snapshot_run_id: 7,
   match_id: matchId,
-  team_id: 10,
-  opponent_team_id: 8,
+  team_id: alignment === 'CONTRADICTS' ? 8 : 10,
+  opponent_team_id: alignment === 'CONTRADICTS' ? 10 : 8,
   fact_type: `C0166_${family}`,
   usefulness_score: 1 - rank / 10,
   card_rank: rank,
-  alignment: 'SUPPORTS',
+  alignment,
   one_liner: text,
   payload: { family },
   evidence_cutoff: '2026-09-01T20:32:50+00:00',
@@ -69,7 +84,13 @@ const factsPayload = {
       fact(4, fixture.match_id, 'MATCHUP_XG', 'Fulham have the stronger chance matchup.', 4),
       fact(5, fixture.match_id, 'PROCESS', 'A fourth distinct fact is capped out.', 5),
     ] : [fact(100 + index, fixture.match_id, 'PROCESS', 'One signed model input supports the numerical lean.', 1)],
-    modal_facts: [],
+    modal_facts: index === 0 ? [
+      fact(11, fixture.match_id, 'VENUE_FORM', 'Fulham have won six of ten home matches.', 1),
+      fact(12, fixture.match_id, 'STREAK', 'Palace are winless in nine league matches.', 2),
+      fact(13, fixture.match_id, 'MATCHUP_XG', 'Fulham have the stronger chance matchup.', 3),
+      fact(14, fixture.match_id, 'PROCESS', 'A fourth support should not crowd out the risk section.', 4),
+      fact(20, fixture.match_id, 'CURRENT_SEASON_PROCESS', 'Palace have the stronger current-season chance profile.', 1, 'CONTRADICTS'),
+    ] : [fact(200 + index, fixture.match_id, 'PROCESS', 'One signed model input supports the numerical lean.', 1)],
   })),
 };
 
@@ -80,7 +101,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/fixture-facts-api**', async (route) => route.fulfill({ json: factsPayload }));
 });
 
-test('fixture scan renders all calls, accessible form and bounded aligned evidence', async ({ page }) => {
+test('fixture scan renders calls, bounded evidence and an atomic accessible matchup modal', async ({ page }) => {
   await page.goto('/?view=fixtures&gw=3');
   await expect(page.getByRole('heading', { level: 1, name: 'Fixtures' })).toBeVisible();
   const cards = page.locator('.fixture-card');
@@ -102,6 +123,51 @@ test('fixture scan renders all calls, accessible form and bounded aligned eviden
 
   await expect(cards.nth(1).getByText(/Evidence is refreshing/)).toBeVisible();
   await expect(cards.nth(1).getByRole('button', { name: /Decision evidence/ })).toHaveCount(0);
+  await expect(cards.nth(1).getByRole('button', { name: 'Matchup refreshing' })).toBeDisabled();
+
+  const openButton = cards.nth(0).getByRole('button', { name: 'Open matchup' });
+  await openButton.click();
+  const dialog = page.getByRole('dialog', { name: 'Fulham vs Crystal Palace' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Close Fulham vs Crystal Palace' })).toBeFocused();
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe('hidden');
+
+  const story = await dialog.locator('.match-story p').textContent();
+  expect(story).toContain('effectively split');
+  expect(story).toContain('0.7pp');
+  expect(story).not.toContain('Fulham have won six of ten home matches.');
+  await expect(dialog.getByRole('heading', { name: 'Supports the call' })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: 'Counterpoints / risks' })).toBeVisible();
+  await expect(dialog.getByText('Palace have the stronger current-season chance profile.')).toBeVisible();
+  await expect(dialog.getByText('A fourth support should not crowd out the risk section.')).toHaveCount(0);
+
+  const technical = dialog.getByText('Technical details', { exact: true });
+  await expect(dialog.getByText('Raw modal score', { exact: true })).not.toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(technical).toBeFocused();
+  await technical.click();
+  await expect(dialog.getByText('Raw modal score', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Selector rule', { exact: true })).toBeVisible();
+
+  const modalA11y = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(modalA11y.violations).toEqual([]);
+
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
+  await expect(openButton).toBeFocused();
+
+  await openButton.click();
+  await expect(dialog).toBeVisible();
+  await page.locator('.dialog-backdrop').click({ position: { x: 4, y: 4 } });
+  await expect(dialog).toHaveCount(0);
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe('');
+
+  await openButton.click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close Fulham vs Crystal Palace' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(openButton).toBeFocused();
 
   const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);

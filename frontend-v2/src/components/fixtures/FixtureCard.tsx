@@ -2,11 +2,13 @@ import { useState } from 'react';
 import type { FixtureFact, FixtureFactsItem, FplFixtureResult } from '../../lib/contracts';
 import { actualOutcome, assessCall, outcomeLabel, percent, selectCardFacts } from '../../lib/fixtures';
 import { FormStrip } from './FormStrip';
+import { MatchupModal } from './MatchupModal';
 
 type EvidenceStatus = 'aligned' | 'mismatch' | 'unavailable';
 
 export function FixtureCard({ fixture, facts, evidenceStatus }: { fixture: FplFixtureResult; facts: FixtureFactsItem | undefined; evidenceStatus: EvidenceStatus }) {
   const [expanded, setExpanded] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const home = fixture.home_team ?? 'Home';
   const away = fixture.away_team ?? 'Away';
   const prediction = fixture.prediction;
@@ -18,6 +20,7 @@ export function FixtureCard({ fixture, facts, evidenceStatus }: { fixture: FplFi
   const scoreActual = fixture.home_score != null && fixture.away_score != null ? `${fixture.home_score}-${fixture.away_score}` : null;
   const callText = assessment.top ? outcomeLabel(assessment.top.code, home, away) : 'Prediction unavailable';
   const secondText = assessment.second ? outcomeLabel(assessment.second.code, home, away) : null;
+  const modalReady = evidenceStatus === 'aligned' && facts != null;
 
   return <article className="fixture-card" aria-label={`Fixture ${home} vs ${away}`}>
     <header className="fixture-card-header">
@@ -62,6 +65,12 @@ export function FixtureCard({ fixture, facts, evidenceStatus }: { fixture: FplFi
       </button>
       {expanded ? <ul className="evidence-list">{selectedFacts.map((fact) => <EvidenceFact key={fact.id} fact={fact} />)}</ul> : null}
     </div> : evidenceStatus === 'mismatch' ? <p className="evidence-pending" role="status">Evidence is refreshing; supporting facts stay hidden until they match this forecast.</p> : null}
+
+    <div className="matchup-action">
+      <button className="matchup-open" type="button" disabled={!modalReady} onClick={() => setModalOpen(true)}>{modalReady ? 'Open matchup' : evidenceStatus === 'mismatch' ? 'Matchup refreshing' : 'Matchup unavailable'}</button>
+    </div>
+
+    {modalReady && facts ? <MatchupModal open={modalOpen} onClose={() => setModalOpen(false)} fixture={fixture} facts={facts} /> : null}
   </article>;
 }
 

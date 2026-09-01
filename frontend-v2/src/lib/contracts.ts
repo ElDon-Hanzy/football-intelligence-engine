@@ -18,6 +18,9 @@ export const ScorelineSchema = z.object({
 });
 
 export const FixturePredictionSchema = z.object({
+  snapshot_id: z.number().int().positive().optional(),
+  source_change_id: z.string().nullable().optional(),
+  captured_at: z.string().optional(),
   markets: MarketsSchema.optional(),
   home_lambda: z.number().nonnegative().optional(),
   away_lambda: z.number().nonnegative().optional(),
@@ -66,7 +69,11 @@ export const FplFixtureResultSchema = z.object({
   kickoff_time: z.string(),
   home_team: z.string().nullable(),
   away_team: z.string().nullable(),
+  home_short: z.string().nullable().optional(),
+  away_short: z.string().nullable().optional(),
   finished: z.boolean(),
+  home_score: z.number().nullable().optional(),
+  away_score: z.number().nullable().optional(),
   prediction: FixturePredictionSchema.nullable(),
 }).passthrough();
 
@@ -80,6 +87,81 @@ export const FplApiSchema = z.object({
   squad: z.array(PlayerSchema).optional().default([]),
   fixture_results: z.array(FplFixtureResultSchema).optional().default([]),
 }).passthrough();
+
+const FactAlignmentSchema = z.enum(['SUPPORTS', 'CONTRADICTS', 'NEUTRAL']);
+const OutcomeCodeSchema = z.enum(['H', 'D', 'A']);
+
+export const RecentTeamResultSchema = z.object({
+  team_id: z.number(),
+  sequence_no: z.number().int().positive(),
+  opponent_team_id: z.number(),
+  opponent_name: z.string().nullable().optional(),
+  opponent_short: z.string().nullable().optional(),
+  fixture_kickoff: z.string(),
+  venue: z.string().nullable().optional(),
+  goals_for: z.number().int().nonnegative(),
+  goals_against: z.number().int().nonnegative(),
+  result: z.enum(['W', 'D', 'L']),
+}).passthrough();
+
+export const FixtureFactSchema = z.object({
+  id: z.number(),
+  snapshot_run_id: z.number(),
+  match_id: z.number(),
+  team_id: z.number(),
+  opponent_team_id: z.number(),
+  fact_type: z.string().min(1),
+  usefulness_score: z.number(),
+  card_rank: z.number().int().positive().nullable().optional(),
+  alignment: FactAlignmentSchema,
+  one_liner: z.string().min(1),
+  payload: z.unknown().optional(),
+  evidence_cutoff: z.string(),
+}).passthrough();
+
+export const FixtureFactsTeamSchema = z.object({
+  id: z.number(),
+  name: z.string().nullable(),
+  short_name: z.string().nullable(),
+  recent: z.array(RecentTeamResultSchema),
+}).passthrough();
+
+export const FixtureAlignmentBasisSchema = z.object({
+  snapshot_id: z.number().int().positive(),
+  captured_at: z.string(),
+  source_change_id: z.string().nullable(),
+  top_outcome: OutcomeCodeSchema.nullable(),
+  markets: MarketsSchema,
+}).passthrough();
+
+export const FixtureFactsItemSchema = z.object({
+  match_id: z.number(),
+  gameweek: z.number().int().min(1).max(38),
+  kickoff_time: z.string(),
+  home: FixtureFactsTeamSchema,
+  away: FixtureFactsTeamSchema,
+  alignment_basis: FixtureAlignmentBasisSchema.nullable(),
+  card_facts: z.array(FixtureFactSchema),
+  modal_facts: z.array(FixtureFactSchema),
+}).passthrough();
+
+const FixtureFactsAvailableSchema = z.object({
+  ok: z.literal(true),
+  gameweek: z.number().int().min(1).max(38),
+  facts_available: z.literal(true),
+  evidence_source: z.string(),
+  snapshot_run: z.object({ id: z.number(), as_of_gameweek: z.number().int().nonnegative() }).passthrough(),
+  fixtures: z.array(FixtureFactsItemSchema),
+}).passthrough();
+
+const FixtureFactsUnavailableSchema = z.object({
+  ok: z.literal(true),
+  gameweek: z.number().int().min(1).max(38),
+  facts_available: z.literal(false),
+  reason: z.string().min(1),
+}).passthrough();
+
+export const FixtureFactsApiSchema = z.discriminatedUnion('facts_available', [FixtureFactsAvailableSchema, FixtureFactsUnavailableSchema]);
 
 const ManagerPlanSelectionSchema = z.union([
   z.number(),
@@ -118,6 +200,9 @@ export type Fixture = z.infer<typeof FixtureSchema>;
 export type FixtureApi = z.infer<typeof FixtureApiSchema>;
 export type FplApi = z.infer<typeof FplApiSchema>;
 export type FplFixtureResult = z.infer<typeof FplFixtureResultSchema>;
+export type FixtureFact = z.infer<typeof FixtureFactSchema>;
+export type FixtureFactsApi = z.infer<typeof FixtureFactsApiSchema>;
+export type FixtureFactsItem = z.infer<typeof FixtureFactsItemSchema>;
 export type ManagerPlan = z.infer<typeof ManagerPlanSchema>;
 export type ManagerPlanApi = z.infer<typeof ManagerPlanApiSchema>;
 export type Player = z.infer<typeof PlayerSchema>;

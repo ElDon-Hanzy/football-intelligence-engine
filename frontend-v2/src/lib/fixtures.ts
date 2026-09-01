@@ -37,7 +37,8 @@ export function assessCall(markets: MarketSet | null | undefined): CallAssessmen
     { code: 'H', probability: markets.home_win },
     { code: 'D', probability: markets.draw },
     { code: 'A', probability: markets.away_win },
-  ].sort((a, b) => b.probability - a.probability);
+  ];
+  outcomes.sort((a, b) => b.probability - a.probability);
   const top = outcomes[0] ?? null;
   const second = outcomes[1] ?? null;
   if (!top || !second) return { state: 'unavailable', top: null, second: null, margin: null };

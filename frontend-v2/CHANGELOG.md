@@ -22,3 +22,32 @@ Append-only implementation narrative for C0168 and child batches.
 - Pages artifact verified: legacy root `index.html` Git blob `09745c497dfd824cdc0c3306535aad3737558844` exactly matches the release commit; `/v2/` contains compiled `index.html` plus hashed JS/CSS assets; `frontend-v2/` source is excluded from the public artifact.
 - No model, API, database or historical forecast changes.
 - Rollback remains the unchanged legacy root site. Next batch: C0170 app shell/navigation/Home.
+
+## 2026-09-02 — C0170 App shell and Command Center completed
+- Replaced the v2 scaffold with a responsive application shell, desktop rail, mobile bottom navigation, gameweek routing, deterministic loading/error states and a decision-first Home surface.
+- Home reads the saved manager-plan truth rather than reconstructing transfer/chip/risk decisions from projection data; stale saved plans are labelled instead of being presented as fresh recommendations.
+- Added 390×844, 430×932, 768×1024 and 1366×768 browser coverage, visible 44px navigation-target checks, horizontal-overflow checks and axe WCAG A/AA checks.
+- Accessibility QA found a real 3.78:1 primary-action contrast defect; the action token was darkened to `#216fcf` and the unchanged axe gate then passed at approximately 4.95:1.
+- Full green implementation/deployment gate: workflow run `33570349729`, final runtime commit `08221ac87a934aaf4818d721545b0ee7f27f63d5`.
+- Known limitation: Fixtures, FPL detail, Performance and Engine remain bounded placeholders until their dedicated batches.
+- Rollback remains the unchanged legacy root site; v2 remains isolated under `/v2/`.
+
+## 2026-09-02 — C0177 Authoritative manager-plan read contract completed
+- C0170 exposed that `fpl-api` does not carry transfers, chip, risk or current manager-plan status; the frontend was prevented from defaulting missing fields into a false HOLD decision.
+- Added read-only `fpl-manager-plan-api` v1 over `fpl_manager_plans`, returning the latest stored plan for a requested GW or explicit null when absent.
+- The endpoint is JWT-protected at the Supabase gateway; the browser uses only the public anon credential while service-role access remains server-side.
+- Added runtime Zod validation and a production live-contract smoke test for GW3 manager-plan id 3.
+- Endpoint source/config commits: `0cef65ff15f07e1242ce8f7534d6c6f25d62c00a` and `4d1c523839161f0ec5b6ca6550d86fa6976fddcf`; live smoke introduced in `6404e713ea983e72f4d68c863ce0bcaec654cb34` and passed in C0170 workflow `33570349729`.
+- No manager-plan, model, forecast or historical rows were mutated.
+- Rollback: Home fails closed to an unavailable/stale decision state if this read contract is unavailable.
+
+## 2026-09-02 — C0178 Deterministic production fixture selector completed
+- C0171 contract audit found equal-time C0159 parent and C0166 child fixture snapshots could produce contradictory prediction and evidence contracts. Fulham–Crystal Palace was the concrete failure case.
+- Added `current_production_fixture_prediction_v01`, selecting exactly one pre-kickoff snapshot per match by `captured_at DESC, id DESC`; no forecast row is rewritten or deleted.
+- Rewired live evidence alignment to the same selector, upgraded `fpl-api` to v10 and `fixture-facts-api` to v3, and exposed snapshot ID/source Change ID on both read contracts.
+- Added a fail-closed live parity gate comparing snapshot ID, source Change ID and all three 1X2 probabilities for every GW3 fixture. It explicitly verifies Fulham–Palace resolves to the C0166 near-tie rather than the C0159 parent.
+- The first parity run correctly exposed nullable historical `opponent_team_id` values in form history; the contract was fixed to preserve null rather than manufacture an ID.
+- C0167 post-change audit remained clean: 10/10 GW3 fixtures, 0 hard violations; Fulham–Palace remains non-categorical at a 0.74pp gap.
+- Full green implementation/deployment gate: workflow run `33571479835`; contract fix commit `c293914c5b7a0d4e6a924c10e3ac5efbf851b083`.
+- Known limitation: C0178 only establishes deterministic read truth; the new scan-card UX itself remains C0171 work.
+- Rollback: the underlying append-only prediction snapshots are unchanged; consumers can revert to the previous read path without data migration.

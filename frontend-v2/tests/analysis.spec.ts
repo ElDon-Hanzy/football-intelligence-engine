@@ -94,8 +94,9 @@ test('Markets stays decision-safe while exposing model/price context', async ({ 
 test('Performance is sample-first and keeps the unevaluated test cohort pending', async ({ page }) => {
   await page.goto('/?view=performance&gw=3');
   await expect(page.getByRole('heading', { level: 1, name: 'Performance' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '10 fixtures evaluated' })).toBeVisible();
-  await expect(page.getByText('60%')).toBeVisible();
+  const hero = page.locator('.analysis-hero');
+  await expect(hero.getByRole('heading', { name: '10 fixtures evaluated' })).toBeVisible();
+  await expect(hero.getByText('60%', { exact: true })).toBeVisible();
   await expect(page.getByText('GW3 test remains unevaluated')).toBeVisible();
   await expect(page.getByText('FULL_V04_ELO_NO_SCHEDULE')).toBeVisible();
   await assertPageQuality(page);
@@ -105,7 +106,7 @@ test('Engine keeps research diagnostics out of production semantics', async ({ p
   await page.goto('/?view=engine&gw=3');
   await expect(page.getByRole('heading', { level: 1, name: 'Engine & Research' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Model 0.3' })).toBeVisible();
-  await expect(page.getByText('C0166', { exact: false })).toBeVisible();
+  await expect(page.locator('.analysis-hero').getByText(/Current fixture layer: C0166/)).toBeVisible();
   await expect(page.getByText('Governance clean')).toBeVisible();
   await expect(page.getByText('Research only', { exact: true }).first()).toBeVisible();
   const width = page.viewportSize()?.width ?? 0;

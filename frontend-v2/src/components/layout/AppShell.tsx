@@ -6,6 +6,7 @@ type AppShellProps = {
   children: ReactNode;
   view: AppView;
   gameweek: number;
+  liveGameweek?: number | null;
   onNavigate: (view: AppView) => void;
   onGameweekChange: (gameweek: number) => void;
 };
@@ -21,7 +22,8 @@ const desktopNavigation: ReadonlyArray<NavItem> = [
 ];
 const mobileNavigation = desktopNavigation.filter((item) => item.view !== 'engine');
 
-export function AppShell({ children, view, gameweek, onNavigate, onGameweekChange }: AppShellProps) {
+export function AppShell({ children, view, gameweek, liveGameweek = null, onNavigate, onGameweekChange }: AppShellProps) {
+  const liveLabel = liveGameweek == null ? 'Live GW' : `Live GW · GW${liveGameweek}`;
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">Skip to content</a>
@@ -38,7 +40,7 @@ export function AppShell({ children, view, gameweek, onNavigate, onGameweekChang
           <div><span className="top-eyebrow">Decision workspace</span><strong className="top-title">{desktopNavigation.find((item) => item.view === view)?.label ?? 'Home'}</strong></div>
           <div className="top-actions">
             <button className={`engine-shortcut${view === 'engine' ? ' is-active' : ''}`} type="button" onClick={() => onNavigate('engine')} aria-label="Engine and research">Engine</button>
-            <label className="gw-control"><span className="sr-only">Gameweek</span><select value={gameweek} onChange={(event) => onGameweekChange(Number(event.target.value))} aria-label="Gameweek"><option value={0}>Live GW</option>{Array.from({ length: 38 }, (_, index) => index + 1).map((gw) => <option key={gw} value={gw}>GW{gw}</option>)}</select></label>
+            <label className="gw-control"><span className="sr-only">Gameweek</span><select value={gameweek} onChange={(event) => onGameweekChange(Number(event.target.value))} aria-label="Gameweek"><option value={0}>{liveLabel}</option>{Array.from({ length: 38 }, (_, index) => index + 1).map((gw) => <option key={gw} value={gw}>GW{gw}</option>)}</select></label>
             <span className="parallel-chip">V2 parallel</span>
           </div>
         </header>

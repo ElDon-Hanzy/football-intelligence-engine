@@ -57,7 +57,19 @@ jobs:
 
       - name: E2E and accessibility smoke UI v2
         working-directory: frontend-v2
-        run: npm run test:e2e
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run test:e2e 2>&1 | tee e2e.log
+
+      - name: Preserve E2E diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-v2-e2e-log-${{ github.run_attempt }}
+          path: frontend-v2/e2e.log
+          if-no-files-found: ignore
+          retention-days: 1
 
       - name: Prepare Pages artifact
         run: |

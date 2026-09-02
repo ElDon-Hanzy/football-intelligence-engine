@@ -1,6 +1,23 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+const gameweekStatusPayload = {
+  ok: true,
+  live_gameweek: 3,
+  reason: 'NEXT_UNFINISHED_GAMEWEEK',
+  as_of: '2026-09-02T01:00:00Z',
+  schedule: [{
+    gameweek: 3,
+    fixtures: 10,
+    finished: 0,
+    unfinished: 10,
+    first_kickoff: '2026-09-04T19:00:00Z',
+    last_kickoff: '2026-09-06T15:30:00Z',
+  }],
+  teams: [],
+  semantics: { frozen_projection_runs_do_not_define_live_gameweek: true },
+};
+
 const fplPayload = {
   ok: true,
   gameweek: 3,
@@ -49,6 +66,7 @@ const managerPlanPayload = {
 };
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/gameweek-status-api**', async (route) => route.fulfill({ json: gameweekStatusPayload }));
   await page.route('**/fpl-api**', async (route) => route.fulfill({ json: fplPayload }));
   await page.route('**/fpl-manager-plan-api**', async (route) => route.fulfill({ json: managerPlanPayload }));
 });

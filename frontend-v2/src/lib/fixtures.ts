@@ -113,7 +113,7 @@ function selectModalGroup(facts: FixtureFact[], limit: number): FixtureFact[] {
   return distinctFromOrdered(ordered, limit);
 }
 
-export function groupModalFacts(facts: FixtureFact[], perGroup = 3): ModalEvidenceGroups {
+export function groupModalFacts(facts: FixtureFact[], perGroup = 5): ModalEvidenceGroups {
   return {
     supports: selectModalGroup(facts.filter((fact) => fact.alignment === 'SUPPORTS'), perGroup),
     contradicts: selectModalGroup(facts.filter((fact) => fact.alignment === 'CONTRADICTS'), perGroup),
@@ -135,22 +135,22 @@ export function buildMatchStory(fixture: FplFixtureResult, facts: FixtureFactsIt
   const counterCount = allGroups.contradicts.length;
 
   if (assessment.state === 'no-edge') {
-    const evidence = supportCount
-      ? `${supportCount} distinct signed input${supportCount === 1 ? '' : 's'} support the leading thesis`
-      : 'No distinct supporting input clears the evidence gate';
-    const counter = counterCount
-      ? `, while ${counterCount} counter-input${counterCount === 1 ? '' : 's'} push the other way.`
-      : ', but the probability gap is still too small for a categorical call.';
-    return `The model is effectively split: ${topLabel} at ${precisePercent(assessment.top.probability)} is only ${marginPp.toFixed(1)}pp ahead of ${secondLabel}. ${evidence}${counter}`;
+    const leadCase = supportCount
+      ? `${supportCount} distinct evidence families lean toward ${topLabel}`
+      : `The contextual evidence does not add a clear independent case for ${topLabel}`;
+    const otherCase = counterCount
+      ? `${counterCount} push toward the other side`
+      : `the opposing evidence is also limited`;
+    return `This is a genuine split, not a hidden call: ${topLabel} at ${precisePercent(assessment.top.probability)} is only ${marginPp.toFixed(1)}pp ahead of ${secondLabel}. ${leadCase}, while ${otherCase}. That balance is why the fixture remains No clear edge.`;
   }
 
   const strength = assessment.state === 'strong' ? 'clear' : 'narrow';
   const evidence = supportCount
-    ? `${supportCount} distinct signed input${supportCount === 1 ? '' : 's'} support the call`
-    : 'No supporting input clears the display gate';
+    ? `${supportCount} distinct evidence families support the thesis`
+    : 'The probability lead has no additional independent supporting family in the current evidence set';
   const counter = counterCount
-    ? `, while ${counterCount} counter-input${counterCount === 1 ? '' : 's'} remain live.`
-    : '.';
+    ? `, with ${counterCount} credible counterpoint${counterCount === 1 ? '' : 's'} still live.`
+    : ', with no material counterpoint currently surviving the evidence filters.';
   return `${topLabel} is the ${strength} 1X2 thesis at ${precisePercent(assessment.top.probability)}, ${marginPp.toFixed(1)}pp ahead of ${secondLabel}. ${evidence}${counter}`;
 }
 

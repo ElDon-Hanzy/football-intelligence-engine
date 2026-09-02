@@ -8,6 +8,7 @@ import './styles/global.css';
 import './styles/fixtures.css';
 import './styles/modal.css';
 import './styles/fpl.css';
+import './styles/fpl-mobile.css';
 
 const root = document.getElementById('root');
 

@@ -246,7 +246,7 @@ const routes = [
   ['home', 'Command Center'],
   ['fixtures', 'Fixtures'],
   ['fpl', 'FPL decision workspace'],
-  ['markets', 'Markets'],
+  ['markets', 'Betting'],
   ['performance', 'Performance'],
   ['engine', 'Engine & Research'],
 ] as const;

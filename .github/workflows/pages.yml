@@ -71,6 +71,10 @@ jobs:
           mkdir -p _site/v2
           cp -R frontend-v2/dist/. _site/v2/
 
+      - name: Verify Pages artifact and legacy rollback
+        working-directory: frontend-v2
+        run: npm run artifact:verify
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
         with:
@@ -84,3 +88,53 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Verify deployed legacy root and v2 entrypoint
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          set -euo pipefail
+          ROOT_URL="${PAGE_URL%/}/"
+          V2_URL="${PAGE_URL%/}/v2/"
+
+          fetch_with_retry() {
+            local url="$1"
+            local destination="$2"
+            for attempt in 1 2 3 4 5; do
+              if curl --fail --silent --show-error --location "$url" --output "$destination"; then
+                return 0
+              fi
+              sleep 2
+            done
+            return 1
+          }
+
+          fetch_with_retry "$ROOT_URL" /tmp/pages-root.html
+          fetch_with_retry "$V2_URL" /tmp/pages-v2.html
+
+          cmp -s index.html /tmp/pages-root.html || {
+            echo "C0175 deployment integrity failure: live legacy root differs from repository index.html"
+            exit 1
+          }
+          cmp -s frontend-v2/dist/index.html /tmp/pages-v2.html || {
+            echo "C0175 deployment integrity failure: live /v2/ index differs from built dist/index.html"
+            exit 1
+          }
+
+          V2_JS_ASSET="$(grep -oE '\./assets/[^\"]+\.js' /tmp/pages-v2.html | head -n 1)"
+          test -n "$V2_JS_ASSET" || {
+            echo "C0175 deployment integrity failure: live /v2/ index has no JavaScript asset reference"
+            exit 1
+          }
+          fetch_with_retry "${V2_URL}${V2_JS_ASSET#./}" /tmp/pages-v2.js
+          test -s /tmp/pages-v2.js || {
+            echo "C0175 deployment integrity failure: live /v2/ JavaScript asset is empty"
+            exit 1
+          }
+
+          if curl --fail --silent --location "${ROOT_URL}frontend-v2/package.json" --output /dev/null; then
+            echo "C0175 deployment integrity failure: frontend-v2 source is publicly deployed"
+            exit 1
+          fi
+
+          echo "C0175 live deployment integrity verified"

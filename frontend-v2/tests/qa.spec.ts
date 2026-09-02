@@ -9,6 +9,7 @@ function desktopOnly(projectName: string): void {
 }
 
 const outagePatterns = [
+  '**/gameweek-status-api**',
   '**/fpl-api**',
   '**/fpl-manager-plan-api**',
   '**/fixture-facts-api**',
@@ -35,7 +36,7 @@ test('malformed FPL contracts fail closed without an unhandled browser error', a
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   await page.route('**/fpl-api**', async (route) => route.fulfill({ json: { ok: true, gameweek: 3, squad: 'not-an-array' } }));
-  await page.route('**/fpl-manager-plan-api**', async (route) => route.fulfill({ json: { ok: true, gameweek: 3, available_gameweeks: [], plan: { invalid: true } } }));
+  await page.route('**/fpl-manager-plan-api**', async (route) => route.fulfill({ json: { ok: true, gameweek: 3, available_gameweeks: [], plan: { invalid: true } }));
   await page.goto('/?view=fpl&gw=3');
   await expect(page.getByRole('heading', { name: 'FPL decision data is unavailable.' })).toBeVisible();
   await expect(page.getByText('will not reconstruct a manager decision', { exact: false })).toBeVisible();

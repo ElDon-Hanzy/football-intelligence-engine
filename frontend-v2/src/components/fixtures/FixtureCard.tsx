@@ -28,9 +28,12 @@ export function FixtureCard({ fixture, facts, evidenceStatus, homeTeamCode = nul
   const scoreActual = fixture.home_score != null && fixture.away_score != null ? `${fixture.home_score}-${fixture.away_score}` : null;
   const callDisplay = assessment.top?.code === 'H' ? `${homeShort} win` : assessment.top?.code === 'A' ? `${awayShort} win` : assessment.top?.code === 'D' ? 'Draw' : 'Unavailable';
   const modalReady = evidenceStatus === 'aligned' && facts != null;
-  const directionAuditable = fixture.finished && outcome && (assessment.state === 'strong' || assessment.state === 'lean');
+  const directionAuditable = Boolean(fixture.finished && outcome && assessment.top?.code);
   const directionCorrect = directionAuditable ? assessment.top?.code === outcome : null;
   const scoreCorrect = fixture.finished && headlineScore && scoreActual ? scoreActual === headlineScore : null;
+  const predictionLabel = assessment.state === 'no-edge'
+    ? fixture.finished && assessment.top?.code ? `No clear edge · top ${callDisplay}` : 'No clear edge'
+    : callDisplay;
 
   return <article className="fixture-card" aria-label={`Fixture ${home} vs ${away}`}>
     <header className="fixture-card-header">
@@ -42,8 +45,8 @@ export function FixtureCard({ fixture, facts, evidenceStatus, homeTeamCode = nul
       <CompactTeam name={home} shortName={homeShort} teamCode={homeTeamCode} recent={facts?.home.recent ?? []} />
       <div className="compact-prediction" aria-label="Prediction summary">
         <span className={`compact-call-state is-${assessment.state}`}>{callStateLabel(assessment.state)}</span>
-        <strong>{assessment.state === 'no-edge' ? 'No clear edge' : callDisplay}{directionCorrect == null ? null : <AuditMark correct={directionCorrect} label="1X2" />}</strong>
-        <small>Most likely exact score <b>{headlineScore ?? '—'}</b>{scoreCorrect == null ? null : <AuditMark correct={scoreCorrect} label="exact score" />}</small>
+        <strong>{predictionLabel}{directionCorrect == null ? null : <AuditMark correct={directionCorrect} label="top 1X2 prediction" />}</strong>
+        <small>Most likely exact score <b>{headlineScore ?? '—'}</b>{scoreCorrect == null ? null : <AuditMark correct={scoreCorrect} label="exact-score prediction" />}</small>
         {fixture.finished ? <small className="actual-score">Actual {scoreActual ?? '—'}</small> : null}
       </div>
       <CompactTeam name={away} shortName={awayShort} teamCode={awayTeamCode} recent={facts?.away.recent ?? []} away />

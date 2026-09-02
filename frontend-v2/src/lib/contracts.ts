@@ -218,12 +218,27 @@ export const ManagerStateSchema = z.object({
   evidence: z.unknown(),
 }).passthrough();
 
+export const ActualManagerDecisionSchema = z.object({
+  id: z.number().int().positive(),
+  gameweek: z.number().int().min(1).max(38),
+  captured_at: z.string(),
+  captain_player_id: z.number().nullable(),
+  vice_player_id: z.number().nullable(),
+  starting_xi: z.array(ManagerPlanSelectionSchema).nullable().optional(),
+  bench_order: z.array(ManagerPlanSelectionSchema).nullable().optional(),
+  chip: z.string().nullable(),
+  source: z.string().min(1),
+  notes: z.string().nullable().optional(),
+  correction_of_id: z.number().nullable().optional(),
+}).passthrough();
+
 export const ManagerPlanApiSchema = z.object({
   ok: z.literal(true),
   gameweek: z.number().int().min(1).max(38).nullable(),
   available_gameweeks: z.array(z.number().int().min(1).max(38)),
   plan: ManagerPlanSchema.nullable(),
   manager_state: ManagerStateSchema.nullable().optional(),
+  actual_manager_decision: ActualManagerDecisionSchema.nullable().optional(),
 }).passthrough();
 
 export type Fixture = z.infer<typeof FixtureSchema>;
@@ -235,5 +250,6 @@ export type FixtureFactsApi = z.infer<typeof FixtureFactsApiSchema>;
 export type FixtureFactsItem = z.infer<typeof FixtureFactsItemSchema>;
 export type ManagerPlan = z.infer<typeof ManagerPlanSchema>;
 export type ManagerState = z.infer<typeof ManagerStateSchema>;
+export type ActualManagerDecision = z.infer<typeof ActualManagerDecisionSchema>;
 export type ManagerPlanApi = z.infer<typeof ManagerPlanApiSchema>;
 export type Player = z.infer<typeof PlayerSchema>;

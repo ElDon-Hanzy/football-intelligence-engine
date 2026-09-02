@@ -1,9 +1,38 @@
 import { useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
 import { fetchValidated, publicGatewayHeaders } from './api';
 import { analysisEndpoints } from './analysis-api';
 import { BettingApiSchema, CalibrationSummarySchema, EngineDiagnosticsSchema, type BettingFixture } from './analysis-contracts';
 
 const withGameweek = (endpoint: string, gameweek: number) => gameweek > 0 ? `${endpoint}?gw=${gameweek}` : endpoint;
+
+const StrongestBettingCallSchema = z.object({
+  type: z.string(),
+  match_id: z.number().int().positive(),
+  fixture: z.string(),
+  selection: z.string(),
+  probability: z.number().min(0).max(1),
+  home_lambda: z.number().nullable(),
+  away_lambda: z.number().nullable(),
+}).passthrough();
+
+const HumanInsightsMarketsSchema = z.object({
+  ok: z.literal(true),
+  gameweek: z.number().int().min(1).max(38),
+  prediction_run_id: z.number().int().positive(),
+  model_version: z.string().nullable().optional(),
+  generated_at: z.string(),
+  betting_recommendations: z.array(StrongestBettingCallSchema).max(4),
+}).passthrough();
+
+export type StrongestBettingCall = z.infer<typeof StrongestBettingCallSchema>;
+
+export function useStrongestBettingCalls(gameweek: number) {
+  return useQuery({
+    queryKey: ['strongest-betting-calls', gameweek],
+    queryFn: ({ signal }) => fetchValidated(withGameweek(analysisEndpoints.humanInsights, gameweek), HumanInsightsMarketsSchema, signal),
+  });
+}
 
 export function useMarketsData(gameweek: number) {
   return useQuery({

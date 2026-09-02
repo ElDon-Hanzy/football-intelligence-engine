@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { endpoints } from '../src/lib/api';
 import { analysisEndpoints } from '../src/lib/analysis-api';
 import { BettingApiSchema } from '../src/lib/analysis-contracts';
@@ -6,6 +6,29 @@ import { FplApiSchema } from '../src/lib/contracts';
 
 function desktopOnly(projectName: string): void {
   test.skip(projectName !== 'desktop-1366', 'Live current/historical parity runs once per CI matrix.');
+}
+
+const outagePatterns = [
+  '**/fpl-api**',
+  '**/fpl-manager-plan-api**',
+  '**/fixture-facts-api**',
+  '**/betting-api**',
+  '**/calibration-summary**',
+  '**/engine-diagnostics-api**',
+] as const;
+
+async function routeAllApisTo503(page: Page): Promise<void> {
+  for (const pattern of outagePatterns) {
+    await page.route(pattern, async (route) => route.fulfill({ status: 503, json: { ok: false, error: 'qa outage' } }));
+  }
+}
+
+async function assertNoHorizontalOverflow(page: Page): Promise<void> {
+  const dimensions = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
 }
 
 test('malformed FPL contracts fail closed without an unhandled browser error', async ({ page }) => {
@@ -22,18 +45,128 @@ test('malformed FPL contracts fail closed without an unhandled browser error', a
 test('core navigation produces no unhandled page errors with deterministic API failures', async ({ page }) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
-  await page.route('**/fpl-api**', async (route) => route.fulfill({ status: 503, json: { ok: false, error: 'qa outage' } }));
-  await page.route('**/fpl-manager-plan-api**', async (route) => route.fulfill({ status: 503, json: { ok: false, error: 'qa outage' } }));
-  await page.route('**/fixture-facts-api**', async (route) => route.fulfill({ status: 503, json: { ok: false, error: 'qa outage' } }));
-  await page.route('**/betting-api**', async (route) => route.fulfill({ status: 503, json: { ok: false, error: 'qa outage' } }));
-  await page.route('**/calibration-summary**', async (route) => route.fulfill({ status: 503, json: { ok: false, error: 'qa outage' } }));
-  await page.route('**/engine-diagnostics-api**', async (route) => route.fulfill({ status: 503, json: { ok: false, error: 'qa outage' } }));
+  await routeAllApisTo503(page);
 
   for (const view of ['fpl', 'fixtures', 'markets', 'performance', 'engine']) {
     await page.goto(`/?view=${view}&gw=3`);
     await expect(page.locator('body')).toBeVisible();
   }
   expect(pageErrors).toEqual([]);
+});
+
+test('every shell navigation path and browser history transition resolves to the intended route', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await routeAllApisTo503(page);
+  await page.goto('/?view=home&gw=3');
+
+  const visibleNavigation = page.locator('nav:visible');
+  const primaryViews = [
+    ['Fixtures', 'fixtures'],
+    ['FPL', 'fpl'],
+    ['Markets', 'markets'],
+    ['Performance', 'performance'],
+    ['Home', 'home'],
+  ] as const;
+
+  for (const [label, view] of primaryViews) {
+    const control = visibleNavigation.getByRole('button', { name: label, exact: true });
+    await control.click();
+    await expect(page).toHaveURL(new RegExp(`view=${view}.*gw=3|gw=3.*view=${view}`));
+    await expect(control).toHaveAttribute('aria-current', 'page');
+  }
+
+  const engine = page.getByRole('button', { name: 'Engine and research' });
+  await engine.click();
+  await expect(page).toHaveURL(/view=engine/);
+  await expect(engine).toHaveClass(/is-active/);
+
+  await visibleNavigation.getByRole('button', { name: 'Fixtures', exact: true }).click();
+  await visibleNavigation.getByRole('button', { name: 'FPL', exact: true }).click();
+  await expect(page).toHaveURL(/view=fpl/);
+  await page.goBack();
+  await expect(page).toHaveURL(/view=fixtures/);
+  await page.goForward();
+  await expect(page).toHaveURL(/view=fpl/);
+
+  expect(pageErrors).toEqual([]);
+});
+
+const loadingCases = [
+  { view: 'home', patterns: ['**/fpl-api**', '**/fpl-manager-plan-api**'], label: 'Loading command center', errorHeading: 'Live decision data is temporarily unavailable.' },
+  { view: 'fixtures', patterns: ['**/fpl-api**'], label: 'Loading fixtures', errorHeading: 'Fixture predictions are temporarily unavailable.' },
+  { view: 'fpl', patterns: ['**/fpl-api**', '**/fpl-manager-plan-api**'], label: 'Loading FPL decision workspace', errorHeading: 'FPL decision data is unavailable.' },
+  { view: 'markets', patterns: ['**/betting-api**'], label: 'Loading Markets', errorHeading: 'Market data is unavailable.' },
+  { view: 'performance', patterns: ['**/calibration-summary**'], label: 'Loading Performance', errorHeading: 'Validation data is unavailable.' },
+  { view: 'engine', patterns: ['**/engine-diagnostics-api**'], label: 'Loading Engine diagnostics', errorHeading: 'Diagnostics are unavailable.' },
+] as const;
+
+for (const loadingCase of loadingCases) {
+  test(`${loadingCase.view} exposes a deterministic loading state before failing closed`, async ({ page }) => {
+    const releases: Array<() => void> = [];
+    for (const pattern of loadingCase.patterns) {
+      await page.route(pattern, async (route) => {
+        await new Promise<void>((resolve) => releases.push(resolve));
+        await route.fulfill({ status: 503, json: { ok: false, error: 'qa released outage' } });
+      });
+    }
+
+    await page.goto(`/?view=${loadingCase.view}&gw=3`);
+    const loading = page.getByLabel(loadingCase.label, { exact: true });
+    await expect(loading).toBeVisible();
+    await expect(loading).toHaveAttribute('aria-busy', 'true');
+    for (const release of releases) release();
+    await expect(page.getByRole('heading', { name: loadingCase.errorHeading })).toBeVisible();
+  });
+}
+
+test('shell preserves touch targets, safe-area rules and overflow resilience on every route', async ({ page }) => {
+  await routeAllApisTo503(page);
+  const views = ['home', 'fixtures', 'fpl', 'markets', 'performance', 'engine'] as const;
+
+  for (const view of views) {
+    await page.goto(`/?view=${view}&gw=3`);
+    await assertNoHorizontalOverflow(page);
+
+    const visibleNavigation = page.locator('nav:visible');
+    for (const control of await visibleNavigation.locator('button').all()) {
+      const box = await control.boundingBox();
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
+
+    const gameweek = page.getByLabel('Gameweek');
+    const gwBox = await gameweek.boundingBox();
+    expect(gwBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+    const engine = page.getByRole('button', { name: 'Engine and research' });
+    const engineBox = await engine.boundingBox();
+    expect(engineBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+
+  const safeAreaCss = await page.evaluate(() => Array.from(document.styleSheets).flatMap((sheet) => {
+    try { return Array.from(sheet.cssRules).map((rule) => rule.cssText); }
+    catch { return []; }
+  }).join('\n'));
+  expect(safeAreaCss).toContain('safe-area-inset-top');
+  expect(safeAreaCss).toContain('safe-area-inset-right');
+  expect(safeAreaCss).toContain('safe-area-inset-bottom');
+  expect(safeAreaCss).toContain('safe-area-inset-left');
+
+  const width = page.viewportSize()?.width ?? 0;
+  if (width <= 920) {
+    const mobileNav = page.locator('.mobile-nav-wrap');
+    await expect(mobileNav).toBeVisible();
+    const navBox = await mobileNav.boundingBox();
+    const viewportHeight = page.viewportSize()?.height ?? 0;
+    expect((navBox?.y ?? 0) + (navBox?.height ?? 0)).toBeLessThanOrEqual(viewportHeight + 1);
+    const contentPaddingBottom = await page.locator('.app-content').evaluate((element) => Number.parseFloat(getComputedStyle(element).paddingBottom));
+    expect(contentPaddingBottom).toBeGreaterThanOrEqual(navBox?.height ?? 0);
+  } else {
+    const legacy = page.getByRole('link', { name: 'Legacy UI' });
+    await expect(legacy).toHaveAttribute('href', '../');
+    const box = await legacy.boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
 });
 
 test('current and historical shared prediction contracts stay canonically aligned', async ({ request }, testInfo) => {

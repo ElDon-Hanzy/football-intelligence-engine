@@ -23,12 +23,12 @@ export function PerformancePage({ requestedGameweek }: { requestedGameweek: numb
 
   return <div className="analysis-page performance-page">
     <header className="page-intro analysis-intro">
-      <div><span className="page-eyebrow">Gameweek {data.gameweek} · realised accuracy</span><h1>Performance</h1><p>What happened, how accurate the engine was, and how strong the evidence is. Internal model variants stay out of the primary human view.</p></div>
+      <div><span className="page-eyebrow">Gameweek {data.gameweek} · realised accuracy</span><h1>Performance</h1><p>What happened, how accurate the engine was, and how strong the evidence is. Detailed model experiments stay in Engine & Research rather than cluttering this summary.</p></div>
       <span className="sync-badge" role="status"><span aria-hidden="true" />{data.active_model}</span>
     </header>
 
     <section className="analysis-hero" aria-labelledby="performance-title">
-      <div><span className="decision-label">Latest completed forward sample</span><h2 id="performance-title">{best && validationGameweek ? `GW${validationGameweek} · ${best.evaluated_fixtures ?? 0} fixtures` : 'No completed forward sample'}</h2><p>{best ? 'GW2 is covered by the pre-registered forward-validation cohort. This is stronger evidence than a retrospective replay and remains review-only until the promotion gate is satisfied.' : 'Metrics remain pending until a frozen forward cohort is evaluated.'}</p></div>
+      <div><span className="decision-label">Latest completed forward sample</span><h2 id="performance-title">{best && validationGameweek ? `GW${validationGameweek} · ${best.evaluated_fixtures ?? 0} fixtures` : 'No completed forward sample'}</h2><p>{best ? 'These predictions were frozen before the matches were played, so they are stronger evidence than replaying the same Gameweek after the results are known.' : 'Metrics remain pending until a frozen forward sample is evaluated.'}</p></div>
       <dl className="analysis-hero-metrics">
         <Metric label="Direction" value={pct(best?.direction_accuracy, 0)} />
         <Metric label="Brier" value={metric(best?.avg_brier, 3)} />
@@ -38,11 +38,11 @@ export function PerformancePage({ requestedGameweek }: { requestedGameweek: numb
     </section>
 
     <section className="analysis-section" aria-labelledby="gw-history-heading">
-      <div className="analysis-section-heading"><div><span className="page-eyebrow">Completed gameweeks</span><h2 id="gw-history-heading">Engine record</h2></div><p>Forward evidence and retrospective diagnostics are labelled separately so their strength is not confused.</p></div>
+      <div className="analysis-section-heading"><div><span className="page-eyebrow">Completed gameweeks</span><h2 id="gw-history-heading">Engine record</h2></div><p>Predictions made before matches and replay diagnostics are labelled separately so we do not confuse their evidential strength.</p></div>
       <div className="gameweek-performance-grid">
         {validationGameweek && best ? <article className="analysis-card gameweek-performance-card"><span className="page-eyebrow">GW{validationGameweek} · Forward validation</span><h2>{pct(best.direction_accuracy, 0)} direction accuracy</h2><dl className="stacked-metrics"><Metric label="Fixtures" value={String(best.evaluated_fixtures ?? validationCoverage?.fixtures ?? '—')} /><Metric label="Brier" value={metric(best.avg_brier, 3)} /><Metric label="Log loss" value={metric(best.avg_score_log_loss, 3)} /><Metric label="Reference Brier" value={metric(reference?.avg_brier, 3)} /></dl><p className="analysis-card-note">Frozen before outcomes. Review-only; no automatic model promotion.</p></article> : null}
         {[...retrospectiveByGw.entries()].sort((a, b) => b[0] - a[0]).map(([gw, runs]) => <article className="analysis-card gameweek-performance-card is-retrospective" key={gw}><span className="page-eyebrow">GW{gw} · Retrospective blind checks</span><h2>{runs.length} engine run{runs.length === 1 ? '' : 's'}</h2><div className="compact-run-list">{runs.map((row, index) => <div key={`${gw}-${index}-${row.evaluated_fixtures}`}><strong>Run {index + 1}</strong><span>{row.evaluated_fixtures} fixtures</span><small>{pct(row.direction_accuracy)} direction · {metric(row.avg_brier, 3)} Brier</small></div>)}</div><p className="analysis-card-note">Diagnostic only. These replays exclude current-gameweek outcomes from generation but are not forward-valid evidence.</p></article>)}
-        {testGameweek ? <article className="analysis-card gameweek-performance-card is-pending"><span className="page-eyebrow">GW{testGameweek} · Forward test</span><h2>{testEvaluated > 0 ? `${testEvaluated} evaluated` : 'Pending'}</h2><p className="analysis-card-note">No accuracy metric is displayed before the test fixtures finish and the frozen cohort is evaluated.</p></article> : null}
+        {testGameweek ? <article className="analysis-card gameweek-performance-card is-pending"><span className="page-eyebrow">GW{testGameweek} · Forward test</span><h2>{testEvaluated > 0 ? `${testEvaluated} evaluated` : 'Pending'}</h2><p className="analysis-card-note">No accuracy metric is displayed before the test fixtures finish and the frozen sample is evaluated.</p></article> : null}
       </div>
     </section>
 
@@ -51,7 +51,7 @@ export function PerformancePage({ requestedGameweek }: { requestedGameweek: numb
       <article className="analysis-card projection-calibration-card"><dl className="stacked-metrics"><Metric label="Current XI xPts" value={metric(data.summary.current_xi_xpts, 2)} /><Metric label="Benchmark XI xPts" value={metric(data.summary.benchmark_xi_xpts, 2)} /><Metric label="Matched players" value={String(data.summary.matched_players ?? '—')} /><Metric label="MAE vs benchmark" value={metric(data.summary.mae, 3)} /></dl></article>
     </section>
 
-    <details className="analysis-details research-details"><summary>Methodology</summary><div><p>Forward validation is frozen before outcomes and carries more decision weight than retrospective checks. Internal A0005 variant-by-variant tables are intentionally kept out of this human Performance view.</p><p>Current forward key: <strong>{data.validation.forward.selected_ablation_key ?? '—'}</strong>. Frozen FPL run: <strong>{data.frozen_prediction_run_id ?? '—'}</strong>.</p></div></details>
+    <details className="analysis-details research-details"><summary>Methodology</summary><div><p>Forward validation means the predictions were locked before the results existed. That is why it carries more weight than a retrospective replay. Detailed experimental model comparisons live in Engine & Research so this page can stay focused on real-world performance.</p><p>Frozen FPL run used for this comparison: <strong>{data.frozen_prediction_run_id ?? '—'}</strong>.</p></div></details>
   </div>;
 }
 

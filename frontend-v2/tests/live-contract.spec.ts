@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { endpoints, publicGatewayHeaders } from '../src/lib/api';
+import { analysisEndpoints } from '../src/lib/analysis-api';
+import { BettingApiSchema, CalibrationSummarySchema, EngineDiagnosticsSchema } from '../src/lib/analysis-contracts';
 import { FixtureFactsApiSchema, FplApiSchema, ManagerPlanApiSchema } from '../src/lib/contracts';
 
 function desktopOnly(projectName: string): void {
@@ -71,4 +73,54 @@ test('C0179 returns manager state next to the immutable latest saved GW3 plan', 
   expect(parsed.manager_state?.bank_tenths).toBe(0);
   expect(parsed.manager_state?.acquisition_squad_cost_tenths).toBe(1000);
   expect(parsed.manager_state?.source).toBe('C0179_DERIVED_AUDITED_MANAGER_STATE_V1');
+});
+
+test('C0174 betting contract fails closed when current market data is absent', async ({ request }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  const response = await request.get(`${analysisEndpoints.betting}?gw=3`);
+  expect(response.ok()).toBe(true);
+  const parsed = BettingApiSchema.parse(await response.json());
+  expect(parsed.gameweek).toBe(3);
+  expect(parsed.fixtures).toHaveLength(10);
+  expect(parsed.value_edge_available).toBe(false);
+  for (const fixture of parsed.fixtures) {
+    if (fixture.edge_research) expect(fixture.edge_research.model_effect_enabled).toBe(false);
+    if (fixture.clv_research) expect(fixture.clv_research.model_effect_enabled).toBe(false);
+  }
+});
+
+test('C0174 calibration contract preserves pending validation as missing rather than zero', async ({ request }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  const response = await request.get(`${analysisEndpoints.calibration}?gw=3`);
+  expect(response.ok()).toBe(true);
+  const parsed = CalibrationSummarySchema.parse(await response.json());
+  expect(parsed.gameweek).toBe(3);
+  expect(parsed.active_model.length).toBeGreaterThan(0);
+  expect(parsed.validation.forward.available).toBe(true);
+  const testVariants = parsed.validation.forward.variants?.filter((row) => row.split === 'TEST') ?? [];
+  for (const row of testVariants) {
+    if ((row.evaluated_fixtures ?? 0) === 0) {
+      expect(row.avg_brier ?? null).toBeNull();
+      expect(row.direction_accuracy ?? null).toBeNull();
+    }
+  }
+});
+
+test('C0180 diagnostics contract exposes clean governance without promoting research layers', async ({ request }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  const response = await request.get(`${analysisEndpoints.engineDiagnostics}?gw=3`, { headers: publicGatewayHeaders });
+  expect(response.ok()).toBe(true);
+  const parsed = EngineDiagnosticsSchema.parse(await response.json());
+  expect(parsed.gameweek).toBe(3);
+  expect(parsed.governance.ok).toBe(true);
+  expect(parsed.governance.bad_change_ids).toBe(0);
+  expect(parsed.decision_evidence_audit.ok).toBe(true);
+  expect(parsed.production_evidence_audit.ok).toBe(true);
+  expect(parsed.production_fixture_layer.fixtures).toBe(10);
+  expect(parsed.production_fixture_layer.change_ids).toContain('C0166');
+  expect(parsed.semantics.research_statuses_are_not_production_effects).toBe(true);
+  expect(parsed.semantics.missing_is_not_zero).toBe(true);
+  expect(parsed.source_health.zero_cost.integrity_violations?.model_effect_enabled ?? 0).toBe(0);
+  expect(parsed.source_health.fotmob_metrics.integrity_violations?.model_effect_enabled ?? 0).toBe(0);
+  expect(parsed.source_health.physical_load.integrity_violations?.model_effect_enabled ?? 0).toBe(0);
 });

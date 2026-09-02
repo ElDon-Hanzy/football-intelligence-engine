@@ -76,10 +76,18 @@ test('every shell navigation path and browser history transition resolves to the
     await expect(control).toHaveAttribute('aria-current', 'page');
   }
 
-  const engine = page.getByRole('button', { name: 'Engine and research' });
-  await engine.click();
-  await expect(page).toHaveURL(/view=engine/);
-  await expect(engine).toHaveClass(/is-active/);
+  const width = page.viewportSize()?.width ?? 0;
+  if (width > 920) {
+    const engine = visibleNavigation.getByRole('button', { name: 'Engine', exact: true });
+    await engine.click();
+    await expect(page).toHaveURL(/view=engine/);
+    await expect(engine).toHaveAttribute('aria-current', 'page');
+  } else {
+    const engine = page.getByRole('button', { name: 'Engine and research' });
+    await engine.click();
+    await expect(page).toHaveURL(/view=engine/);
+    await expect(engine).toHaveClass(/is-active/);
+  }
 
   await visibleNavigation.getByRole('button', { name: 'Fixtures', exact: true }).click();
   await visibleNavigation.getByRole('button', { name: 'FPL', exact: true }).click();
@@ -128,6 +136,7 @@ for (const loadingCase of loadingCases) {
 test('shell preserves touch targets, safe-area rules and overflow resilience on every route', async ({ page }) => {
   await routeAllApisTo503(page);
   const views = ['home', 'fixtures', 'fpl', 'markets', 'performance', 'engine'] as const;
+  const width = page.viewportSize()?.width ?? 0;
 
   for (const view of views) {
     await page.goto(`/?view=${view}&gw=3`);
@@ -143,9 +152,11 @@ test('shell preserves touch targets, safe-area rules and overflow resilience on 
     const gwBox = await gameweek.boundingBox();
     expect(gwBox?.height ?? 0).toBeGreaterThanOrEqual(44);
 
-    const engine = page.getByRole('button', { name: 'Engine and research' });
-    const engineBox = await engine.boundingBox();
-    expect(engineBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    if (width <= 920) {
+      const engine = page.getByRole('button', { name: 'Engine and research' });
+      const engineBox = await engine.boundingBox();
+      expect(engineBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
   }
 
   const safeAreaCss = await page.evaluate(() => Array.from(document.styleSheets).flatMap((sheet) => {
@@ -157,7 +168,6 @@ test('shell preserves touch targets, safe-area rules and overflow resilience on 
   expect(safeAreaCss).toContain('safe-area-inset-bottom');
   expect(safeAreaCss).toContain('safe-area-inset-left');
 
-  const width = page.viewportSize()?.width ?? 0;
   if (width <= 920) {
     const mobileNav = page.locator('.mobile-nav-wrap');
     await expect(mobileNav).toBeVisible();

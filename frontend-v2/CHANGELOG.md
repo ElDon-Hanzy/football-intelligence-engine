@@ -74,3 +74,14 @@ Append-only implementation narrative for C0168 and child batches.
 - Full green release gate: strict TypeScript, unit tests, build, 390×844 / 430×932 / 768×1024 / 1366×768 browser interaction tests, focus/scroll lifecycle, all three close paths, modal and page axe WCAG A/AA/2.1 AA/2.2 AA checks, existing live API contracts and Pages deployment passed in workflow `33572813192` for commit `17e3c2e5f3f328cc3c5889c3d90945be06e461f8`.
 - No model, probability, manager-plan or historical rows were changed; legacy root remains the rollback target.
 - Next batch: C0173 FPL decision-first workspace.
+
+## 2026-09-02 — C0179 FPL manager-state and direct distribution read contract completed
+- C0173 contract audit found that free transfers and bank were not stored as structured manager state, while C0160 q90/q95 lived only inside nested `features.point_distribution` JSON. The frontend was not allowed to reconstruct either silently.
+- Added append-only `fpl_manager_state_snapshots`. The GW3 seed is provenance-bearing: free transfers are `2` only because the latest saved manager-plan decision explicitly says to preserve both free transfers; bank is `£0.0m` only because all 15 active squad members remain tagged as the GW1 initial squad, all 15 have GW1 acquisition prices, and those prices sum exactly to the £100.0m initial budget. If those evidence gates fail, values remain null.
+- Upgraded `fpl-manager-plan-api` to v2 so a requested GW returns `manager_state` beside the immutable saved plan. No plan row is modified.
+- Upgraded `fpl-api` to v11. Squad, full-pool and top-tail rows now expose current FPL price/ownership/status plus direct `q90`, `q95`, distribution version and tail semantics derived from C0160 `features.point_distribution`; the API does not reinterpret legacy `ceiling_score` as a percentile.
+- Runtime Zod contracts now type manager state and direct distribution fields. Live tests require non-null q90/q95 for every GW3 squad member, q95 ≥ q90, `tail_semantics=direct_current_fixture_event_distribution`, current price/ownership, and manager state `2 FT / £0.0m / £100.0m acquisition cost` with source `C0179_DERIVED_AUDITED_MANAGER_STATE_V1`.
+- Database migration is recorded at `supabase/migrations/20260901235700_c0179_fpl_manager_state_snapshots.sql`; edge source commits are `257145b0f8bbb9f69a4974906b13c0415e441e45` and `86e33b18504a3d2a8fccf6016b8fb7b288b46160`; runtime contract/live-gate commits are `5b3309cb3843928bf0f44becb1c0c6ff2e630a8f` and `9693d019e941ac015e1f2700b3b5b0a33cdfc8d0`.
+- Full green release gate including live production contracts and Pages deployment passed in workflow `33573571580`.
+- No FPL projection, probability, historical result or saved manager-plan row was recalculated or rewritten. Missing manager state remains null rather than zero.
+- C0173 can now remain frontend-only.

@@ -27,15 +27,12 @@ Deno.serve(async (req) => {
     if (!serviceKey) throw new Error('Missing Supabase service credential');
 
     const sb = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey, { auth: { persistSession: false } });
-    const { data, error } = await sb
-      .from('matches')
-      .select('gameweek,kickoff_time,finished')
-      .eq('source', 'fpl')
-      .gte('gameweek', 1)
-      .lte('gameweek', 38)
-      .order('gameweek')
-      .order('kickoff_time');
+    const [{ data, error }, { data: teams, error: teamsError }] = await Promise.all([
+      sb.from('matches').select('gameweek,kickoff_time,finished').eq('source', 'fpl').gte('gameweek', 1).lte('gameweek', 38).order('gameweek').order('kickoff_time'),
+      sb.from('teams').select('id,fpl_team_id,name,short_name,team_code').not('fpl_team_id', 'is', null).order('fpl_team_id'),
+    ]);
     if (error) throw error;
+    if (teamsError) throw teamsError;
 
     const groups = new Map<number, FixtureRow[]>();
     for (const row of (data ?? []) as FixtureRow[]) {
@@ -75,9 +72,11 @@ Deno.serve(async (req) => {
       reason,
       as_of: new Date(now).toISOString(),
       schedule,
+      teams: teams ?? [],
       semantics: {
         live_gameweek: 'earliest unfinished league gameweek whose fixture window has not elapsed; otherwise next scheduled gameweek',
         frozen_projection_runs_do_not_define_live_gameweek: true,
+        team_badge_key: 'public.teams.team_code',
       },
     }), { headers: cors });
   } catch (error) {

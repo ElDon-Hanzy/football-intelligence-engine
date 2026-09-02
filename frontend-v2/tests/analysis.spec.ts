@@ -75,11 +75,12 @@ test.beforeEach(async ({ page }) => {
 test('Markets reuses the legacy four strongest model calls and keeps bookmaker diagnostics secondary', async ({ page }) => {
   await page.goto('/?view=markets&gw=3');
   await expect(page.getByRole('heading', { level: 1, name: 'Markets' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Four strongest model calls' })).toBeVisible();
+  const primary = page.locator('.markets-top4');
+  await expect(primary.getByRole('heading', { name: 'Four strongest model calls' })).toBeVisible();
   await expect(page.getByText('NO VALIDATED BET EDGE')).toHaveCount(0);
-  await expect(page.locator('.top-bet-card')).toHaveCount(4);
+  await expect(primary.locator('.top-bet-card')).toHaveCount(4);
 
-  const cards = page.locator('.top-bet-card');
+  const cards = primary.locator('.top-bet-card');
   await expect(cards.nth(0).getByText('Correct score', { exact: true })).toBeVisible();
   await expect(cards.nth(0).getByRole('heading', { name: '1-1' })).toBeVisible();
   await expect(cards.nth(0).getByText("Nott'm Forest vs Spurs", { exact: true })).toBeVisible();
@@ -87,8 +88,8 @@ test('Markets reuses the legacy four strongest model calls and keeps bookmaker d
   await expect(cards.nth(1).getByRole('heading', { name: 'Man City win' })).toBeVisible();
   await expect(cards.nth(2).getByRole('heading', { name: 'Over 2.5' })).toBeVisible();
   await expect(cards.nth(3).getByRole('heading', { name: 'BTTS Yes' })).toBeVisible();
-  await expect(page.getByText('Research EV')).toHaveCount(0);
-  await expect(page.getByText('Best displayed bookmaker')).toHaveCount(0);
+  await expect(primary.getByText('Research EV')).toHaveCount(0);
+  await expect(primary.getByText('Best displayed bookmaker')).toHaveCount(0);
 
   await expect(page.locator('.market-card').first()).not.toBeVisible();
   await page.getByText('Bookmaker and fixture diagnostics', { exact: true }).click();

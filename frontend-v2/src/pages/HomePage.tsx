@@ -127,10 +127,10 @@ export function HomePage({ requestedGameweek, onNavigate }: { requestedGameweek:
         </div>
         <div className="focus-grid">
           <button className="focus-card" type="button" onClick={() => onNavigate('fixtures')}>
-            <span>Fixtures</span><strong>Match calls & evidence</strong><small>C0171 will build the compact scan surface here.</small>
+            <span>Fixtures</span><strong>Match calls & evidence</strong><small>Compact 1X2 calls, form, signed evidence and matchup story.</small>
           </button>
           <button className="focus-card" type="button" onClick={() => onNavigate('fpl')}>
-            <span>FPL</span><strong>Squad decision workspace</strong><small>C0173 will expose XI, bench, transfers and haul distributions.</small>
+            <span>FPL</span><strong>Squad decision workspace</strong><small>Saved action, XI/bench, FT/ITB and current-event haul tails.</small>
           </button>
         </div>
       </section>

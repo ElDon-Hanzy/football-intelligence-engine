@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AppShell, type AppView } from './components/layout/AppShell';
 import { FixturesPage } from './pages/FixturesPage';
+import { FplPage } from './pages/FplPage';
 import { HomePage } from './pages/HomePage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 
@@ -16,8 +17,7 @@ function gameweekFromLocation(): number {
   return Number.isInteger(raw) && raw >= 1 && raw <= 38 ? raw : 0;
 }
 
-const placeholders: Record<Exclude<AppView, 'home' | 'fixtures'>, { title: string; eyebrow: string; copy: string }> = {
-  fpl: { title: 'FPL workspace', eyebrow: 'C0173', copy: 'The decision-first squad workspace will be built after Fixtures and the matchup modal are complete.' },
+const placeholders: Record<Exclude<AppView, 'home' | 'fixtures' | 'fpl'>, { title: string; eyebrow: string; copy: string }> = {
   performance: { title: 'Performance', eyebrow: 'C0174', copy: 'Model performance, markets and validation views stay out of the command surface until their dedicated batch.' },
   engine: { title: 'Engine & research', eyebrow: 'C0174', copy: 'Diagnostics, governance and research tracks will live here instead of competing with weekly decisions.' },
 };
@@ -56,6 +56,7 @@ export function App() {
   let content;
   if (view === 'home') content = <HomePage requestedGameweek={gameweek} onNavigate={navigate} />;
   else if (view === 'fixtures') content = <FixturesPage requestedGameweek={gameweek} />;
+  else if (view === 'fpl') content = <FplPage requestedGameweek={gameweek} />;
   else content = <PlaceholderPage {...placeholders[view]} />;
 
   return <AppShell view={view} gameweek={gameweek} onNavigate={navigate} onGameweekChange={changeGameweek}>{content}</AppShell>;

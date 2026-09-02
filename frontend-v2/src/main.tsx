@@ -7,6 +7,7 @@ import './styles/tokens.css';
 import './styles/global.css';
 import './styles/fixtures.css';
 import './styles/modal.css';
+import './styles/fpl.css';
 
 const root = document.getElementById('root');
 

@@ -85,3 +85,16 @@ Append-only implementation narrative for C0168 and child batches.
 - Full green release gate including live production contracts and Pages deployment passed in workflow `33573571580`.
 - No FPL projection, probability, historical result or saved manager-plan row was recalculated or rewritten. Missing manager state remains null rather than zero.
 - C0173 can now remain frontend-only.
+
+## 2026-09-02 — C0173 FPL decision-first workspace completed
+- Replaced the FPL placeholder with a decision-first workspace whose top surface is the authoritative saved manager plan: HOLD/TRANSFER state, free transfers, bank, chip, risk, saved captain/vice-captain and the complete saved XI/bench.
+- The latest projection run is visibly separated from the manager decision with its own run ID/timestamp and explicit wording that it is analysis only; a newer model snapshot never silently supersedes the saved plan.
+- Saved XI and bench retain manager-selection truth while current player cards layer in latest xPts, xMin and price. Unknown saved player IDs are retained visibly rather than dropped if projection data is incomplete.
+- Captaincy cards expose xPts/xMin plus P10+, P15+, q90 and q95 only when `tail_semantics=direct_current_fixture_event_distribution`; no legacy `ceiling_score` fallback or ceiling terminology is used.
+- Full-pool projection leaders are deliberately secondary behind a disclosure and are labelled as model rankings, not transfer recommendations.
+- Missing manager state fails closed: null FT/bank render as unavailable and are never coerced to `0 FT` or `£0.0m`.
+- CI caught two stale tests left from the old placeholder route and then a real 390px horizontal-overflow defect. The test assertions were updated without weakening the gate; the narrow FPL intro/status composition was stacked at ≤430px rather than clipping or hiding overflow.
+- Full green release gate passed in workflow `33575126830`: strict TypeScript, 17 unit tests, production build, 32 Playwright cases across 390×844 / 430×932 / 768×1024 / 1366×768, zero horizontal overflow, axe WCAG A/AA/2.1 AA/2.2 AA checks, fail-closed manager-state test, existing Fixtures/modal/Home regressions, live C0178 fixture parity, live C0179 manager-state/direct-tail contracts, and GitHub Pages deployment.
+- Runtime implementation began at `49e1a83941fdf5e753c7cb91f29fbd9b62a81cb0`; test-harness corrections are `ff0f1f02bde611afabdbf0d3ba7d5ee39fc62c31`, `c56c24329b2e343f1e3b997aac722634102b2538` and `68df689a7364a1d5f0e9abe4b338a4d4cef72e0c`; the narrow-mobile composition release is `b1f753e8ac44c1a5fb42fda18301da907fef04b5`.
+- No model, projection, historical forecast or saved manager-plan row was changed. Legacy root remains the rollback target and v2 remains isolated under `/v2/`.
+- Next batch: C0174 Performance and Engine surfaces.

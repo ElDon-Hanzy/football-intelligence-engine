@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { AppShell, type AppView } from './components/layout/AppShell';
+import { EnginePage } from './pages/EnginePage';
 import { FixturesPage } from './pages/FixturesPage';
 import { FplPage } from './pages/FplPage';
 import { HomePage } from './pages/HomePage';
-import { PlaceholderPage } from './pages/PlaceholderPage';
+import { MarketsPage } from './pages/MarketsPage';
+import { PerformancePage } from './pages/PerformancePage';
 
-const validViews = new Set<AppView>(['home', 'fixtures', 'fpl', 'performance', 'engine']);
+const validViews = new Set<AppView>(['home', 'fixtures', 'fpl', 'markets', 'performance', 'engine']);
 
 function viewFromLocation(): AppView {
   const value = new URLSearchParams(window.location.search).get('view') ?? 'home';
@@ -16,11 +18,6 @@ function gameweekFromLocation(): number {
   const raw = Number(new URLSearchParams(window.location.search).get('gw') ?? 0);
   return Number.isInteger(raw) && raw >= 1 && raw <= 38 ? raw : 0;
 }
-
-const placeholders: Record<Exclude<AppView, 'home' | 'fixtures' | 'fpl'>, { title: string; eyebrow: string; copy: string }> = {
-  performance: { title: 'Performance', eyebrow: 'C0174', copy: 'Model performance, markets and validation views stay out of the command surface until their dedicated batch.' },
-  engine: { title: 'Engine & research', eyebrow: 'C0174', copy: 'Diagnostics, governance and research tracks will live here instead of competing with weekly decisions.' },
-};
 
 export function App() {
   const [view, setView] = useState<AppView>(viewFromLocation);
@@ -57,7 +54,9 @@ export function App() {
   if (view === 'home') content = <HomePage requestedGameweek={gameweek} onNavigate={navigate} />;
   else if (view === 'fixtures') content = <FixturesPage requestedGameweek={gameweek} />;
   else if (view === 'fpl') content = <FplPage requestedGameweek={gameweek} />;
-  else content = <PlaceholderPage {...placeholders[view]} />;
+  else if (view === 'markets') content = <MarketsPage requestedGameweek={gameweek} />;
+  else if (view === 'performance') content = <PerformancePage requestedGameweek={gameweek} />;
+  else content = <EnginePage requestedGameweek={gameweek} />;
 
   return <AppShell view={view} gameweek={gameweek} onNavigate={navigate} onGameweekChange={changeGameweek}>{content}</AppShell>;
 }

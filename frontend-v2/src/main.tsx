@@ -10,6 +10,7 @@ import './styles/modal.css';
 import './styles/fpl.css';
 import './styles/fpl-mobile.css';
 import './styles/analysis.css';
+import './styles/refinements.css';
 
 const root = document.getElementById('root');
 

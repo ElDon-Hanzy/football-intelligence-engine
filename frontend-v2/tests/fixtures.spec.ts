@@ -50,30 +50,16 @@ const recent = (teamId: number) => Array.from({ length: 5 }, (_, index) => ({
 }));
 
 const fact = (id: number, matchId: number, family: string, text: string, rank: number, alignment: 'SUPPORTS' | 'CONTRADICTS' | 'NEUTRAL' = 'SUPPORTS') => ({
-  id,
-  snapshot_run_id: 7,
-  match_id: matchId,
-  team_id: alignment === 'CONTRADICTS' ? 8 : 10,
-  opponent_team_id: alignment === 'CONTRADICTS' ? 10 : 8,
-  fact_type: `C0166_${family}`,
-  usefulness_score: 1 - rank / 10,
-  card_rank: rank,
-  alignment,
-  one_liner: text,
-  payload: { family },
-  evidence_cutoff: '2026-09-01T20:32:50+00:00',
+  id, snapshot_run_id: 7, match_id: matchId,
+  team_id: alignment === 'CONTRADICTS' ? 8 : 10, opponent_team_id: alignment === 'CONTRADICTS' ? 10 : 8,
+  fact_type: `C0166_${family}`, usefulness_score: 1 - rank / 10, card_rank: rank, alignment, one_liner: text,
+  payload: { family }, evidence_cutoff: '2026-09-01T20:32:50+00:00',
 });
 
 const factsPayload = {
-  ok: true,
-  gameweek: 3,
-  facts_available: true,
-  evidence_source: 'dynamic_c0166_views',
-  snapshot_run: { id: 7, as_of_gameweek: 2 },
+  ok: true, gameweek: 3, facts_available: true, evidence_source: 'dynamic_c0166_views', snapshot_run: { id: 7, as_of_gameweek: 2 },
   fixtures: fixtureResults.map((fixture, index) => ({
-    match_id: fixture.match_id,
-    gameweek: 3,
-    kickoff_time: fixture.kickoff_time,
+    match_id: fixture.match_id, gameweek: 3, kickoff_time: fixture.kickoff_time,
     home: { id: 10 + index * 2, name: fixture.home_team, short_name: fixture.home_short, recent: recent(10 + index * 2) },
     away: { id: 11 + index * 2, name: fixture.away_team, short_name: fixture.away_short, recent: recent(11 + index * 2) },
     alignment_basis: { snapshot_id: index === 1 ? 999 : fixture.prediction.snapshot_id, captured_at: '2026-09-01T21:03:00+00:00', source_change_id: 'C0166', top_outcome: 'H', markets: fixture.prediction.markets },
@@ -95,34 +81,42 @@ const factsPayload = {
 };
 
 const fplPayload = { ok: true, gameweek: 3, model_version: '0.1.3', squad: [], fixture_results: fixtureResults };
+const gameweekStatusPayload = { ok: true, live_gameweek: 3, reason: 'NEXT_UNFINISHED_GAMEWEEK', as_of: '2026-09-02T07:00:00Z', schedule: [{ gameweek: 3, fixtures: 10, finished: 0, unfinished: 10, first_kickoff: '2026-09-04T19:00:00Z', last_kickoff: '2026-09-06T15:30:00Z' }], teams: [{ id: 1, fpl_team_id: 9, name: 'Fulham', short_name: 'FUL', team_code: 54 }, { id: 2, fpl_team_id: 7, name: 'Crystal Palace', short_name: 'CRY', team_code: 31 }], semantics: { frozen_projection_runs_do_not_define_live_gameweek: true } };
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/fpl-api**', async (route) => route.fulfill({ json: fplPayload }));
   await page.route('**/fixture-facts-api**', async (route) => route.fulfill({ json: factsPayload }));
+  await page.route('**/gameweek-status-api**', async (route) => route.fulfill({ json: gameweekStatusPayload }));
 });
 
-test('fixture scan renders calls, bounded evidence and an atomic accessible matchup modal', async ({ page }) => {
+test('fixture scan is compact by default and expands into evidence and the accessible matchup modal', async ({ page }) => {
   await page.goto('/?view=fixtures&gw=3');
   await expect(page.getByRole('heading', { level: 1, name: 'Fixtures' })).toBeVisible();
   const cards = page.locator('.fixture-card');
   await expect(cards).toHaveCount(10);
   await expect(cards.nth(0).getByText('No clear edge')).toBeVisible();
   await expect(cards.nth(1).getByText('Lean', { exact: true })).toBeVisible();
-  await expect(cards.nth(2).getByText('Strong call', { exact: true })).toBeVisible();
+  await expect(cards.nth(2).getByText('Strong', { exact: true })).toBeVisible();
+  await expect(cards.nth(0).getByText('FUL', { exact: true })).toBeVisible();
+  await expect(cards.nth(0).locator('.compact-form-dot')).toHaveCount(10);
+  await expect(cards.nth(0).locator('.club-crest')).toHaveCount(2);
+  await expect(cards.nth(0).getByText(/exact-score probability/i)).toHaveCount(0);
+  await expect(cards.nth(0).locator('.form-result-button')).toHaveCount(0);
+  await expect(cards.nth(0).getByRole('button', { name: 'Open matchup' })).toHaveCount(0);
 
+  await cards.nth(0).getByRole('button', { name: 'Expand fixture' }).click();
   const formButton = cards.nth(0).locator('.form-result-button').first();
   const box = await formButton.boundingBox();
   expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
   expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
   await formButton.click();
   await expect(cards.nth(0).locator('.form-detail')).toBeVisible();
-
-  await cards.nth(0).getByRole('button', { name: /Decision evidence/ }).click();
   await expect(cards.nth(0).locator('.evidence-list li')).toHaveCount(3);
   await expect(cards.nth(0).getByText('Duplicate venue family should not display.')).toHaveCount(0);
+  await expect(cards.nth(0).locator('.club-crest.is-expanded')).toHaveCount(2);
 
+  await cards.nth(1).getByRole('button', { name: 'Expand fixture' }).click();
   await expect(cards.nth(1).getByText(/Evidence is refreshing/)).toBeVisible();
-  await expect(cards.nth(1).getByRole('button', { name: /Decision evidence/ })).toHaveCount(0);
   await expect(cards.nth(1).getByRole('button', { name: 'Matchup refreshing' })).toBeDisabled();
 
   const openButton = cards.nth(0).getByRole('button', { name: 'Open matchup' });

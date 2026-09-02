@@ -24,6 +24,15 @@ const fixtures = Array.from({ length: 10 }, (_, index) => ({
 }));
 
 const bettingPayload = { ok: true, gameweek: 3, odds_status: 'connected', value_edge_available: false, research_edge_available: true, price_tracking_available: false, clv_research_available: false, warnings: [], fixtures };
+const humanInsightsPayload = {
+  ok: true, gameweek: 3, prediction_run_id: 1256, model_version: '0.3', generated_at: '2026-09-01T20:05:00Z',
+  betting_recommendations: [
+    { type: 'Correct score', match_id: 27, fixture: "Nott'm Forest vs Spurs", selection: '1-1', probability: .12328, home_lambda: 1.394256, away_lambda: 1.271976 },
+    { type: '1X2', match_id: 26, fixture: 'Man City vs Coventry City', selection: 'Man City win', probability: .6946, home_lambda: 2.544287, away_lambda: 1.039567 },
+    { type: 'O/U 2.5', match_id: 26, fixture: 'Man City vs Coventry City', selection: 'Over 2.5', probability: .6897, home_lambda: 2.544287, away_lambda: 1.039567 },
+    { type: 'BTTS', match_id: 22, fixture: 'Newcastle vs Bournemouth', selection: 'BTTS Yes', probability: .6623, home_lambda: 1.708491, away_lambda: 1.658242 },
+  ],
+};
 
 const calibrationPayload = {
   ok: true, gameweek: 3, active_model: '0.3', active_generated_at: '2026-09-01T20:05:00Z', frozen_prediction_run_id: 1256,
@@ -57,22 +66,32 @@ const enginePayload = {
 };
 
 test.beforeEach(async ({ page }) => {
+  await page.route('**/human-insights-api**', async (route) => route.fulfill({ json: humanInsightsPayload }));
   await page.route('**/betting-api**', async (route) => route.fulfill({ json: bettingPayload }));
   await page.route('**/calibration-summary**', async (route) => route.fulfill({ json: calibrationPayload }));
   await page.route('**/engine-diagnostics-api**', async (route) => route.fulfill({ json: enginePayload }));
 });
 
-test('Markets is Top-4 first and keeps fixture diagnostics secondary', async ({ page }) => {
+test('Markets reuses the legacy four strongest model calls and keeps bookmaker diagnostics secondary', async ({ page }) => {
   await page.goto('/?view=markets&gw=3');
   await expect(page.getByRole('heading', { level: 1, name: 'Markets' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Top 4 Bets' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Four strongest model calls' })).toBeVisible();
   await expect(page.getByText('NO VALIDATED BET EDGE')).toHaveCount(0);
   await expect(page.locator('.top-bet-card')).toHaveCount(4);
-  await expect(page.locator('.top-bet-card').first().getByText('FUL–CRY')).toBeVisible();
-  await expect(page.locator('.top-bet-card').first().getByRole('heading', { name: '1-1' })).toBeVisible();
-  await expect(page.locator('.top-bet-card').first().getByText('Research EV')).toBeVisible();
+
+  const cards = page.locator('.top-bet-card');
+  await expect(cards.nth(0).getByText('Correct score', { exact: true })).toBeVisible();
+  await expect(cards.nth(0).getByRole('heading', { name: '1-1' })).toBeVisible();
+  await expect(cards.nth(0).getByText("Nott'm Forest vs Spurs", { exact: true })).toBeVisible();
+  await expect(cards.nth(0).getByText('12.3%', { exact: true })).toBeVisible();
+  await expect(cards.nth(1).getByRole('heading', { name: 'Man City win' })).toBeVisible();
+  await expect(cards.nth(2).getByRole('heading', { name: 'Over 2.5' })).toBeVisible();
+  await expect(cards.nth(3).getByRole('heading', { name: 'BTTS Yes' })).toBeVisible();
+  await expect(page.getByText('Research EV')).toHaveCount(0);
+  await expect(page.getByText('Best displayed bookmaker')).toHaveCount(0);
+
   await expect(page.locator('.market-card').first()).not.toBeVisible();
-  await page.getByText('All fixture market diagnostics', { exact: true }).click();
+  await page.getByText('Bookmaker and fixture diagnostics', { exact: true }).click();
   await expect(page.locator('.market-card')).toHaveCount(10);
   const firstCard = page.locator('.market-card').first();
   await expect(firstCard).toBeVisible();

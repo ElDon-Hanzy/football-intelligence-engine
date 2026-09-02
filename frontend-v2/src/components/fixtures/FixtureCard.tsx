@@ -114,8 +114,8 @@ function Crest({ name, teamCode, expanded = false }: { name: string; teamCode: n
 
 function CompactForm({ teamName, recent }: { teamName: string; recent: RecentResult[] }) {
   const results = [...recent].sort((a, b) => a.sequence_no - b.sequence_no).slice(0, 5);
-  if (!results.length) return <span className="compact-form is-empty" aria-label={`${teamName} form unavailable`} />;
-  return <span className="compact-form" aria-label={`${teamName} last five: ${results.map((result) => result.result).join(', ')}`}>
+  if (!results.length) return <span className="compact-form is-empty" role="img" aria-label={`${teamName} form unavailable`} />;
+  return <span className="compact-form" role="img" aria-label={`${teamName} last five: ${results.map((result) => result.result).join(', ')}`}>
     {results.map((result, index) => <i key={`${result.fixture_kickoff}-${index}`} className={`compact-form-dot is-${result.result.toLowerCase()}`} aria-hidden="true" />)}
   </span>;
 }

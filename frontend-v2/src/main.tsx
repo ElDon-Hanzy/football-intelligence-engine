@@ -9,6 +9,7 @@ import './styles/fixtures.css';
 import './styles/modal.css';
 import './styles/fpl.css';
 import './styles/fpl-mobile.css';
+import './styles/analysis.css';
 
 const root = document.getElementById('root');
 

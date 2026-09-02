@@ -1,15 +1,18 @@
-import { Button } from '../components/primitives/Button';
 import { FixtureCard } from '../components/fixtures/FixtureCard';
+import { Button } from '../components/primitives/Button';
 import { assessCall, evidenceMatchesPrediction, useFixturesData } from '../lib/fixtures';
+import { useGameweekStatus } from '../lib/gameweek';
 
 export function FixturesPage({ requestedGameweek }: { requestedGameweek: number }) {
   const { fpl, facts, resolvedGameweek } = useFixturesData(requestedGameweek);
+  const gameweekStatus = useGameweekStatus();
   if (fpl.isPending) return <FixturesSkeleton />;
   if (fpl.isError || !fpl.data) return <section className="state-panel" aria-live="polite"><span className="page-eyebrow">Fixtures</span><h1>Fixture predictions are temporarily unavailable.</h1><p>The scan surface will not infer match calls when the authoritative prediction contract fails.</p><Button onClick={() => void fpl.refetch()}>Retry predictions</Button></section>;
 
   const fixtures = fpl.data.fixture_results;
   const factsData = facts.data?.facts_available ? facts.data : null;
   const factsByMatch = new Map((factsData?.fixtures ?? []).map((item) => [item.match_id, item]));
+  const teamCodeByShort = new Map((gameweekStatus.data?.teams ?? []).map((team) => [team.short_name, team.team_code]));
   const assessments = fixtures.map((fixture) => assessCall(fixture.prediction?.markets));
   const strong = assessments.filter((item) => item.state === 'strong').length;
   const lean = assessments.filter((item) => item.state === 'lean').length;
@@ -18,7 +21,7 @@ export function FixturesPage({ requestedGameweek }: { requestedGameweek: number 
 
   return <div className="fixtures-page">
     <header className="page-intro fixtures-intro">
-      <div><span className="page-eyebrow">Gameweek {resolvedGameweek || '—'} · Fixture scan</span><h1>Fixtures</h1><p>Outcome first, then score, form and only the evidence that belongs to the same frozen forecast.</p></div>
+      <div><span className="page-eyebrow">Gameweek {resolvedGameweek || '—'} · Fixture scan</span><h1>Fixtures</h1><p>All fixtures start collapsed for fast scanning. Expand only the match you want to inspect.</p></div>
       <span className={`sync-badge${evidencePartial ? ' is-warning' : ''}`} role="status"><span aria-hidden="true" />{evidencePartial ? 'Evidence partial' : 'Forecasts aligned'}</span>
     </header>
 
@@ -32,7 +35,14 @@ export function FixturesPage({ requestedGameweek }: { requestedGameweek: number 
         const hasComparableSnapshots = fixture.prediction?.snapshot_id != null && factItem?.alignment_basis?.snapshot_id != null;
         const aligned = hasComparableSnapshots && evidenceMatchesPrediction(fixture, factItem);
         const evidenceStatus = aligned ? 'aligned' as const : hasComparableSnapshots ? 'mismatch' as const : 'unavailable' as const;
-        return <FixtureCard key={fixture.match_id} fixture={fixture} facts={aligned ? factItem : undefined} evidenceStatus={evidenceStatus} />;
+        return <FixtureCard
+          key={fixture.match_id}
+          fixture={fixture}
+          facts={aligned ? factItem : undefined}
+          evidenceStatus={evidenceStatus}
+          homeTeamCode={fixture.home_short ? teamCodeByShort.get(fixture.home_short) ?? null : null}
+          awayTeamCode={fixture.away_short ? teamCodeByShort.get(fixture.away_short) ?? null : null}
+        />;
       })}
     </section> : <section className="state-panel"><h2>No fixtures returned for this Gameweek.</h2><p>Missing fixtures are not treated as zero-probability matches.</p></section>}
   </div>;

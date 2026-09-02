@@ -10,6 +10,9 @@ export function MatchupModal({ open, onClose, fixture, facts }: { open: boolean;
   const groups = groupModalFacts(facts.modal_facts);
   const story = buildMatchStory(fixture, facts);
   const call = assessment.top ? outcomeLabel(assessment.top.code, home, away) : 'Unavailable';
+  const noEdge = assessment.state === 'no-edge';
+  const supportTitle = noEdge ? `Case for ${call}` : `Why ${call} leads`;
+  const counterTitle = noEdge ? `Case against ${call}` : 'Counterpoints / risks';
   const rawPrediction = prediction as (Record<string, unknown> | null | undefined);
   const rawModalProbability = numeric(rawPrediction?.raw_modal_probability);
   const scriptConfidence = numeric(rawPrediction?.script_confidence);
@@ -18,7 +21,7 @@ export function MatchupModal({ open, onClose, fixture, facts }: { open: boolean;
 
   return <Dialog open={open} onClose={onClose} title={`${home} vs ${away}`} eyebrow="Matchup intelligence">
     <section className="modal-thesis" aria-label="Match thesis">
-      <div><span>1X2 thesis</span><strong>{assessment.state === 'no-edge' ? 'No clear edge' : call}</strong><small>{assessment.top ? `${precisePercent(assessment.top.probability)} leading probability` : 'Probability unavailable'}</small></div>
+      <div><span>1X2 thesis</span><strong>{noEdge ? 'No clear edge' : call}</strong><small>{assessment.top ? `${precisePercent(assessment.top.probability)} leading probability` : 'Probability unavailable'}</small></div>
       <div><span>Score call</span><strong>{prediction?.headline_score ?? '—'}</strong><small>{prediction?.headline_score_probability == null ? 'Probability unavailable' : `${precisePercent(prediction.headline_score_probability)} exact-score probability`}</small></div>
     </section>
 
@@ -28,11 +31,12 @@ export function MatchupModal({ open, onClose, fixture, facts }: { open: boolean;
     </section>
 
     <div className="modal-evidence-grid">
-      <EvidenceGroup title="Supports the call" facts={groups.supports} kind="support" empty="No supporting input cleared the display gate." />
-      <EvidenceGroup title="Counterpoints / risks" facts={groups.contradicts} kind="risk" empty="No current counter-input cleared the evidence gate." />
+      <EvidenceGroup title={supportTitle} facts={groups.supports} kind="support" empty={`No independent evidence family currently strengthens the ${call} case.`} />
+      <EvidenceGroup title={counterTitle} facts={groups.contradicts} kind="risk" empty="No credible counterpoint currently survives the evidence filters." />
     </div>
 
     {groups.neutral.length ? <EvidenceGroup title="Additional context" facts={groups.neutral} kind="neutral" /> : null}
+    <p className="modal-evidence-note">Evidence can include contextual and tactical research used to explain the matchup. Research-only context does not change the production forecast.</p>
 
     <details className="technical-disclosure">
       <summary>Technical details</summary>
@@ -55,7 +59,7 @@ export function MatchupModal({ open, onClose, fixture, facts }: { open: boolean;
 
 function EvidenceGroup({ title, facts, kind, empty }: { title: string; facts: FixtureFact[]; kind: 'support' | 'risk' | 'neutral'; empty?: string }) {
   return <section className={`modal-evidence-group is-${kind}`}>
-    <h3>{title}</h3>
+    <h3>{title}<span className="modal-evidence-count">{facts.length}</span></h3>
     {facts.length ? <ul>{facts.map((fact) => <li key={fact.id}>{fact.one_liner}</li>)}</ul> : <p className="modal-evidence-empty">{empty ?? 'No additional evidence surfaced.'}</p>}
   </section>;
 }

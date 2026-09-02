@@ -106,7 +106,7 @@ const loadingCases = [
   { view: 'home', patterns: ['**/fpl-api**', '**/fpl-manager-plan-api**'], label: 'Loading command center', errorHeading: 'Live decision data is temporarily unavailable.' },
   { view: 'fixtures', patterns: ['**/fpl-api**'], label: 'Loading fixtures', errorHeading: 'Fixture predictions are temporarily unavailable.' },
   { view: 'fpl', patterns: ['**/fpl-api**', '**/fpl-manager-plan-api**'], label: 'Loading FPL decision workspace', errorHeading: 'FPL decision data is unavailable.' },
-  { view: 'markets', patterns: ['**/human-insights-api**'], label: 'Loading Markets', errorHeading: 'Model calls are unavailable.' },
+  { view: 'markets', patterns: ['**/human-insights-api**'], label: 'Loading Betting', errorHeading: 'Model calls are unavailable.' },
   { view: 'performance', patterns: ['**/calibration-summary**'], label: 'Loading Performance', errorHeading: 'Validation data is unavailable.' },
   { view: 'engine', patterns: ['**/engine-diagnostics-api**'], label: 'Loading Engine diagnostics', errorHeading: 'Diagnostics are unavailable.' },
 ] as const;

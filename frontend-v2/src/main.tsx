@@ -11,6 +11,7 @@ import './styles/fpl.css';
 import './styles/fpl-mobile.css';
 import './styles/analysis.css';
 import './styles/refinements.css';
+import './styles/markets-legacy.css';
 
 const root = document.getElementById('root');
 

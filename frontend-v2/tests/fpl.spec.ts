@@ -34,15 +34,26 @@ function p(id: number, name: string, position: string, team: string, xPts: numbe
   };
 }
 
+const historicalXi = [112, 426, 461, 11, 29, 471, 470, 436, 161, 170, 417];
+const historicalBench = [60, 514, 188, 290];
+
 function fplPayload(gameweek: number) {
+  const historical = gameweek <= 2;
   return {
     ok: true,
     gameweek,
-    prediction_run_id: gameweek === 3 ? 1256 : 1300,
-    model_version: '0.3',
+    prediction_run_id: gameweek === 3 ? 1256 : gameweek === 2 ? 14 : 1,
+    model_version: historical ? '0.1.3' : '0.3',
     current_model_version: '0.3',
-    generated_at: '2026-09-01T20:05:00.417983+00:00',
+    generated_at: historical ? '2026-08-26T16:15:00.144744+00:00' : '2026-09-01T20:05:00.417983+00:00',
     run_type: 'pre_deadline',
+    decision: historical ? {
+      captain_player_id: 29,
+      vice_player_id: gameweek === 2 ? 471 : 470,
+      starting_xi: historicalXi,
+      bench: historicalBench,
+      recommendations: null,
+    } : null,
     squad,
     all_predictions: allPredictions,
     top_double_digit: allPredictions.slice(0, 10),
@@ -50,38 +61,43 @@ function fplPayload(gameweek: number) {
   };
 }
 
+function currentPlan(gameweek: number) {
+  return {
+    id: gameweek === 3 ? 3 : 4,
+    gameweek,
+    captured_at: '2026-08-31T22:43:34.107861+00:00',
+    status: 'PROVISIONAL_HOLD_POST_GW2_PENDING_TRANSFER_DEADLINE_AND_PRESSERS',
+    horizon: '3-5 GW',
+    transfers: [],
+    captain_player_id: 470,
+    vice_player_id: 471,
+    starting_xi: [112, 11, 426, 514, 29, 161, 470, 436, 471, 170, 417],
+    bench_order: [60, 461, 188, 290],
+    chip: 'NONE',
+    gw_expected_xi_points: '58.2523',
+    expected_gain_current_gw: '0',
+    expected_gain_horizon: '0',
+    risk_level: 'MEDIUM',
+    rationale: {
+      decision: 'HOLD tonight and preserve both free transfers',
+      why_hold: [
+        'Club press conferences and final predicted lineups are still pending',
+        'Noise-Control requires a robust edge over rolling; no move should be forced before those inputs resolve',
+      ],
+      fresh_xi_note: 'The latest run prefers João Pedro in the XI; do not anchor to the prior starting XI.',
+    },
+    source: 'post_gw2_noise_control_run1244_v1',
+    supersedes_id: 2,
+  };
+}
+
 function managerPayload(gameweek: number) {
+  const historical = gameweek <= 2;
   return {
     ok: true,
     gameweek,
-    available_gameweeks: [3, 4],
-    plan: {
-      id: gameweek === 3 ? 3 : 4,
-      gameweek,
-      captured_at: '2026-08-31T22:43:34.107861+00:00',
-      status: 'PROVISIONAL_HOLD_POST_GW2_PENDING_TRANSFER_DEADLINE_AND_PRESSERS',
-      horizon: '3-5 GW',
-      transfers: [],
-      captain_player_id: 470,
-      vice_player_id: 471,
-      starting_xi: [112, 11, 426, 514, 29, 161, 470, 436, 471, 170, 417],
-      bench_order: [60, 461, 188, 290],
-      chip: 'NONE',
-      gw_expected_xi_points: '58.2523',
-      expected_gain_current_gw: '0',
-      expected_gain_horizon: '0',
-      risk_level: 'MEDIUM',
-      rationale: {
-        decision: 'HOLD tonight and preserve both free transfers',
-        why_hold: [
-          'Club press conferences and final predicted lineups are still pending',
-          'Noise-Control requires a robust edge over rolling; no move should be forced before those inputs resolve',
-        ],
-        fresh_xi_note: 'The latest run prefers João Pedro in the XI; do not anchor to the prior starting XI.',
-      },
-      source: 'post_gw2_noise_control_run1244_v1',
-      supersedes_id: 2,
-    },
+    available_gameweeks: [2, 3, 4],
+    plan: historical ? null : currentPlan(gameweek),
     manager_state: gameweek === 3 ? {
       id: 1,
       gameweek: 3,
@@ -91,6 +107,19 @@ function managerPayload(gameweek: number) {
       acquisition_squad_cost_tenths: 1000,
       source: 'C0179_DERIVED_AUDITED_MANAGER_STATE_V1',
       evidence: { change_id: 'C0179', missing_is_not_zero: true },
+    } : null,
+    actual_manager_decision: gameweek === 2 ? {
+      id: 1,
+      gameweek: 2,
+      captured_at: '2026-08-31T01:42:23.037844+00:00',
+      captain_player_id: 470,
+      vice_player_id: null,
+      starting_xi: null,
+      bench_order: null,
+      chip: null,
+      source: 'manager_confirmed',
+      notes: 'User confirmed actual GW2 captain was Bruno Fernandes. Frozen model snapshot remains unchanged.',
+      correction_of_id: null,
     } : null,
   };
 }
@@ -140,6 +169,28 @@ test('FPL workspace keeps saved manager action primary and current projections e
 
   const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+  const a11y = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(a11y.violations).toEqual([]);
+});
+
+test('historical FPL uses frozen decision snapshots and keeps actual manager corrections separate', async ({ page }) => {
+  await page.goto('/?view=fpl&gw=2');
+  await expect(page.getByRole('heading', { level: 1, name: 'FPL decision history' })).toBeVisible();
+  const board = page.locator('.fpl-decision-board');
+  await expect(board.getByText('Frozen model decision snapshot', { exact: true })).toBeVisible();
+  await expect(board.getByText('GW2 frozen model decision', { exact: true })).toBeVisible();
+  await expect(board.getByText('Tzolis', { exact: true })).toBeVisible();
+  await expect(board.getByText('Mbeumo', { exact: true })).toBeVisible();
+  await expect(board.locator('.compact-selection').filter({ hasText: 'Frozen XI · 11/11' })).toContainText('B.Fernandes');
+  await expect(board.locator('.compact-selection').filter({ hasText: 'Frozen bench · 4/4' })).toContainText('N.Williams');
+  await expect(board.getByText('Captain B.Fernandes', { exact: true })).toBeVisible();
+  await expect(board.getByText(/does not overwrite the frozen model decision/)).toBeVisible();
+  await expect(page.getByText('Recorded fields only', { exact: true })).toBeVisible();
+  await expect(page.getByText('manager_confirmed', { exact: true })).toBeVisible();
+  await expect(page.getByText('2 FT', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('£0.0m', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Historical frozen model view · not current transfer recommendations')).toBeVisible();
+
   const a11y = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
   expect(a11y.violations).toEqual([]);
 });

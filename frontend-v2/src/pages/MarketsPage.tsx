@@ -1,6 +1,8 @@
+import { PredictionAuditMark } from '../components/predictions/PredictionAuditMark';
 import { Button } from '../components/primitives/Button';
 import { outcomeComparisons, pct, strongestModelOutcome, useMarketsData, useStrongestBettingCalls, type StrongestBettingCall } from '../lib/analysis';
 import type { BettingFixture } from '../lib/analysis-contracts';
+import { auditStrongestBettingCall } from '../lib/prediction-audit';
 
 export function MarketsPage({ requestedGameweek }: { requestedGameweek: number }) {
   const callsQuery = useStrongestBettingCalls(requestedGameweek);
@@ -12,6 +14,7 @@ export function MarketsPage({ requestedGameweek }: { requestedGameweek: number }
   const callsData = callsQuery.data;
   const calls = callsData.betting_recommendations;
   const market = marketQuery.data;
+  const marketByMatch = new Map((market?.fixtures ?? []).map((fixture) => [fixture.match_id, fixture]));
   const researchObservations = market?.fixtures.reduce((sum, fixture) => sum + (fixture.edge_research?.observation_count ?? 0), 0) ?? 0;
 
   return <div className="analysis-page markets-page betting-page">
@@ -24,7 +27,7 @@ export function MarketsPage({ requestedGameweek }: { requestedGameweek: number }
     <div className="betting-note" role="note">Probability is not betting value. These are our four strongest football-model calls; bookmaker comparison stays secondary.</div>
 
     <section className="markets-top4 betting-primary" aria-label="Four strongest model calls">
-      {calls.length ? <div className="legacy-bet-grid">{calls.map((call, index) => <ModelCallCard call={call} rank={index + 1} key={`${call.type}-${call.match_id}-${call.selection}`} />)}</div>
+      {calls.length ? <div className="legacy-bet-grid">{calls.map((call, index) => <ModelCallCard call={call} rank={index + 1} fixture={marketByMatch.get(call.match_id)} key={`${call.type}-${call.match_id}-${call.selection}`} />)}</div>
         : <div className="market-waiting-state" role="status"><span>Model calls</span><strong>GW{callsData.gameweek} calls unavailable</strong><p>The existing strongest-call source returned no recommendations. Bookmaker research is not substituted as a fallback.</p></div>}
     </section>
 
@@ -43,12 +46,14 @@ export function MarketsPage({ requestedGameweek }: { requestedGameweek: number }
   </div>;
 }
 
-function ModelCallCard({ call, rank }: { call: StrongestBettingCall; rank: number }) {
+function ModelCallCard({ call, rank, fixture }: { call: StrongestBettingCall; rank: number; fixture: BettingFixture | undefined }) {
   const note = call.type === 'Correct score' ? 'Exact scores are naturally low-probability outcomes.' : 'Model probability, not bookmaker value.';
+  const audit = auditStrongestBettingCall(call, fixture);
   return <article className="legacy-bet-card">
     <div className="legacy-bet-top"><span>{rank}. {call.type}</span><strong>{pct(call.probability, 1)}</strong></div>
-    <h2>{call.selection}</h2>
+    <h2>{call.selection}{audit ? <PredictionAuditMark correct={audit.correct} label={`${call.type} prediction`} /> : null}</h2>
     <p className="legacy-bet-fixture">{call.fixture}</p>
+    {audit ? <small className="legacy-bet-result">Actual {audit.actual}</small> : null}
     <div className="legacy-bet-xg"><span>Model xG</span><strong>{call.home_lambda == null ? '—' : call.home_lambda.toFixed(2)} – {call.away_lambda == null ? '—' : call.away_lambda.toFixed(2)}</strong></div>
     <small>{note}</small>
   </article>;

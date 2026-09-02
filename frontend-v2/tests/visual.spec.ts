@@ -171,6 +171,20 @@ const bettingPayload = {
   })),
 };
 
+const humanInsightsPayload = {
+  ok: true,
+  gameweek: 3,
+  prediction_run_id: 1256,
+  model_version: '0.3',
+  generated_at: '2026-09-01T20:05:00Z',
+  betting_recommendations: [
+    { type: 'Correct score', match_id: 27, fixture: "Nott'm Forest vs Spurs", selection: '1-1', probability: .12328, home_lambda: 1.394256, away_lambda: 1.271976 },
+    { type: '1X2', match_id: 26, fixture: 'Man City vs Coventry City', selection: 'Man City win', probability: .6946, home_lambda: 2.544287, away_lambda: 1.039567 },
+    { type: 'O/U 2.5', match_id: 26, fixture: 'Man City vs Coventry City', selection: 'Over 2.5', probability: .6897, home_lambda: 2.544287, away_lambda: 1.039567 },
+    { type: 'BTTS', match_id: 22, fixture: 'Newcastle vs Bournemouth', selection: 'BTTS Yes', probability: .6623, home_lambda: 1.708491, away_lambda: 1.658242 },
+  ],
+};
+
 const calibrationPayload = {
   ok: true,
   gameweek: 3,
@@ -245,6 +259,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/fpl-api**', async (route) => route.fulfill({ json: fplPayload }));
   await page.route('**/fpl-manager-plan-api**', async (route) => route.fulfill({ json: managerPlanPayload }));
   await page.route('**/fixture-facts-api**', async (route) => route.fulfill({ json: factsPayload }));
+  await page.route('**/human-insights-api**', async (route) => route.fulfill({ json: humanInsightsPayload }));
   await page.route('**/betting-api**', async (route) => route.fulfill({ json: bettingPayload }));
   await page.route('**/calibration-summary**', async (route) => route.fulfill({ json: calibrationPayload }));
   await page.route('**/engine-diagnostics-api**', async (route) => route.fulfill({ json: enginePayload }));

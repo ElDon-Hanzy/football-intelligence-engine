@@ -24,6 +24,14 @@ const fixtures = Array.from({ length: 10 }, (_, index) => ({
 }));
 
 const bettingPayload = { ok: true, gameweek: 3, odds_status: 'connected', value_edge_available: false, research_edge_available: true, price_tracking_available: false, clv_research_available: false, warnings: [], fixtures };
+const settledBettingPayload = {
+  ...bettingPayload,
+  fixtures: [
+    { match_id: 27, kickoff_time: '2026-08-29T15:00:00Z', finished: true, home_score: 1, away_score: 1, home_team: "Nott'm Forest", away_team: 'Spurs', bookmaker_odds: [], correct_score_odds: [], prediction: null },
+    { match_id: 26, kickoff_time: '2026-08-29T15:00:00Z', finished: true, home_score: 3, away_score: 1, home_team: 'Man City', away_team: 'Coventry City', bookmaker_odds: [], correct_score_odds: [], prediction: null },
+    { match_id: 22, kickoff_time: '2026-08-29T15:00:00Z', finished: true, home_score: 1, away_score: 0, home_team: 'Newcastle', away_team: 'Bournemouth', bookmaker_odds: [], correct_score_odds: [], prediction: null },
+  ],
+};
 const humanInsightsPayload = {
   ok: true, gameweek: 3, prediction_run_id: 1256, model_version: '0.3', generated_at: '2026-09-01T20:05:00Z',
   betting_recommendations: [
@@ -92,6 +100,7 @@ test('Betting restores the legacy hierarchy while reusing the same four stronges
   await expect(cards.nth(1).getByRole('heading', { name: 'Man City win' })).toBeVisible();
   await expect(cards.nth(2).getByRole('heading', { name: 'Over 2.5' })).toBeVisible();
   await expect(cards.nth(3).getByRole('heading', { name: 'BTTS Yes' })).toBeVisible();
+  await expect(primary.locator('.inline-audit-mark')).toHaveCount(0);
   await expect(primary.getByText('Research EV')).toHaveCount(0);
   await expect(primary.getByText('Best displayed bookmaker')).toHaveCount(0);
 
@@ -104,6 +113,22 @@ test('Betting restores the legacy hierarchy while reusing the same four stronges
   const research = firstCard.getByText('Research diagnostics', { exact: true });
   await research.click();
   await expect(firstCard.getByText('Research only · no production effect')).toBeVisible();
+  await assertPageQuality(page);
+});
+
+test('finished strongest Betting calls carry explicit audit marks across all four market types', async ({ page }) => {
+  await page.unroute('**/betting-api**');
+  await page.route('**/betting-api**', async (route) => route.fulfill({ json: settledBettingPayload }));
+  await page.goto('/?view=markets&gw=3');
+  const primary = page.locator('.markets-top4');
+  await expect(primary.locator('.inline-audit-mark')).toHaveCount(4);
+  await expect(primary.getByLabel('Correct score prediction correct')).toBeVisible();
+  await expect(primary.getByLabel('1X2 prediction correct')).toBeVisible();
+  await expect(primary.getByLabel('O/U 2.5 prediction correct')).toBeVisible();
+  await expect(primary.getByLabel('BTTS prediction incorrect')).toBeVisible();
+  await expect(primary.locator('.inline-audit-mark.is-correct')).toHaveCount(3);
+  await expect(primary.locator('.inline-audit-mark.is-wrong')).toHaveCount(1);
+  await expect(primary.getByText('Actual BTTS No', { exact: true })).toBeVisible();
   await assertPageQuality(page);
 });
 

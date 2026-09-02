@@ -40,12 +40,12 @@ export function MarketsPage({ requestedGameweek }: { requestedGameweek: number }
         : <div className="market-waiting-state" role="status"><span>Market feed</span><strong>Waiting for GW{data.gameweek} prices</strong><p>No current bookmaker snapshot exists for this Gameweek yet, so there is nothing honest to rank. Historical GW1/GW2 selections are not carried forward.</p></div>}
     </section>
 
-    <section className="market-status-strip" aria-label="Market status">
+    <dl className="market-status-strip" aria-label="Market status">
       <Metric label="Market feed" value={noMarket ? 'Waiting' : 'Connected'} />
       <Metric label="Priced fixtures" value={`${priced}/${data.fixtures.length}`} />
       <Metric label="Research observations" value={String(researchObservations)} />
       <Metric label="Top-4 state" value={shortlist.length ? `${shortlist.length} ranked` : 'Pending prices'} />
-    </section>
+    </dl>
 
     <p className="market-validation-note"><strong>Validation status:</strong> edge/CLV research remains model_effect_enabled=false. This affects staking confidence, not whether useful market disagreement should be surfaced.</p>
 

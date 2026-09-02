@@ -107,7 +107,7 @@ test('Betting restores the legacy hierarchy while reusing the same four stronges
   await assertPageQuality(page);
 });
 
-test('Performance is human-first, shows GW2 forward evidence and keeps internal variants hidden', async ({ page }) => {
+test('Performance is human-first, shows GW2 forward evidence and keeps engineering experiments out of the summary', async ({ page }) => {
   await page.goto('/?view=performance&gw=3');
   await expect(page.getByRole('heading', { level: 1, name: 'Performance' })).toBeVisible();
   const hero = page.locator('.analysis-hero');
@@ -119,6 +119,8 @@ test('Performance is human-first, shows GW2 forward evidence and keeps internal 
   await expect(page.getByText('GW3 · Forward test')).toBeVisible();
   await expect(page.getByText('Forward validation variants')).toHaveCount(0);
   await expect(page.getByText('FULL_V04_ELO_NO_SCHEDULE')).toHaveCount(0);
+  await expect(page.getByText(/A0005/)).toHaveCount(0);
+  await expect(page.getByText(/Detailed experimental model comparisons live in Engine & Research/)).toBeVisible();
   await assertPageQuality(page);
 });
 

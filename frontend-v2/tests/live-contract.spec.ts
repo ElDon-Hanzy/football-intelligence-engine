@@ -28,6 +28,29 @@ test('live GW3 FPL API satisfies the UI v2 contract', async ({ request }, testIn
   }
 });
 
+test('C0194 live GW2 exposes the frozen FPL decision and separate actual manager correction', async ({ request }, testInfo) => {
+  desktopOnly(testInfo.project.name);
+  const [fplResponse, managerResponse] = await Promise.all([
+    request.get(`${endpoints.fpl}?gw=2`),
+    request.get(`${endpoints.managerPlan}?gw=2`, { headers: publicGatewayHeaders }),
+  ]);
+  expect(fplResponse.ok()).toBe(true);
+  expect(managerResponse.ok()).toBe(true);
+  const fpl = FplApiSchema.parse(await fplResponse.json());
+  const manager = ManagerPlanApiSchema.parse(await managerResponse.json());
+  expect(fpl.gameweek).toBe(2);
+  expect(fpl.decision).not.toBeNull();
+  expect(fpl.decision?.starting_xi?.length ?? 0).toBe(11);
+  expect(fpl.decision?.bench?.length ?? 0).toBe(4);
+  expect(fpl.decision?.captain_player_id).not.toBeNull();
+  expect(manager.gameweek).toBe(2);
+  expect(manager.plan).toBeNull();
+  expect(manager.actual_manager_decision?.captain_player_id).toBe(470);
+  expect(manager.actual_manager_decision?.source).toBe('manager_confirmed');
+  expect(manager.actual_manager_decision?.vice_player_id ?? null).toBeNull();
+  expect(manager.actual_manager_decision?.starting_xi ?? null).toBeNull();
+});
+
 test('C0178 keeps prediction and evidence contracts on the same canonical fixture snapshot', async ({ request }, testInfo) => {
   desktopOnly(testInfo.project.name);
   const [fplResponse, factsResponse] = await Promise.all([

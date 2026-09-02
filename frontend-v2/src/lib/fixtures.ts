@@ -136,17 +136,17 @@ export function buildMatchStory(fixture: FplFixtureResult, facts: FixtureFactsIt
 
   if (assessment.state === 'no-edge') {
     const leadCase = supportCount
-      ? `${supportCount} distinct evidence families lean toward ${topLabel}`
+      ? `${supportCount} distinct evidence ${supportCount === 1 ? 'family leans' : 'families lean'} toward ${topLabel}`
       : `The contextual evidence does not add a clear independent case for ${topLabel}`;
     const otherCase = counterCount
-      ? `${counterCount} push toward the other side`
+      ? `${counterCount} evidence ${counterCount === 1 ? 'family pushes' : 'families push'} toward the other side`
       : `the opposing evidence is also limited`;
     return `This is a genuine split, not a hidden call: ${topLabel} at ${precisePercent(assessment.top.probability)} is only ${marginPp.toFixed(1)}pp ahead of ${secondLabel}. ${leadCase}, while ${otherCase}. That balance is why the fixture remains No clear edge.`;
   }
 
   const strength = assessment.state === 'strong' ? 'clear' : 'narrow';
   const evidence = supportCount
-    ? `${supportCount} distinct evidence families support the thesis`
+    ? `${supportCount} distinct evidence ${supportCount === 1 ? 'family supports' : 'families support'} the thesis`
     : 'The probability lead has no additional independent supporting family in the current evidence set';
   const counter = counterCount
     ? `, with ${counterCount} credible counterpoint${counterCount === 1 ? '' : 's'} still live.`

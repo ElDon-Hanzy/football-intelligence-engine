@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AppShell, type AppView } from './components/layout/AppShell';
+import { useLiveGameweek } from './lib/gameweek';
 import { EnginePage } from './pages/EnginePage';
 import { FixturesPage } from './pages/FixturesPage';
 import { FplPage } from './pages/FplPage';
@@ -22,6 +23,8 @@ function gameweekFromLocation(): number {
 export function App() {
   const [view, setView] = useState<AppView>(viewFromLocation);
   const [gameweek, setGameweek] = useState(gameweekFromLocation);
+  const liveGameweek = useLiveGameweek(gameweek === 0);
+  const resolvedGameweek = gameweek > 0 ? gameweek : (liveGameweek.data?.live_gameweek ?? 0);
 
   useEffect(() => {
     const onPopState = () => {
@@ -36,6 +39,7 @@ export function App() {
     const url = new URL(window.location.href);
     url.searchParams.set('view', nextView);
     if (gameweek > 0) url.searchParams.set('gw', String(gameweek));
+    else url.searchParams.delete('gw');
     window.history.pushState({}, '', url);
     setView(nextView);
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -51,12 +55,16 @@ export function App() {
   };
 
   let content;
-  if (view === 'home') content = <HomePage requestedGameweek={gameweek} onNavigate={navigate} />;
-  else if (view === 'fixtures') content = <FixturesPage requestedGameweek={gameweek} />;
-  else if (view === 'fpl') content = <FplPage requestedGameweek={gameweek} />;
-  else if (view === 'markets') content = <MarketsPage requestedGameweek={gameweek} />;
-  else if (view === 'performance') content = <PerformancePage requestedGameweek={gameweek} />;
-  else content = <EnginePage requestedGameweek={gameweek} />;
+  if (resolvedGameweek === 0) {
+    content = liveGameweek.isError
+      ? <section className="state-panel" aria-live="polite"><span className="page-eyebrow">Gameweek</span><h1>Live Gameweek is unavailable.</h1><p>The interface will not guess a Gameweek from future frozen projection runs or endpoint defaults.</p><button type="button" className="button button-primary" onClick={() => void liveGameweek.refetch()}>Retry Gameweek status</button></section>
+      : <div className="command-skeleton" aria-busy="true" aria-label="Resolving live Gameweek"><div className="skeleton-line is-short" /><div className="skeleton-line is-title" /><div className="skeleton-panel" /></div>;
+  } else if (view === 'home') content = <HomePage requestedGameweek={resolvedGameweek} onNavigate={navigate} />;
+  else if (view === 'fixtures') content = <FixturesPage requestedGameweek={resolvedGameweek} />;
+  else if (view === 'fpl') content = <FplPage requestedGameweek={resolvedGameweek} />;
+  else if (view === 'markets') content = <MarketsPage requestedGameweek={resolvedGameweek} />;
+  else if (view === 'performance') content = <PerformancePage requestedGameweek={resolvedGameweek} />;
+  else content = <EnginePage requestedGameweek={resolvedGameweek} />;
 
-  return <AppShell view={view} gameweek={gameweek} onNavigate={navigate} onGameweekChange={changeGameweek}>{content}</AppShell>;
+  return <AppShell view={view} gameweek={gameweek} liveGameweek={liveGameweek.data?.live_gameweek ?? null} onNavigate={navigate} onGameweekChange={changeGameweek}>{content}</AppShell>;
 }

@@ -156,3 +156,27 @@ test('fixture scan stays compact and opens the accessible matchup modal directly
   const a11y = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
   expect(a11y.violations).toEqual([]);
 });
+
+test('finished fixtures always show explicit prediction audit marks, including no-edge top calls', async ({ page }) => {
+  const finishedFixtures = fixtureResults.map((fixture, index) => index === 0 ? {
+    ...fixture,
+    finished: true,
+    home_score: 1,
+    away_score: 0,
+  } : fixture);
+  await page.unroute('**/fpl-api**');
+  await page.route('**/fpl-api**', async (route) => route.fulfill({ json: { ...fplPayload, fixture_results: finishedFixtures } }));
+
+  await page.goto('/?view=fixtures&gw=3');
+  const card = page.locator('.fixture-card').first();
+  await expect(card.getByText('FT', { exact: true })).toBeVisible();
+  await expect(card.getByText(/No clear edge · top FUL win/)).toBeVisible();
+  await expect(card.getByLabel('top 1X2 prediction correct')).toBeVisible();
+  await expect(card.getByLabel('exact-score prediction incorrect')).toBeVisible();
+  await expect(card.locator('.inline-audit-mark.is-correct')).toHaveCount(1);
+  await expect(card.locator('.inline-audit-mark.is-wrong')).toHaveCount(1);
+  await expect(card.getByText('Actual 1-0', { exact: true })).toBeVisible();
+
+  const a11y = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa']).analyze();
+  expect(a11y.violations).toEqual([]);
+});

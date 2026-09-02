@@ -120,7 +120,7 @@ test('Performance is human-first, shows GW2 forward evidence and keeps engineeri
   await expect(page.getByText('Forward validation variants')).toHaveCount(0);
   await expect(page.getByText('FULL_V04_ELO_NO_SCHEDULE')).toHaveCount(0);
   await expect(page.getByText(/A0005/)).toHaveCount(0);
-  await expect(page.getByText(/Detailed experimental model comparisons live in Engine & Research/)).toBeVisible();
+  await expect(page.getByText(/Detailed model experiments stay in Engine & Research/)).toBeVisible();
   await assertPageQuality(page);
 });
 

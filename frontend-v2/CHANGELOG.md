@@ -98,3 +98,28 @@ Append-only implementation narrative for C0168 and child batches.
 - Runtime implementation began at `49e1a83941fdf5e753c7cb91f29fbd9b62a81cb0`; test-harness corrections are `ff0f1f02bde611afabdbf0d3ba7d5ee39fc62c31`, `c56c24329b2e343f1e3b997aac722634102b2538` and `68df689a7364a1d5f0e9abe4b338a4d4cef72e0c`; the narrow-mobile composition release is `b1f753e8ac44c1a5fb42fda18301da907fef04b5`.
 - No model, projection, historical forecast or saved manager-plan row was changed. Legacy root remains the rollback target and v2 remains isolated under `/v2/`.
 - Next batch: C0174 Performance and Engine surfaces.
+
+## 2026-09-02 — C0180 Engine diagnostics read contract completed
+- Added read-only `engine-diagnostics-api` for UI v2, exposing active model identity, current production fixture layer, tracker governance, C0167 decision/evidence audits, A0005/W0002 validation state, C0139 source/FotMob status and C0140 physical-load status.
+- Private status functions remain private. A public read-only SECURITY DEFINER wrapper is the only database bridge used by the Edge Function, avoiding unsupported direct private-schema RPC assumptions.
+- Research-only states remain explicitly labelled and missing metrics remain null.
+- Source commits include `7194051de00778a50f5aed4c6ddafa9654954995` and hardened wrapper consumption in `83f583e69db7969846dd51af603efa16f369885e`.
+- Live C0180 contract checks passed in the C0174 release workflow `33595103796`. No model or historical data was mutated.
+
+## 2026-09-02 — C0181 Betting API canonical fixture alignment completed
+- Rewired `betting-api` to `current_production_fixture_prediction_v01`, the same canonical selector used by Fixtures and evidence, preventing equal-timestamp parent/child prediction drift in Markets.
+- The betting contract now exposes the canonical snapshot ID and source Change ID used for every fixture comparison.
+- Endpoint implementation commit: `7790b3fab522d72d6d81969cc63b12de7f6b8bee`; live parity gate commit: `d6d51f0acf59897db77ba9f8585d409d8a4feb57`.
+- Live C0181 tests verify betting predictions match the canonical production selector and continue to fail closed on validated value. No odds, model or historical rows were recalculated.
+
+## 2026-09-02 — C0174 Markets, Performance and Engine/Research completed
+- Replaced the remaining analysis placeholders with three deliberately separated surfaces: Markets for model-vs-price context, Performance for sample-first validation, and Engine/Research for technical diagnostics.
+- Markets keeps the action layer fail-closed as `NO VALIDATED BET EDGE`; unvalidated positive-EV research is disclosed as research only and never styled as a production betting recommendation.
+- Performance prioritizes evaluated sample size, direction/Brier/log-loss and pending TEST status. Missing or unevaluated metrics stay blank/pending rather than being converted to zero.
+- Engine/Research houses model identity, current production layer, source health, governance and frozen experiments away from the core decision flow; research states are visibly distinct from production effects.
+- Contract audit discovered and split C0180/C0181 rather than hiding backend gaps inside the frontend batch.
+- QA caught three classes of release blockers and all were fixed without weakening gates: duplicate Playwright locators, a duplicated validation-variant assertion, and a genuine WCAG keyboard-access defect on the horizontally scrollable Performance table.
+- The Performance table is now an explicitly labelled focusable region with a visible focus ring, and browser tests verify it receives keyboard focus before axe runs.
+- Final release commit: `de7e6f4286b78781a68636c142a7c5aa1188a4bf`. Full green release/deployment workflow: `33595103796` across 390×844 / 430×932 / 768×1024 / 1366×768, strict TypeScript, unit tests, build, live contracts, no-horizontal-overflow checks and axe WCAG A/AA/2.1 AA/2.2 AA.
+- No model, probability, FPL manager decision or historical forecast was changed. Legacy root remains the rollback target; v2 remains isolated under `/v2/`.
+- Next batch: C0175 full-system QA and parity gate.

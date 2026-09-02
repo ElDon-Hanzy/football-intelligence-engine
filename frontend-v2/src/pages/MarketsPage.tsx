@@ -12,37 +12,24 @@ export function MarketsPage({ requestedGameweek }: { requestedGameweek: number }
   const callsData = callsQuery.data;
   const calls = callsData.betting_recommendations;
   const market = marketQuery.data;
-  const priced = market?.fixtures.filter((fixture) => fixture.bookmaker_odds.length > 0).length ?? 0;
   const researchObservations = market?.fixtures.reduce((sum, fixture) => sum + (fixture.edge_research?.observation_count ?? 0), 0) ?? 0;
-  const marketFeed = marketQuery.isPending ? 'Loading' : marketQuery.isError || !market ? 'Unavailable' : market.odds_status !== 'connected' || priced === 0 ? 'Waiting' : 'Connected';
 
-  return <div className="analysis-page markets-page">
-    <header className="page-intro analysis-intro">
-      <div><span className="page-eyebrow">Gameweek {callsData.gameweek} · betting model</span><h1>Markets</h1><p>Strongest football-model calls first. Bookmaker prices are context, not the ranking engine.</p></div>
-      <span className="sync-badge" role="status"><span aria-hidden="true" />Frozen model</span>
+  return <div className="analysis-page markets-page betting-page">
+    <header className="betting-hero">
+      <span className="page-eyebrow">GW{callsData.gameweek} betting</span>
+      <h1>Betting</h1>
+      <p>Four strongest model views across the core markets.</p>
     </header>
 
-    <section className="markets-top4" aria-labelledby="top-bets-heading">
-      <div className="analysis-section-heading markets-top4-heading">
-        <div><span className="page-eyebrow">Legacy decision source</span><h2 id="top-bets-heading">Four strongest model calls</h2></div>
-        <p>One highest-conviction model view in each core market: Correct score, 1X2, O/U 2.5 and BTTS. These cards come directly from the existing human-insights betting recommendations; v2 does not re-rank them using odds or EV.</p>
-      </div>
+    <div className="betting-note" role="note">Probability is not betting value. These are our four strongest football-model calls; bookmaker comparison stays secondary.</div>
 
-      {calls.length ? <div className="top-bet-grid">{calls.map((call, index) => <ModelCallCard call={call} rank={index + 1} key={`${call.type}-${call.match_id}-${call.selection}`} />)}</div>
-        : <div className="market-waiting-state" role="status"><span>Model calls</span><strong>GW{callsData.gameweek} calls unavailable</strong><p>The existing model-call source returned no recommendations. Bookmaker research is not substituted as a fallback.</p></div>}
+    <section className="markets-top4 betting-primary" aria-label="Four strongest model calls">
+      {calls.length ? <div className="legacy-bet-grid">{calls.map((call, index) => <ModelCallCard call={call} rank={index + 1} key={`${call.type}-${call.match_id}-${call.selection}`} />)}</div>
+        : <div className="market-waiting-state" role="status"><span>Model calls</span><strong>GW{callsData.gameweek} calls unavailable</strong><p>The existing strongest-call source returned no recommendations. Bookmaker research is not substituted as a fallback.</p></div>}
     </section>
 
-    <dl className="market-status-strip" aria-label="Market status">
-      <Metric label="Model calls" value={`${calls.length}/4`} />
-      <Metric label="Prediction run" value={String(callsData.prediction_run_id)} />
-      <Metric label="Bookmaker feed" value={marketFeed} />
-      <Metric label="Priced fixtures" value={market ? `${priced}/${market.fixtures.length}` : '—'} />
-    </dl>
-
-    <p className="market-validation-note"><strong>Selection rule:</strong> model probability chooses these four calls. Bookmaker odds, research EV and CLV do not determine the shortlist; they remain secondary diagnostics.</p>
-
-    <details className="market-diagnostics-disclosure">
-      <summary>Bookmaker and fixture diagnostics</summary>
+    <details className="market-diagnostics-disclosure legacy-market-diagnostics">
+      <summary>Market comparison &amp; research</summary>
       <div className="market-diagnostics-body">
         {marketQuery.isPending ? <div className="empty-state">Bookmaker diagnostics are loading. The four model calls above are independent of this feed.</div> : null}
         {marketQuery.isError || !market ? <div className="empty-state">Bookmaker diagnostics are unavailable. The four model calls above remain valid because they come from the frozen model-call source.</div> : null}
@@ -57,16 +44,13 @@ export function MarketsPage({ requestedGameweek }: { requestedGameweek: number }
 }
 
 function ModelCallCard({ call, rank }: { call: StrongestBettingCall; rank: number }) {
-  const note = call.type === 'Correct score' ? 'Exact scores are naturally lower-probability outcomes.' : 'Model probability, not bookmaker value.';
-  return <article className="top-bet-card">
-    <header><span className="research-rank">#{rank}</span><div><small>{call.type}</small><h3>{call.selection}</h3></div><span className="market-action-chip">MODEL</span></header>
-    <div className="top-bet-book"><span>Fixture</span><strong>{call.fixture}</strong></div>
-    <dl className="top-bet-metrics">
-      <Metric label="Model probability" value={pct(call.probability, 1)} />
-      <Metric label="Home xG" value={call.home_lambda == null ? '—' : call.home_lambda.toFixed(2)} />
-      <Metric label="Away xG" value={call.away_lambda == null ? '—' : call.away_lambda.toFixed(2)} />
-    </dl>
-    <small className="top-bet-quality">{note}</small>
+  const note = call.type === 'Correct score' ? 'Exact scores are naturally low-probability outcomes.' : 'Model probability, not bookmaker value.';
+  return <article className="legacy-bet-card">
+    <div className="legacy-bet-top"><span>{rank}. {call.type}</span><strong>{pct(call.probability, 1)}</strong></div>
+    <h2>{call.selection}</h2>
+    <p className="legacy-bet-fixture">{call.fixture}</p>
+    <div className="legacy-bet-xg"><span>Model xG</span><strong>{call.home_lambda == null ? '—' : call.home_lambda.toFixed(2)} – {call.away_lambda == null ? '—' : call.away_lambda.toFixed(2)}</strong></div>
+    <small>{note}</small>
   </article>;
 }
 
@@ -98,6 +82,5 @@ function topScoreWatch(fixture: BettingFixture): { score: string; odds: number |
 }
 
 function signedPct(value: number | null): string { if (value == null) return '—'; return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}pp`; }
-function Metric({ label, value }: { label: string; value: string }) { return <div><dt>{label}</dt><dd>{value}</dd></div>; }
-function Loading() { return <div className="command-skeleton" aria-busy="true" aria-label="Loading Markets"><div className="skeleton-line is-short"/><div className="skeleton-line is-title"/><div className="skeleton-panel"/></div>; }
-function ErrorState({ onRetry }: { onRetry: () => void }) { return <section className="state-panel"><span className="page-eyebrow">Markets</span><h1>Model calls are unavailable.</h1><p>The existing strongest-call contract could not be read. Bookmaker EV is not substituted as a fallback.</p><Button onClick={onRetry}>Retry model calls</Button></section>; }
+function Loading() { return <div className="command-skeleton" aria-busy="true" aria-label="Loading Betting"><div className="skeleton-line is-short"/><div className="skeleton-line is-title"/><div className="skeleton-panel"/></div>; }
+function ErrorState({ onRetry }: { onRetry: () => void }) { return <section className="state-panel"><span className="page-eyebrow">Betting</span><h1>Model calls are unavailable.</h1><p>The existing strongest-call contract could not be read. Bookmaker EV is not substituted as a fallback.</p><Button onClick={onRetry}>Retry model calls</Button></section>; }

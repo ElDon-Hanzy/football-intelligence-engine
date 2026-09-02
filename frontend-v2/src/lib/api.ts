@@ -4,7 +4,7 @@ export const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
 
 // Supabase's legacy anon JWT is a public browser credential, not a secret.
 // It is used only to satisfy JWT verification on read-only public UI endpoints.
-export const PUBLIC_SUPABASE_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6Imtub29pd2V6enN4Y3dodGp0ZGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzY0MjQsImV4cCI6MjEwMjkxMjQyNH0.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
+export const PUBLIC_SUPABASE_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub29pd2V6enN4Y3dodGp0ZGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzY0MjQsImV4cCI6MjEwMjkxMjQyNH0.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
 
 export const publicGatewayHeaders = {
   Authorization: `Bearer ${PUBLIC_SUPABASE_ANON_JWT}`,

@@ -74,11 +74,12 @@ test('Markets is Top-4 first and keeps fixture diagnostics secondary', async ({ 
   await expect(page.locator('.market-card').first()).not.toBeVisible();
   await page.getByText('All fixture market diagnostics', { exact: true }).click();
   await expect(page.locator('.market-card')).toHaveCount(10);
-  await expect(page.locator('.market-card').first()).toBeVisible();
+  const firstCard = page.locator('.market-card').first();
+  await expect(firstCard).toBeVisible();
   await expect(page.locator('.market-action-chip').filter({ hasText: 'NO MARKET DATA' })).toHaveCount(6);
-  const research = page.locator('.market-card').first().getByText('Research diagnostics', { exact: true });
+  const research = firstCard.getByText('Research diagnostics', { exact: true });
   await research.click();
-  await expect(page.getByText('Research only · no production effect')).toBeVisible();
+  await expect(firstCard.getByText('Research only · no production effect')).toBeVisible();
   await assertPageQuality(page);
 });
 

@@ -36,13 +36,11 @@ test('C0178 keeps prediction and evidence contracts on the same canonical fixtur
   ]);
   expect(fplResponse.ok()).toBe(true);
   expect(factsResponse.ok()).toBe(true);
-
   const fpl = FplApiSchema.parse(await fplResponse.json());
   const facts = FixtureFactsApiSchema.parse(await factsResponse.json());
   expect(facts.facts_available).toBe(true);
   if (!facts.facts_available) throw new Error('GW3 fact snapshot unexpectedly unavailable');
   expect(facts.fixtures).toHaveLength(10);
-
   const fplByMatch = new Map(fpl.fixture_results.map((fixture) => [fixture.match_id, fixture]));
   for (const factFixture of facts.fixtures) {
     const prediction = fplByMatch.get(factFixture.match_id)?.prediction;
@@ -53,7 +51,6 @@ test('C0178 keeps prediction and evidence contracts on the same canonical fixtur
     expect(prediction?.markets?.draw).toBeCloseTo(basis?.markets.draw ?? -1, 8);
     expect(prediction?.markets?.away_win).toBeCloseTo(basis?.markets.away_win ?? -1, 8);
   }
-
   const fulhamPalace = fplByMatch.get(25)?.prediction;
   expect(fulhamPalace?.source_change_id).toBe('C0166');
   expect(fulhamPalace?.markets?.home_win).toBeGreaterThan(fulhamPalace?.markets?.away_win ?? 1);
@@ -75,15 +72,27 @@ test('C0179 returns manager state next to the immutable latest saved GW3 plan', 
   expect(parsed.manager_state?.source).toBe('C0179_DERIVED_AUDITED_MANAGER_STATE_V1');
 });
 
-test('C0174 betting contract fails closed when current market data is absent', async ({ request }, testInfo) => {
+test('C0181 betting predictions use the same canonical fixture snapshots and fail closed on value', async ({ request }, testInfo) => {
   desktopOnly(testInfo.project.name);
-  const response = await request.get(`${analysisEndpoints.betting}?gw=3`);
-  expect(response.ok()).toBe(true);
-  const parsed = BettingApiSchema.parse(await response.json());
+  const [marketResponse, fplResponse] = await Promise.all([
+    request.get(`${analysisEndpoints.betting}?gw=3`),
+    request.get(`${endpoints.fpl}?gw=3`),
+  ]);
+  expect(marketResponse.ok()).toBe(true);
+  expect(fplResponse.ok()).toBe(true);
+  const parsed = BettingApiSchema.parse(await marketResponse.json());
+  const fpl = FplApiSchema.parse(await fplResponse.json());
   expect(parsed.gameweek).toBe(3);
   expect(parsed.fixtures).toHaveLength(10);
   expect(parsed.value_edge_available).toBe(false);
+  const fplByMatch = new Map(fpl.fixture_results.map((fixture) => [fixture.match_id, fixture]));
   for (const fixture of parsed.fixtures) {
+    const canonical = fplByMatch.get(fixture.match_id)?.prediction;
+    expect(fixture.prediction?.snapshot_id).toBe(canonical?.snapshot_id);
+    expect(fixture.prediction?.source_change_id).toBe(canonical?.source_change_id);
+    expect(fixture.prediction?.markets?.home_win).toBeCloseTo(canonical?.markets?.home_win ?? -1, 8);
+    expect(fixture.prediction?.markets?.draw).toBeCloseTo(canonical?.markets?.draw ?? -1, 8);
+    expect(fixture.prediction?.markets?.away_win).toBeCloseTo(canonical?.markets?.away_win ?? -1, 8);
     if (fixture.edge_research) expect(fixture.edge_research.model_effect_enabled).toBe(false);
     if (fixture.clv_research) expect(fixture.clv_research.model_effect_enabled).toBe(false);
   }

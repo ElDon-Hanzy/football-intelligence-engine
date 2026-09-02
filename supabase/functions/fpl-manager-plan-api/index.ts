@@ -23,7 +23,11 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const requested = Number(url.searchParams.get('gw') || 0);
 
-    const [{ data: plans, error: planError }, { data: states, error: stateError }] = await Promise.all([
+    const [
+      { data: plans, error: planError },
+      { data: states, error: stateError },
+      { data: actualDecisions, error: actualError },
+    ] = await Promise.all([
       sb
         .from('fpl_manager_plans')
         .select('id,gameweek,captured_at,status,horizon,transfers,captain_player_id,vice_player_id,starting_xi,bench_order,chip,gw_expected_xi_points,expected_gain_current_gw,expected_gain_horizon,risk_level,rationale,source,supersedes_id')
@@ -36,11 +40,18 @@ Deno.serve(async (req: Request) => {
         .order('gameweek', { ascending: true })
         .order('captured_at', { ascending: false })
         .order('id', { ascending: false }),
+      sb
+        .from('fpl_actual_manager_decisions')
+        .select('id,gameweek,captured_at,captain_player_id,vice_player_id,starting_xi,bench_order,chip,source,notes,correction_of_id')
+        .order('gameweek', { ascending: true })
+        .order('captured_at', { ascending: false })
+        .order('id', { ascending: false }),
     ]);
     if (planError) throw planError;
     if (stateError) throw stateError;
+    if (actualError) throw actualError;
 
-    const availableGameweeks = [...new Set([...(plans || []), ...(states || [])]
+    const availableGameweeks = [...new Set([...(plans || []), ...(states || []), ...(actualDecisions || [])]
       .map((row: any) => Number(row.gameweek))
       .filter((gw: number) => Number.isInteger(gw) && gw >= 1 && gw <= 38))]
       .sort((a, b) => a - b);
@@ -59,8 +70,16 @@ Deno.serve(async (req: Request) => {
 
     const plan = latestForGameweek(plans || [], gameweek);
     const managerState = latestForGameweek(states || [], gameweek);
+    const actualManagerDecision = latestForGameweek(actualDecisions || [], gameweek);
 
-    return new Response(JSON.stringify({ ok: true, gameweek, available_gameweeks: availableGameweeks, plan, manager_state: managerState }), { headers: cors });
+    return new Response(JSON.stringify({
+      ok: true,
+      gameweek,
+      available_gameweeks: availableGameweeks,
+      plan,
+      manager_state: managerState,
+      actual_manager_decision: actualManagerDecision,
+    }), { headers: cors });
   } catch (error) {
     return new Response(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: cors });
   }

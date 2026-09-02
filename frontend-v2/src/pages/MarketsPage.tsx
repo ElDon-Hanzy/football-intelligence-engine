@@ -1,76 +1,72 @@
 import { Button } from '../components/primitives/Button';
-import { outcomeComparisons, pct, strongestModelOutcome, useMarketsData } from '../lib/analysis';
+import { outcomeComparisons, pct, strongestModelOutcome, useMarketsData, useStrongestBettingCalls, type StrongestBettingCall } from '../lib/analysis';
 import type { BettingFixture } from '../lib/analysis-contracts';
 
-type ResearchEdge = {
-  matchId: number;
-  fixture: string;
-  selection: string;
-  bookmaker: string;
-  odds: number | null;
-  modelProbability: number | null;
-  expectedValue: number | null;
-  minEdge: number | null;
-  evidenceQuality: string | null;
-};
-
 export function MarketsPage({ requestedGameweek }: { requestedGameweek: number }) {
-  const query = useMarketsData(requestedGameweek);
-  if (query.isPending) return <Loading />;
-  if (query.isError || !query.data) return <ErrorState onRetry={() => void query.refetch()} />;
-  const data = query.data;
-  const priced = data.fixtures.filter((fixture) => fixture.bookmaker_odds.length > 0).length;
-  const researchObservations = data.fixtures.reduce((sum, fixture) => sum + (fixture.edge_research?.observation_count ?? 0), 0);
-  const noMarket = data.odds_status !== 'connected' || priced === 0;
-  const shortlist = researchShortlist(data.fixtures).slice(0, 4);
+  const callsQuery = useStrongestBettingCalls(requestedGameweek);
+  const marketQuery = useMarketsData(requestedGameweek);
+
+  if (callsQuery.isPending) return <Loading />;
+  if (callsQuery.isError || !callsQuery.data) return <ErrorState onRetry={() => void callsQuery.refetch()} />;
+
+  const callsData = callsQuery.data;
+  const calls = callsData.betting_recommendations;
+  const market = marketQuery.data;
+  const priced = market?.fixtures.filter((fixture) => fixture.bookmaker_odds.length > 0).length ?? 0;
+  const researchObservations = market?.fixtures.reduce((sum, fixture) => sum + (fixture.edge_research?.observation_count ?? 0), 0) ?? 0;
+  const marketFeed = marketQuery.isPending ? 'Loading' : marketQuery.isError || !market ? 'Unavailable' : market.odds_status !== 'connected' || priced === 0 ? 'Waiting' : 'Connected';
 
   return <div className="analysis-page markets-page">
     <header className="page-intro analysis-intro">
-      <div><span className="page-eyebrow">Gameweek {data.gameweek} · market intelligence</span><h1>Markets</h1><p>Rank the strongest current bookmaker disagreements first; keep diagnostics secondary.</p></div>
-      <span className="sync-badge is-warning" role="status"><span aria-hidden="true" />Research model</span>
+      <div><span className="page-eyebrow">Gameweek {callsData.gameweek} · betting model</span><h1>Markets</h1><p>Strongest football-model calls first. Bookmaker prices are context, not the ranking engine.</p></div>
+      <span className="sync-badge" role="status"><span aria-hidden="true" />Frozen model</span>
     </header>
 
     <section className="markets-top4" aria-labelledby="top-bets-heading">
       <div className="analysis-section-heading markets-top4-heading">
-        <div><span className="page-eyebrow">Current Gameweek only</span><h2 id="top-bets-heading">Top 4 Bets</h2></div>
-        <p>Latest valid pre-kickoff bookmaker snapshots. One strongest candidate per fixture, then ranked by robust-positive research EV. Research is not yet a validated staking model.</p>
+        <div><span className="page-eyebrow">Legacy decision source</span><h2 id="top-bets-heading">Four strongest model calls</h2></div>
+        <p>One highest-conviction model view in each core market: Correct score, 1X2, O/U 2.5 and BTTS. These cards come directly from the existing human-insights betting recommendations; v2 does not re-rank them using odds or EV.</p>
       </div>
 
-      {shortlist.length ? <div className="top-bet-grid">{shortlist.map((edge, index) => <TopBetCard edge={edge} rank={index + 1} key={`${edge.matchId}-${edge.selection}-${edge.bookmaker}`} />)}</div>
-        : <div className="market-waiting-state" role="status"><span>Market feed</span><strong>Waiting for GW{data.gameweek} prices</strong><p>No current bookmaker snapshot exists for this Gameweek yet, so there is nothing honest to rank. Historical GW1/GW2 selections are not carried forward.</p></div>}
+      {calls.length ? <div className="top-bet-grid">{calls.map((call, index) => <ModelCallCard call={call} rank={index + 1} key={`${call.type}-${call.match_id}-${call.selection}`} />)}</div>
+        : <div className="market-waiting-state" role="status"><span>Model calls</span><strong>GW{callsData.gameweek} calls unavailable</strong><p>The existing model-call source returned no recommendations. Bookmaker research is not substituted as a fallback.</p></div>}
     </section>
 
     <dl className="market-status-strip" aria-label="Market status">
-      <Metric label="Market feed" value={noMarket ? 'Waiting' : 'Connected'} />
-      <Metric label="Priced fixtures" value={`${priced}/${data.fixtures.length}`} />
-      <Metric label="Research observations" value={String(researchObservations)} />
-      <Metric label="Top-4 state" value={shortlist.length ? `${shortlist.length} ranked` : 'Pending prices'} />
+      <Metric label="Model calls" value={`${calls.length}/4`} />
+      <Metric label="Prediction run" value={String(callsData.prediction_run_id)} />
+      <Metric label="Bookmaker feed" value={marketFeed} />
+      <Metric label="Priced fixtures" value={market ? `${priced}/${market.fixtures.length}` : '—'} />
     </dl>
 
-    <p className="market-validation-note"><strong>Validation status:</strong> edge/CLV research remains model_effect_enabled=false. This affects staking confidence, not whether useful market disagreement should be surfaced.</p>
+    <p className="market-validation-note"><strong>Selection rule:</strong> model probability chooses these four calls. Bookmaker odds, research EV and CLV do not determine the shortlist; they remain secondary diagnostics.</p>
 
     <details className="market-diagnostics-disclosure">
-      <summary>All fixture market diagnostics</summary>
+      <summary>Bookmaker and fixture diagnostics</summary>
       <div className="market-diagnostics-body">
-        {data.warnings.length ? <aside className="analysis-notice" role="note"><strong>Feed notes</strong><span>{data.warnings.join(' · ')}</span></aside> : null}
-        <div className="analysis-section-heading"><div><span className="page-eyebrow">Diagnostics</span><h2>Model vs market</h2></div><p>Raw gaps and fixture-level prices are diagnostic context, not the primary decision surface.</p></div>
-        <div className="market-fixture-grid">{data.fixtures.map((fixture) => <MarketFixtureCard key={fixture.match_id} fixture={fixture} />)}</div>
+        {marketQuery.isPending ? <div className="empty-state">Bookmaker diagnostics are loading. The four model calls above are independent of this feed.</div> : null}
+        {marketQuery.isError || !market ? <div className="empty-state">Bookmaker diagnostics are unavailable. The four model calls above remain valid because they come from the frozen model-call source.</div> : null}
+        {market ? <>
+          {market.warnings.length ? <aside className="analysis-notice" role="note"><strong>Feed notes</strong><span>{market.warnings.join(' · ')}</span></aside> : null}
+          <div className="analysis-section-heading"><div><span className="page-eyebrow">Secondary diagnostics</span><h2>Model vs market</h2></div><p>{researchObservations} research observations. Raw gaps and prices are context only and never choose the four primary calls.</p></div>
+          <div className="market-fixture-grid">{market.fixtures.map((fixture) => <MarketFixtureCard key={fixture.match_id} fixture={fixture} />)}</div>
+        </> : null}
       </div>
     </details>
   </div>;
 }
 
-function TopBetCard({ edge, rank }: { edge: ResearchEdge; rank: number }) {
+function ModelCallCard({ call, rank }: { call: StrongestBettingCall; rank: number }) {
+  const note = call.type === 'Correct score' ? 'Exact scores are naturally lower-probability outcomes.' : 'Model probability, not bookmaker value.';
   return <article className="top-bet-card">
-    <header><span className="research-rank">#{rank}</span><div><small>{edge.fixture}</small><h3>{edge.selection}</h3></div><span className="market-action-chip is-research">Research</span></header>
-    <div className="top-bet-book"><span>Best displayed bookmaker</span><strong>{edge.bookmaker}</strong></div>
+    <header><span className="research-rank">#{rank}</span><div><small>{call.type}</small><h3>{call.selection}</h3></div><span className="market-action-chip">MODEL</span></header>
+    <div className="top-bet-book"><span>Fixture</span><strong>{call.fixture}</strong></div>
     <dl className="top-bet-metrics">
-      <Metric label="Odds" value={edge.odds == null ? '—' : edge.odds.toFixed(2)} />
-      <Metric label="Model P" value={edge.modelProbability == null ? '—' : pct(edge.modelProbability)} />
-      <Metric label="Research EV" value={edge.expectedValue == null ? '—' : signedPct(edge.expectedValue)} />
-      <Metric label="Min edge" value={edge.minEdge == null ? '—' : signedPct(edge.minEdge)} />
+      <Metric label="Model probability" value={pct(call.probability, 1)} />
+      <Metric label="Home xG" value={call.home_lambda == null ? '—' : call.home_lambda.toFixed(2)} />
+      <Metric label="Away xG" value={call.away_lambda == null ? '—' : call.away_lambda.toFixed(2)} />
     </dl>
-    <small className="top-bet-quality">{edge.evidenceQuality ? `${edge.evidenceQuality} evidence quality · ` : ''}unvalidated research</small>
+    <small className="top-bet-quality">{note}</small>
   </article>;
 }
 
@@ -91,35 +87,6 @@ function MarketFixtureCard({ fixture }: { fixture: BettingFixture }) {
   </article>;
 }
 
-function researchShortlist(fixtures: BettingFixture[]): ResearchEdge[] {
-  const bestByFixture = new Map<number, ResearchEdge>();
-  for (const fixture of fixtures) {
-    const rawRows = fixture.edge_research?.top_robust_positive_ev;
-    if (!Array.isArray(rawRows)) continue;
-    for (const raw of rawRows) {
-      if (!raw || typeof raw !== 'object') continue;
-      const row = raw as Record<string, unknown>;
-      const selection = typeof row.selection_name === 'string' ? row.selection_name : null;
-      const bookmaker = typeof row.bookmaker === 'string' ? row.bookmaker : null;
-      if (!selection || !bookmaker) continue;
-      const edge: ResearchEdge = {
-        matchId: fixture.match_id,
-        fixture: `${fixture.home_short ?? fixture.home_team ?? 'HOME'}–${fixture.away_short ?? fixture.away_team ?? 'AWAY'}`,
-        selection,
-        bookmaker,
-        odds: numberOrNull(row.decimal_odds),
-        modelProbability: numberOrNull(row.model_probability),
-        expectedValue: numberOrNull(row.expected_value),
-        minEdge: numberOrNull(row.min_edge_across_methods),
-        evidenceQuality: typeof row.evidence_quality === 'string' ? row.evidence_quality : null,
-      };
-      const current = bestByFixture.get(edge.matchId);
-      if (!current || (edge.expectedValue ?? -Infinity) > (current.expectedValue ?? -Infinity)) bestByFixture.set(edge.matchId, edge);
-    }
-  }
-  return [...bestByFixture.values()].sort((a, b) => (b.expectedValue ?? -Infinity) - (a.expectedValue ?? -Infinity));
-}
-
 function topScoreWatch(fixture: BettingFixture): { score: string; odds: number | null } | null {
   const raw = fixture.prediction?.top_scorelines?.[0];
   if (!raw || typeof raw !== 'object') return null;
@@ -130,8 +97,7 @@ function topScoreWatch(fixture: BettingFixture): { score: string; odds: number |
   return { score, odds: price?.decimal_odds ?? null };
 }
 
-function numberOrNull(value: unknown): number | null { const result = typeof value === 'number' ? value : Number(value); return Number.isFinite(result) ? result : null; }
 function signedPct(value: number | null): string { if (value == null) return '—'; return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}pp`; }
 function Metric({ label, value }: { label: string; value: string }) { return <div><dt>{label}</dt><dd>{value}</dd></div>; }
 function Loading() { return <div className="command-skeleton" aria-busy="true" aria-label="Loading Markets"><div className="skeleton-line is-short"/><div className="skeleton-line is-title"/><div className="skeleton-panel"/></div>; }
-function ErrorState({ onRetry }: { onRetry: () => void }) { return <section className="state-panel"><span className="page-eyebrow">Markets</span><h1>Market data is unavailable.</h1><p>No edge or bet state is inferred when the contract cannot be read.</p><Button onClick={onRetry}>Retry market data</Button></section>; }
+function ErrorState({ onRetry }: { onRetry: () => void }) { return <section className="state-panel"><span className="page-eyebrow">Markets</span><h1>Model calls are unavailable.</h1><p>The existing strongest-call contract could not be read. Bookmaker EV is not substituted as a fallback.</p><Button onClick={onRetry}>Retry model calls</Button></section>; }

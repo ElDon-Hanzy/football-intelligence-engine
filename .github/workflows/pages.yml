@@ -47,6 +47,10 @@ jobs:
         working-directory: frontend-v2
         run: npm run build
 
+      - name: Enforce UI v2 bundle budget
+        working-directory: frontend-v2
+        run: npm run budget
+
       - name: Install Chromium for UI v2 E2E
         working-directory: frontend-v2
         run: npx playwright install --with-deps chromium

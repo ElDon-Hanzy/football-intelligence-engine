@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import type { FixtureFactsItem, FplFixtureResult, RecentTeamResultSchema } from '../../lib/contracts';
 import type { z } from 'zod';
-import { actualOutcome, assessCall } from '../../lib/fixtures';
+import { assessCall } from '../../lib/fixtures';
+import { auditExactScore, auditOutcomeCode } from '../../lib/prediction-audit';
+import { PredictionAuditMark } from '../predictions/PredictionAuditMark';
 import { MatchupModal } from './MatchupModal';
 
 type EvidenceStatus = 'aligned' | 'mismatch' | 'unavailable';
@@ -24,13 +26,11 @@ export function FixtureCard({ fixture, facts, evidenceStatus, homeTeamCode = nul
   const prediction = fixture.prediction;
   const assessment = assessCall(prediction?.markets);
   const headlineScore = prediction?.headline_score ?? prediction?.raw_modal_score ?? null;
-  const outcome = actualOutcome(fixture.home_score, fixture.away_score);
   const scoreActual = fixture.home_score != null && fixture.away_score != null ? `${fixture.home_score}-${fixture.away_score}` : null;
   const callDisplay = assessment.top?.code === 'H' ? `${homeShort} win` : assessment.top?.code === 'A' ? `${awayShort} win` : assessment.top?.code === 'D' ? 'Draw' : 'Unavailable';
   const modalReady = evidenceStatus === 'aligned' && facts != null;
-  const directionAuditable = Boolean(fixture.finished && outcome && assessment.top?.code);
-  const directionCorrect = directionAuditable ? assessment.top?.code === outcome : null;
-  const scoreCorrect = fixture.finished && headlineScore && scoreActual ? scoreActual === headlineScore : null;
+  const directionAudit = fixture.finished ? auditOutcomeCode(assessment.top?.code, fixture.home_score, fixture.away_score) : null;
+  const scoreAudit = fixture.finished ? auditExactScore(headlineScore, fixture.home_score, fixture.away_score) : null;
   const predictionLabel = assessment.state === 'no-edge'
     ? fixture.finished && assessment.top?.code ? `No clear edge · top ${callDisplay}` : 'No clear edge'
     : callDisplay;
@@ -45,8 +45,8 @@ export function FixtureCard({ fixture, facts, evidenceStatus, homeTeamCode = nul
       <CompactTeam name={home} shortName={homeShort} teamCode={homeTeamCode} recent={facts?.home.recent ?? []} />
       <div className="compact-prediction" aria-label="Prediction summary">
         <span className={`compact-call-state is-${assessment.state}`}>{callStateLabel(assessment.state)}</span>
-        <strong>{predictionLabel}{directionCorrect == null ? null : <AuditMark correct={directionCorrect} label="top 1X2 prediction" />}</strong>
-        <small>Most likely exact score <b>{headlineScore ?? '—'}</b>{scoreCorrect == null ? null : <AuditMark correct={scoreCorrect} label="exact-score prediction" />}</small>
+        <strong>{predictionLabel}{directionAudit == null ? null : <PredictionAuditMark correct={directionAudit.correct} label="top 1X2 prediction" />}</strong>
+        <small>Most likely exact score <b>{headlineScore ?? '—'}</b>{scoreAudit == null ? null : <PredictionAuditMark correct={scoreAudit.correct} label="exact-score prediction" />}</small>
         {fixture.finished ? <small className="actual-score">Actual {scoreActual ?? '—'}</small> : null}
       </div>
       <CompactTeam name={away} shortName={awayShort} teamCode={awayTeamCode} recent={facts?.away.recent ?? []} away />
@@ -80,10 +80,6 @@ function CompactForm({ teamName, recent }: { teamName: string; recent: RecentRes
   return <span className="compact-form" role="img" aria-label={`${teamName} last five: ${results.map((result) => result.result).join(', ')}`}>
     {results.map((result, index) => <i key={`${result.fixture_kickoff}-${index}`} className={`compact-form-dot is-${result.result.toLowerCase()}`} aria-hidden="true" />)}
   </span>;
-}
-
-function AuditMark({ correct, label }: { correct: boolean; label: string }) {
-  return <span className={`inline-audit-mark ${correct ? 'is-correct' : 'is-wrong'}`} aria-label={`${label} ${correct ? 'correct' : 'incorrect'}`}>{correct ? '✓' : '×'}</span>;
 }
 
 function callStateLabel(state: ReturnType<typeof assessCall>['state']): string {

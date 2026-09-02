@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
+const selections = ['1-1', '2-1', '1-0', '2-0'];
 const fixtures = Array.from({ length: 10 }, (_, index) => ({
   match_id: 25 + index,
   kickoff_time: `2026-09-0${index < 5 ? 4 : 6}T${String(12 + index).padStart(2, '0')}:00:00+00:00`,
@@ -10,16 +11,14 @@ const fixtures = Array.from({ length: 10 }, (_, index) => ({
   home_short: index === 0 ? 'FUL' : `H${index}`,
   away_short: index === 0 ? 'CRY' : `A${index}`,
   prediction: { snapshot_id: 211 + index, source_change_id: 'C0166', captured_at: '2026-09-01T21:03:00+00:00', markets: index === 0 ? { home_win: .3819, draw: .2433, away_win: .3745 } : { home_win: .52, draw: .25, away_win: .23 }, top_scorelines: [{ score: index === 0 ? '1-1' : '2-1', prob: .112 }] },
-  bookmaker_odds: index === 0 ? [
-    { bookmaker: 'Book A', bookmaker_family: 'Book A', market_key: 'h2h', selection_key: 'home', selection_name: 'Fulham', decimal_odds: 2.8, implied_probability: .3571 },
-    { bookmaker: 'Book A', bookmaker_family: 'Book A', market_key: 'h2h', selection_key: 'draw', selection_name: 'Draw', decimal_odds: 3.5, implied_probability: .2857 },
-    { bookmaker: 'Book A', bookmaker_family: 'Book A', market_key: 'h2h', selection_key: 'away', selection_name: 'Crystal Palace', decimal_odds: 2.9, implied_probability: .3448 },
+  bookmaker_odds: index < 4 ? [
+    { bookmaker: 'Book A', bookmaker_family: 'Book A', market_key: 'h2h', selection_key: 'home', selection_name: index === 0 ? 'Fulham' : `Home ${index}`, decimal_odds: 2.8, implied_probability: .3571 },
   ] : [],
-  correct_score_odds: index === 0 ? [{ bookmaker: 'Book A', bookmaker_family: 'Book A', market_key: 'correct_score', selection_key: '1-1', selection_name: '1-1', decimal_odds: 7.5, implied_probability: .1333 }] : [],
-  bookmaker_count: index === 0 ? 1 : null,
-  bookmaker_source_count: index === 0 ? 1 : null,
-  market_count: index === 0 ? 2 : null,
-  edge_research: index === 0 ? { status: 'UNVALIDATED', model_effect_enabled: false, observation_count: 3, robust_positive_ev_count: 1, top_robust_positive_ev: [{ selection_name: '1-1', bookmaker: 'Book A', decimal_odds: 7.5, expected_value: .12, min_edge_across_methods: .06 }] } : null,
+  correct_score_odds: index < 4 ? [{ bookmaker: 'Book A', bookmaker_family: 'Book A', market_key: 'correct_score', selection_key: selections[index], selection_name: selections[index], decimal_odds: 7.5 + index, implied_probability: .1333 }] : [],
+  bookmaker_count: index < 4 ? 1 : null,
+  bookmaker_source_count: index < 4 ? 1 : null,
+  market_count: index < 4 ? 2 : null,
+  edge_research: index < 4 ? { status: 'UNVALIDATED', model_effect_enabled: false, observation_count: 3, robust_positive_ev_count: 1, top_robust_positive_ev: [{ selection_name: selections[index], bookmaker: 'Book A', decimal_odds: 7.5 + index, model_probability: .14 - index * .005, expected_value: .12 - index * .01, min_edge_across_methods: .06 - index * .005, evidence_quality: 'HIGH' }] } : null,
   price_tracking: null,
   clv_research: null,
 }));
@@ -63,16 +62,20 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/engine-diagnostics-api**', async (route) => route.fulfill({ json: enginePayload }));
 });
 
-test('Markets distinguishes missing prices, unvalidated research and validated betting state', async ({ page }) => {
+test('Markets is Top-4 first and keeps fixture diagnostics secondary', async ({ page }) => {
   await page.goto('/?view=markets&gw=3');
   await expect(page.getByRole('heading', { level: 1, name: 'Markets' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'NO VALIDATED BET EDGE' })).toBeVisible();
-  await expect(page.locator('.market-action-chip')).toHaveCount(10);
-  await expect(page.locator('.market-action-chip').filter({ hasText: 'UNVALIDATED' })).toHaveCount(1);
-  await expect(page.locator('.market-action-chip').filter({ hasText: 'NO MARKET DATA' })).toHaveCount(9);
-  await expect(page.getByRole('heading', { name: 'Research shortlist' })).toBeVisible();
-  await expect(page.getByText('FUL–CRY · 1-1')).toBeVisible();
-  await expect(page.getByText('Raw gap', { exact: false }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Top 4 Bets' })).toBeVisible();
+  await expect(page.getByText('NO VALIDATED BET EDGE')).toHaveCount(0);
+  await expect(page.locator('.top-bet-card')).toHaveCount(4);
+  await expect(page.locator('.top-bet-card').first().getByText('FUL–CRY')).toBeVisible();
+  await expect(page.locator('.top-bet-card').first().getByRole('heading', { name: '1-1' })).toBeVisible();
+  await expect(page.locator('.top-bet-card').first().getByText('Research EV')).toBeVisible();
+  await expect(page.locator('.market-card').first()).not.toBeVisible();
+  await page.getByText('All fixture market diagnostics', { exact: true }).click();
+  await expect(page.locator('.market-card')).toHaveCount(10);
+  await expect(page.locator('.market-card').first()).toBeVisible();
+  await expect(page.locator('.market-action-chip').filter({ hasText: 'NO MARKET DATA' })).toHaveCount(6);
   const research = page.locator('.market-card').first().getByText('Research diagnostics', { exact: true });
   await research.click();
   await expect(page.getByText('Research only · no production effect')).toBeVisible();

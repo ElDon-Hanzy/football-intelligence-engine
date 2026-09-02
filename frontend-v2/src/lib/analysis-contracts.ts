@@ -25,6 +25,8 @@ export const BettingFixtureSchema = z.object({
   home_short: z.string().nullable().optional(),
   away_short: z.string().nullable().optional(),
   prediction: z.object({
+    snapshot_id: z.number().int().positive(),
+    source_change_id: z.string().nullable(),
     markets: MarketsSchema.optional(),
     top_scorelines: z.array(z.unknown()).optional(),
     captured_at: z.string().optional(),

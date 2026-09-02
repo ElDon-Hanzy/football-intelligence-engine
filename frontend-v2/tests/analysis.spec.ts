@@ -98,7 +98,7 @@ test('Performance is sample-first and keeps the unevaluated test cohort pending'
   await expect(hero.getByRole('heading', { name: '10 fixtures evaluated' })).toBeVisible();
   await expect(hero.getByText('60%', { exact: true })).toBeVisible();
   await expect(page.getByText('GW3 test remains unevaluated')).toBeVisible();
-  await expect(page.getByText('FULL_V04_ELO_NO_SCHEDULE')).toBeVisible();
+  await expect(page.getByRole('rowheader', { name: 'FULL_V04_ELO_NO_SCHEDULE' })).toBeVisible();
   await assertPageQuality(page);
 });
 

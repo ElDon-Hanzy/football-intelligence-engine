@@ -52,31 +52,28 @@ const recent = (teamId: number) => Array.from({ length: 5 }, (_, index) => ({
 const fact = (id: number, matchId: number, family: string, text: string, rank: number, alignment: 'SUPPORTS' | 'CONTRADICTS' | 'NEUTRAL' = 'SUPPORTS') => ({
   id, snapshot_run_id: 7, match_id: matchId,
   team_id: alignment === 'CONTRADICTS' ? 8 : 10, opponent_team_id: alignment === 'CONTRADICTS' ? 10 : 8,
-  fact_type: `C0166_${family}`, usefulness_score: 1 - rank / 10, card_rank: rank, alignment, one_liner: text,
-  payload: { family }, evidence_cutoff: '2026-09-01T20:32:50+00:00',
+  fact_type: `C0190_${family}`, usefulness_score: 1 - rank / 20, card_rank: rank, alignment, one_liner: text,
+  payload: { family, model_effect_enabled: false }, evidence_cutoff: '2026-09-01T20:32:50+00:00',
 });
 
 const factsPayload = {
-  ok: true, gameweek: 3, facts_available: true, evidence_source: 'dynamic_c0166_views', snapshot_run: { id: 7, as_of_gameweek: 2 },
+  ok: true, gameweek: 3, facts_available: true, evidence_source: 'dynamic_c0166_plus_c0190_context', snapshot_run: { id: 7, as_of_gameweek: 2 },
   fixtures: fixtureResults.map((fixture, index) => ({
     match_id: fixture.match_id, gameweek: 3, kickoff_time: fixture.kickoff_time,
     home: { id: 10 + index * 2, name: fixture.home_team, short_name: fixture.home_short, recent: recent(10 + index * 2) },
     away: { id: 11 + index * 2, name: fixture.away_team, short_name: fixture.away_short, recent: recent(11 + index * 2) },
     alignment_basis: { snapshot_id: index === 1 ? 999 : fixture.prediction.snapshot_id, captured_at: '2026-09-01T21:03:00+00:00', source_change_id: 'C0166', top_outcome: 'H', markets: fixture.prediction.markets },
-    card_facts: index === 0 ? [
-      fact(1, fixture.match_id, 'VENUE_FORM', 'Fulham have won six of ten home matches.', 1),
-      fact(2, fixture.match_id, 'VENUE_FORM', 'Duplicate venue family should not display.', 2),
-      fact(3, fixture.match_id, 'STREAK', 'Palace are winless in nine league matches.', 3),
-      fact(4, fixture.match_id, 'MATCHUP_XG', 'Fulham have the stronger chance matchup.', 4),
-      fact(5, fixture.match_id, 'PROCESS', 'A fourth distinct fact is capped out.', 5),
-    ] : [fact(100 + index, fixture.match_id, 'PROCESS', 'One signed model input supports the numerical lean.', 1)],
+    card_facts: [],
     modal_facts: index === 0 ? [
-      fact(11, fixture.match_id, 'VENUE_FORM', 'Fulham have won six of ten home matches.', 1),
-      fact(12, fixture.match_id, 'STREAK', 'Palace are winless in nine league matches.', 2),
-      fact(13, fixture.match_id, 'MATCHUP_XG', 'Fulham have the stronger chance matchup.', 3),
-      fact(14, fixture.match_id, 'PROCESS', 'A fourth support should not crowd out the risk section.', 4),
+      fact(11, fixture.match_id, 'BASELINE_MODEL', 'The structural baseline slightly favours Fulham.', 1),
+      fact(12, fixture.match_id, 'VENUE_ATTACK_XG', 'Fulham carry the stronger venue attack xG.', 2),
+      fact(13, fixture.match_id, 'SEASON_RESULTS', 'Fulham have the stronger early-season result line.', 3),
+      fact(14, fixture.match_id, 'RECENT_GOAL_BALANCE', 'Fulham have the stronger recent goal balance.', 4),
+      fact(15, fixture.match_id, 'SEASON_SCORING', 'Fulham are scoring more per league match this season.', 5),
+      fact(16, fixture.match_id, 'SEASON_CLEAN_SHEETS', 'A sixth support should be capped from the primary group.', 6),
       fact(20, fixture.match_id, 'CURRENT_SEASON_PROCESS', 'Palace have the stronger current-season chance profile.', 1, 'CONTRADICTS'),
-    ] : [fact(200 + index, fixture.match_id, 'PROCESS', 'One signed model input supports the numerical lean.', 1)],
+      fact(21, fixture.match_id, 'TACTICAL_WIDE', 'Tactical research gives Palace the stronger wide matchup.', 2, 'CONTRADICTS'),
+    ] : [fact(200 + index, fixture.match_id, 'PROCESS', 'One evidence family supports the numerical lean.', 1)],
   })),
 };
 
@@ -89,7 +86,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/gameweek-status-api**', async (route) => route.fulfill({ json: gameweekStatusPayload }));
 });
 
-test('fixture scan is compact by default and expands into evidence and the accessible matchup modal', async ({ page }) => {
+test('fixture scan stays compact and opens the accessible matchup modal directly', async ({ page }) => {
   await page.goto('/?view=fixtures&gw=3');
   await expect(page.getByRole('heading', { level: 1, name: 'Fixtures' })).toBeVisible();
   const cards = page.locator('.fixture-card');
@@ -101,25 +98,13 @@ test('fixture scan is compact by default and expands into evidence and the acces
   await expect(cards.nth(0).locator('.compact-form-dot')).toHaveCount(10);
   await expect(cards.nth(0).locator('.club-crest')).toHaveCount(2);
   await expect(cards.nth(0).getByText(/exact-score probability/i)).toHaveCount(0);
-  await expect(cards.nth(0).locator('.form-result-button')).toHaveCount(0);
-  await expect(cards.nth(0).getByRole('button', { name: 'Open matchup' })).toHaveCount(0);
-
-  await cards.nth(0).getByRole('button', { name: 'Expand fixture' }).click();
-  const formButton = cards.nth(0).locator('.form-result-button').first();
-  const box = await formButton.boundingBox();
-  expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
-  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
-  await formButton.click();
-  await expect(cards.nth(0).locator('.form-detail')).toBeVisible();
-  await expect(cards.nth(0).locator('.evidence-list li')).toHaveCount(3);
-  await expect(cards.nth(0).getByText('Duplicate venue family should not display.')).toHaveCount(0);
-  await expect(cards.nth(0).locator('.club-crest.is-expanded')).toHaveCount(2);
-
-  await cards.nth(1).getByRole('button', { name: 'Expand fixture' }).click();
-  await expect(cards.nth(1).getByText(/Evidence is refreshing/)).toBeVisible();
-  await expect(cards.nth(1).getByRole('button', { name: 'Matchup refreshing' })).toBeDisabled();
+  await expect(cards.nth(0).locator('.fixture-expanded')).toHaveCount(0);
+  await expect(cards.nth(0).locator('.club-crest.is-expanded')).toHaveCount(0);
 
   const openButton = cards.nth(0).getByRole('button', { name: 'Open matchup' });
+  await expect(openButton).toBeVisible();
+  await expect(cards.nth(1).getByRole('button', { name: 'Matchup refreshing' })).toBeDisabled();
+
   await openButton.click();
   const dialog = page.getByRole('dialog', { name: 'Fulham vs Crystal Palace' });
   await expect(dialog).toBeVisible();
@@ -127,13 +112,16 @@ test('fixture scan is compact by default and expands into evidence and the acces
   expect(await page.evaluate(() => document.body.style.overflow)).toBe('hidden');
 
   const story = await dialog.locator('.match-story p').textContent();
-  expect(story).toContain('effectively split');
+  expect(story).toContain('genuine split');
   expect(story).toContain('0.7pp');
-  expect(story).not.toContain('Fulham have won six of ten home matches.');
-  await expect(dialog.getByRole('heading', { name: 'Supports the call' })).toBeVisible();
-  await expect(dialog.getByRole('heading', { name: 'Counterpoints / risks' })).toBeVisible();
+  expect(story).toContain('5 distinct evidence families');
+  await expect(dialog.getByRole('heading', { name: /Case for Fulham/ })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: /Case against Fulham/ })).toBeVisible();
+  await expect(dialog.locator('.modal-evidence-group.is-support li')).toHaveCount(5);
+  await expect(dialog.locator('.modal-evidence-group.is-risk li')).toHaveCount(2);
+  await expect(dialog.getByText('A sixth support should be capped from the primary group.')).toHaveCount(0);
   await expect(dialog.getByText('Palace have the stronger current-season chance profile.')).toBeVisible();
-  await expect(dialog.getByText('A fourth support should not crowd out the risk section.')).toHaveCount(0);
+  await expect(dialog.getByText(/Research-only context does not change the production forecast/)).toBeVisible();
 
   const technical = dialog.getByText('Technical details', { exact: true });
   await expect(dialog.getByText('Raw modal score', { exact: true })).not.toBeVisible();

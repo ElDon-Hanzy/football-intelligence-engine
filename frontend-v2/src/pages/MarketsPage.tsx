@@ -8,8 +8,10 @@ type ResearchEdge = {
   selection: string;
   bookmaker: string;
   odds: number | null;
+  modelProbability: number | null;
   expectedValue: number | null;
   minEdge: number | null;
+  evidenceQuality: string | null;
 };
 
 export function MarketsPage({ requestedGameweek }: { requestedGameweek: number }) {
@@ -24,32 +26,52 @@ export function MarketsPage({ requestedGameweek }: { requestedGameweek: number }
 
   return <div className="analysis-page markets-page">
     <header className="page-intro analysis-intro">
-      <div><span className="page-eyebrow">Gameweek {data.gameweek} · market discipline</span><h1>Markets</h1><p>Bookmaker availability, research disagreement and validated betting decisions are three different states.</p></div>
-      <span className="sync-badge is-warning" role="status"><span aria-hidden="true" />Research only</span>
+      <div><span className="page-eyebrow">Gameweek {data.gameweek} · market intelligence</span><h1>Markets</h1><p>Rank the strongest current bookmaker disagreements first; keep diagnostics secondary.</p></div>
+      <span className="sync-badge is-warning" role="status"><span aria-hidden="true" />Research model</span>
     </header>
 
-    <section className="analysis-hero is-caution" aria-labelledby="market-action-title">
-      <div><span className="decision-label">Current action</span><h2 id="market-action-title">NO VALIDATED BET EDGE</h2><p>{noMarket ? `GW${data.gameweek} bookmaker prices have not been captured yet. That means no market data—not ten negative betting decisions.` : 'Prices are connected, but the edge/CLV layer is still unvalidated and model_effect_enabled=false.'}</p></div>
-      <dl className="analysis-hero-metrics">
-        <Metric label="Market feed" value={noMarket ? 'No current data' : 'Connected'} />
-        <Metric label="Priced fixtures" value={`${priced}/${data.fixtures.length}`} />
-        <Metric label="Research observations" value={String(researchObservations)} />
-        <Metric label="Validated bets" value="0" />
-      </dl>
+    <section className="markets-top4" aria-labelledby="top-bets-heading">
+      <div className="analysis-section-heading markets-top4-heading">
+        <div><span className="page-eyebrow">Current Gameweek only</span><h2 id="top-bets-heading">Top 4 Bets</h2></div>
+        <p>Latest valid pre-kickoff bookmaker snapshots, ranked by robust-positive research EV. Research is not yet a validated staking model.</p>
+      </div>
+
+      {shortlist.length ? <div className="top-bet-grid">{shortlist.map((edge, index) => <TopBetCard edge={edge} rank={index + 1} key={`${edge.matchId}-${edge.selection}-${edge.bookmaker}`} />)}</div>
+        : <div className="market-waiting-state" role="status"><span>Market feed</span><strong>Waiting for GW{data.gameweek} prices</strong><p>No current bookmaker snapshot exists for this Gameweek yet, so there is nothing honest to rank. Historical GW1/GW2 selections are not carried forward.</p></div>}
     </section>
 
-    {shortlist.length ? <section className="analysis-section" aria-labelledby="research-shortlist-heading">
-      <div className="analysis-section-heading"><div><span className="page-eyebrow">Unvalidated opportunity scan</span><h2 id="research-shortlist-heading">Research shortlist</h2></div><p>Ranked disagreement for the selected Gameweek only. These are not betting recommendations.</p></div>
-      <div className="research-shortlist">{shortlist.map((edge, index) => <article className="research-edge-card" key={`${edge.matchId}-${edge.selection}-${edge.bookmaker}-${index}`}><span className="research-rank">#{index + 1}</span><div><strong>{edge.fixture} · {edge.selection}</strong><small>{edge.bookmaker} · research only</small></div><dl><Metric label="Odds" value={edge.odds == null ? '—' : edge.odds.toFixed(2)} /><Metric label="Research EV" value={edge.expectedValue == null ? '—' : signedPct(edge.expectedValue)} /><Metric label="Min edge" value={edge.minEdge == null ? '—' : signedPct(edge.minEdge)} /></dl></article>)}</div>
-    </section> : <aside className="analysis-notice" role="note"><strong>No current research shortlist for GW{data.gameweek}</strong><span>{noMarket ? 'No bookmaker snapshots exist for this Gameweek yet. Historical GW1/GW2 edges are intentionally not carried forward.' : 'No robust-positive research observation clears the current research filter.'}</span></aside>}
-
-    {data.warnings.length ? <aside className="analysis-notice" role="note"><strong>Feed notes</strong><span>{data.warnings.join(' · ')}</span></aside> : null}
-
-    <section className="analysis-section" aria-labelledby="market-fixtures-heading">
-      <div className="analysis-section-heading"><div><span className="page-eyebrow">Fixture scan</span><h2 id="market-fixtures-heading">Model vs market</h2></div><p>“Raw gap” is model probability minus the best displayed implied probability. It is not a validated betting edge.</p></div>
-      <div className="market-fixture-grid">{data.fixtures.map((fixture) => <MarketFixtureCard key={fixture.match_id} fixture={fixture} />)}</div>
+    <section className="market-status-strip" aria-label="Market status">
+      <Metric label="Market feed" value={noMarket ? 'Waiting' : 'Connected'} />
+      <Metric label="Priced fixtures" value={`${priced}/${data.fixtures.length}`} />
+      <Metric label="Research observations" value={String(researchObservations)} />
+      <Metric label="Top-4 state" value={shortlist.length ? `${shortlist.length} ranked` : 'Pending prices'} />
     </section>
+
+    <p className="market-validation-note"><strong>Validation status:</strong> edge/CLV research remains model_effect_enabled=false. This affects staking confidence, not whether useful market disagreement should be surfaced.</p>
+
+    <details className="market-diagnostics-disclosure">
+      <summary>All fixture market diagnostics</summary>
+      <div className="market-diagnostics-body">
+        {data.warnings.length ? <aside className="analysis-notice" role="note"><strong>Feed notes</strong><span>{data.warnings.join(' · ')}</span></aside> : null}
+        <div className="analysis-section-heading"><div><span className="page-eyebrow">Diagnostics</span><h2>Model vs market</h2></div><p>Raw gaps and fixture-level prices are diagnostic context, not the primary decision surface.</p></div>
+        <div className="market-fixture-grid">{data.fixtures.map((fixture) => <MarketFixtureCard key={fixture.match_id} fixture={fixture} />)}</div>
+      </div>
+    </details>
   </div>;
+}
+
+function TopBetCard({ edge, rank }: { edge: ResearchEdge; rank: number }) {
+  return <article className="top-bet-card">
+    <header><span className="research-rank">#{rank}</span><div><small>{edge.fixture}</small><h3>{edge.selection}</h3></div><span className="market-action-chip is-research">Research</span></header>
+    <div className="top-bet-book"><span>Best displayed bookmaker</span><strong>{edge.bookmaker}</strong></div>
+    <dl className="top-bet-metrics">
+      <Metric label="Odds" value={edge.odds == null ? '—' : edge.odds.toFixed(2)} />
+      <Metric label="Model P" value={edge.modelProbability == null ? '—' : pct(edge.modelProbability)} />
+      <Metric label="Research EV" value={edge.expectedValue == null ? '—' : signedPct(edge.expectedValue)} />
+      <Metric label="Min edge" value={edge.minEdge == null ? '—' : signedPct(edge.minEdge)} />
+    </dl>
+    <small className="top-bet-quality">{edge.evidenceQuality ? `${edge.evidenceQuality} evidence quality · ` : ''}unvalidated research</small>
+  </article>;
 }
 
 function MarketFixtureCard({ fixture }: { fixture: BettingFixture }) {
@@ -70,7 +92,7 @@ function MarketFixtureCard({ fixture }: { fixture: BettingFixture }) {
 }
 
 function researchShortlist(fixtures: BettingFixture[]): ResearchEdge[] {
-  const rows: ResearchEdge[] = [];
+  const bestByBet = new Map<string, ResearchEdge>();
   for (const fixture of fixtures) {
     const rawRows = fixture.edge_research?.top_robust_positive_ev;
     if (!Array.isArray(rawRows)) continue;
@@ -80,18 +102,23 @@ function researchShortlist(fixtures: BettingFixture[]): ResearchEdge[] {
       const selection = typeof row.selection_name === 'string' ? row.selection_name : null;
       const bookmaker = typeof row.bookmaker === 'string' ? row.bookmaker : null;
       if (!selection || !bookmaker) continue;
-      rows.push({
+      const edge: ResearchEdge = {
         matchId: fixture.match_id,
         fixture: `${fixture.home_short ?? fixture.home_team ?? 'HOME'}–${fixture.away_short ?? fixture.away_team ?? 'AWAY'}`,
         selection,
         bookmaker,
         odds: numberOrNull(row.decimal_odds),
+        modelProbability: numberOrNull(row.model_probability),
         expectedValue: numberOrNull(row.expected_value),
         minEdge: numberOrNull(row.min_edge_across_methods),
-      });
+        evidenceQuality: typeof row.evidence_quality === 'string' ? row.evidence_quality : null,
+      };
+      const key = `${edge.matchId}|${edge.selection}`;
+      const current = bestByBet.get(key);
+      if (!current || (edge.expectedValue ?? -Infinity) > (current.expectedValue ?? -Infinity)) bestByBet.set(key, edge);
     }
   }
-  return rows.sort((a, b) => (b.expectedValue ?? -Infinity) - (a.expectedValue ?? -Infinity));
+  return [...bestByBet.values()].sort((a, b) => (b.expectedValue ?? -Infinity) - (a.expectedValue ?? -Infinity));
 }
 
 function topScoreWatch(fixture: BettingFixture): { score: string; odds: number | null } | null {

@@ -27,7 +27,7 @@ describe('fixture scan decision semantics', () => {
     expect(assessCall(undefined).state).toBe('unavailable');
   });
 
-  it('limits expanded evidence to three distinct families and texts', () => {
+  it('limits compact-card evidence to three distinct families and texts', () => {
     const selected = selectCardFacts([
       fact(1, 'VENUE_FORM', 'Home side have won 6/10.', 1),
       fact(2, 'VENUE_FORM', 'Same family should not repeat.', 2),
@@ -46,18 +46,18 @@ describe('fixture scan decision semantics', () => {
     expect(evidenceMatchesPrediction(fixture, drifted)).toBe(false);
   });
 
-  it('keeps supporting and counter evidence balanced and deduplicated in the modal', () => {
+  it('keeps up to five supporting and counter evidence families deduplicated in the modal', () => {
     const groups = groupModalFacts([
       fact(1, 'VENUE_FORM', 'Home venue form supports the call.', 1),
       fact(2, 'VENUE_FORM', 'Duplicate support family.', 2),
       fact(3, 'STREAK', 'Opponent streak supports the call.', 3),
       fact(4, 'MATCHUP_XG', 'Chance matchup supports the call.', 4),
-      fact(5, 'PROCESS', 'Fourth support is outside the group cap.', 5),
+      fact(5, 'PROCESS', 'Fourth distinct support remains visible.', 5),
       fact(20, 'CURRENT_PROCESS', 'Current-season process challenges the call.', 1, 'CONTRADICTS'),
       fact(21, 'CURRENT_PROCESS', 'Duplicate counter family.', 2, 'CONTRADICTS'),
       fact(22, 'RESIDUAL', 'A second distinct counter remains live.', 3, 'CONTRADICTS'),
     ]);
-    expect(groups.supports.map((item) => item.id)).toEqual([1, 3, 4]);
+    expect(groups.supports.map((item) => item.id)).toEqual([1, 3, 4, 5]);
     expect(groups.contradicts.map((item) => item.id)).toEqual([20, 22]);
   });
 
@@ -67,9 +67,10 @@ describe('fixture scan decision semantics', () => {
     const counter = 'Crystal Palace have the stronger current-season chance profile.';
     const facts = { match_id: 25, gameweek: 3, kickoff_time: fixture.kickoff_time, home: { id: 10, name: 'Fulham', short_name: 'FUL', recent: [] }, away: { id: 8, name: 'Crystal Palace', short_name: 'CRY', recent: [] }, alignment_basis: { snapshot_id: 211, captured_at: '2026-09-01T21:03:00+00:00', source_change_id: 'C0166', top_outcome: 'H', markets: { home_win: 0.3819, draw: 0.2433, away_win: 0.3745 } }, card_facts: [], modal_facts: [fact(1, 'VENUE_FORM', support, 1), fact(20, 'CURRENT_PROCESS', counter, 1, 'CONTRADICTS')] } as FixtureFactsItem;
     const story = buildMatchStory(fixture, facts);
-    expect(story).toContain('effectively split');
+    expect(story).toContain('genuine split');
     expect(story).toContain('0.7pp');
-    expect(story).toContain('counter-input');
+    expect(story).toContain('evidence famil');
+    expect(story).toContain('other side');
     expect(story).not.toContain(support);
     expect(story).not.toContain(counter);
   });

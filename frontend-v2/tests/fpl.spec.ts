@@ -118,7 +118,7 @@ test('FPL workspace keeps saved manager action primary and current projections e
   await expect(page.locator('.fpl-decision-board').getByText('Mbeumo', { exact: true })).toBeVisible();
   await expect(page.locator('.compact-selection').filter({ hasText: 'XI · 11/11' })).toContainText('João Pedro');
   await expect(page.locator('.compact-selection').filter({ hasText: 'Bench · 4/4' })).toContainText('Dalot');
-  await expect(page.getByText('Run #1256', { exact: true })).toBeVisible();
+  await expect(page.locator('.projection-separation').getByText('Run #1256', { exact: true })).toBeVisible();
   await expect(page.getByText(/Latest projection is 21h newer than the saved plan/)).toBeVisible();
   await expect(page.getByText(/analysis only and is not a saved manager decision/)).toBeVisible();
 

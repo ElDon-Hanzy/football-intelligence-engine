@@ -3,7 +3,7 @@ import { auditExactScore, auditOutcomeCode, auditStrongestBettingCall } from './
 import type { StrongestBettingCall } from './analysis';
 import type { BettingFixture } from './analysis-contracts';
 
-const fixture = {
+const fixture: BettingFixture = {
   match_id: 1,
   kickoff_time: '2026-08-22T15:00:00Z',
   finished: true,
@@ -11,9 +11,10 @@ const fixture = {
   away_score: 1,
   home_team: 'Man City',
   away_team: 'Coventry City',
+  prediction: null,
   bookmaker_odds: [],
   correct_score_odds: [],
-} as BettingFixture;
+};
 
 function call(type: string, selection: string): StrongestBettingCall {
   return { type, match_id: 1, fixture: 'Man City vs Coventry City', selection, probability: .7, home_lambda: 2.5, away_lambda: 1 };

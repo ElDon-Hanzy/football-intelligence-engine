@@ -12,8 +12,18 @@ test('live GW3 FPL API satisfies the UI v2 contract', async ({ request }, testIn
   expect(response.ok()).toBe(true);
   const parsed = FplApiSchema.parse(await response.json());
   expect(parsed.gameweek).toBe(3);
+  expect(parsed.prediction_run_id).toBeGreaterThan(0);
   expect(parsed.squad.length).toBeGreaterThanOrEqual(15);
+  expect(parsed.all_predictions.length).toBeGreaterThanOrEqual(500);
   expect(parsed.fixture_results.length).toBe(10);
+  for (const player of parsed.squad) {
+    expect(player.q90).not.toBeNull();
+    expect(player.q95).not.toBeNull();
+    expect(player.q95 ?? 0).toBeGreaterThanOrEqual(player.q90 ?? 0);
+    expect(player.tail_semantics).toBe('direct_current_fixture_event_distribution');
+    expect(player.price).not.toBeNull();
+    expect(player.ownership_percent).not.toBeNull();
+  }
 });
 
 test('C0178 keeps prediction and evidence contracts on the same canonical fixture snapshot', async ({ request }, testInfo) => {
@@ -48,7 +58,7 @@ test('C0178 keeps prediction and evidence contracts on the same canonical fixtur
   expect((fulhamPalace?.markets?.home_win ?? 0) - (fulhamPalace?.markets?.away_win ?? 0)).toBeLessThan(0.04);
 });
 
-test('C0177 returns the immutable latest saved GW3 manager plan', async ({ request }, testInfo) => {
+test('C0179 returns manager state next to the immutable latest saved GW3 plan', async ({ request }, testInfo) => {
   desktopOnly(testInfo.project.name);
   const response = await request.get(`${endpoints.managerPlan}?gw=3`, { headers: publicGatewayHeaders });
   expect(response.ok()).toBe(true);
@@ -57,4 +67,8 @@ test('C0177 returns the immutable latest saved GW3 manager plan', async ({ reque
   expect(parsed.plan?.id).toBe(3);
   expect(parsed.plan?.captain_player_id).toBe(470);
   expect(parsed.plan?.transfers).toEqual([]);
+  expect(parsed.manager_state?.free_transfers).toBe(2);
+  expect(parsed.manager_state?.bank_tenths).toBe(0);
+  expect(parsed.manager_state?.acquisition_squad_cost_tenths).toBe(1000);
+  expect(parsed.manager_state?.source).toBe('C0179_DERIVED_AUDITED_MANAGER_STATE_V1');
 });

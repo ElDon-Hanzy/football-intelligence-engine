@@ -72,16 +72,20 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/engine-diagnostics-api**', async (route) => route.fulfill({ json: enginePayload }));
 });
 
-test('Markets reuses the legacy four strongest model calls and keeps bookmaker diagnostics secondary', async ({ page }) => {
+test('Betting restores the legacy hierarchy while reusing the same four strongest model calls', async ({ page }) => {
   await page.goto('/?view=markets&gw=3');
-  await expect(page.getByRole('heading', { level: 1, name: 'Markets' })).toBeVisible();
-  const primary = page.locator('.markets-top4');
-  await expect(primary.getByRole('heading', { name: 'Four strongest model calls' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Betting' })).toBeVisible();
+  await expect(page.getByText('Four strongest model views across the core markets.', { exact: true })).toBeVisible();
+  await expect(page.getByText('Probability is not betting value. These are our four strongest football-model calls; bookmaker comparison stays secondary.', { exact: true })).toBeVisible();
   await expect(page.getByText('NO VALIDATED BET EDGE')).toHaveCount(0);
-  await expect(primary.locator('.top-bet-card')).toHaveCount(4);
+  await expect(page.getByText('Frozen model')).toHaveCount(0);
+  await expect(page.getByText('Legacy decision source')).toHaveCount(0);
+  await expect(page.locator('.market-status-strip')).toHaveCount(0);
 
-  const cards = primary.locator('.top-bet-card');
-  await expect(cards.nth(0).getByText('Correct score', { exact: true })).toBeVisible();
+  const primary = page.locator('.markets-top4');
+  await expect(primary.locator('.legacy-bet-card')).toHaveCount(4);
+  const cards = primary.locator('.legacy-bet-card');
+  await expect(cards.nth(0).getByText('1. Correct score', { exact: true })).toBeVisible();
   await expect(cards.nth(0).getByRole('heading', { name: '1-1' })).toBeVisible();
   await expect(cards.nth(0).getByText("Nott'm Forest vs Spurs", { exact: true })).toBeVisible();
   await expect(cards.nth(0).getByText('12.3%', { exact: true })).toBeVisible();
@@ -92,7 +96,7 @@ test('Markets reuses the legacy four strongest model calls and keeps bookmaker d
   await expect(primary.getByText('Best displayed bookmaker')).toHaveCount(0);
 
   await expect(page.locator('.market-card').first()).not.toBeVisible();
-  await page.getByText('Bookmaker and fixture diagnostics', { exact: true }).click();
+  await page.getByText('Market comparison & research', { exact: true }).click();
   await expect(page.locator('.market-card')).toHaveCount(10);
   const firstCard = page.locator('.market-card').first();
   await expect(firstCard).toBeVisible();

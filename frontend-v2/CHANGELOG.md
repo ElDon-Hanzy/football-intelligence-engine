@@ -123,3 +123,11 @@ Append-only implementation narrative for C0168 and child batches.
 - Final release commit: `de7e6f4286b78781a68636c142a7c5aa1188a4bf`. Full green release/deployment workflow: `33595103796` across 390×844 / 430×932 / 768×1024 / 1366×768, strict TypeScript, unit tests, build, live contracts, no-horizontal-overflow checks and axe WCAG A/AA/2.1 AA/2.2 AA.
 - No model, probability, FPL manager decision or historical forecast was changed. Legacy root remains the rollback target; v2 remains isolated under `/v2/`.
 - Next batch: C0175 full-system QA and parity gate.
+
+## 2026-09-02 — C0175 expanded regression gate increment
+- Existing C0175 work already on `main` added fail-closed malformed-contract coverage, enforced JS/CSS bundle budgets, and 24 deterministic full-page visual baselines covering Home, Fixtures, FPL, Markets, Performance and Engine at 390×844 / 430×932 / 768×1024 / 1366×768.
+- Expanded the QA-only browser gate to exercise every shell navigation path, browser back/forward transitions, deterministic loading-to-error behavior on all six surfaces, safe-area CSS presence, route-by-route horizontal-overflow resilience and 44px touch targets.
+- CI correctly rejected two bad desktop assumptions in the new test harness; the selectors were fixed to distinguish the desktop `Engine` nav item from the mobile/tablet `Engine and research` shortcut without changing product code.
+- Verified QA implementation commit: `9294b1239047553a9a40a4c934e4f66f2623e5c5`. Workflow `33598221851` completed and deployed successfully; typecheck, 17/17 unit tests, build, bundle budgets, all new navigation/loading/safe-area checks, all locked visual hashes, existing axe gates and Pages deployment passed.
+- Detailed Playwright output was `82 passed / 21 skipped / 1 flaky`: the live GW3 FPL contract endpoint returned non-OK on its first request and passed on retry. This is not accepted as the final C0175 release condition; a later full-system run must clear the live-runtime gate without flakes before C0175 can become Verified.
+- No UI feature, model output, probability, manager decision or historical forecast was changed. C0175 remains `In Progress / Executing`; legacy root remains the rollback target.

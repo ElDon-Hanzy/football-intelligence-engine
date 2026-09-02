@@ -105,8 +105,12 @@ for (const loadingCase of loadingCases) {
   test(`${loadingCase.view} exposes a deterministic loading state before failing closed`, async ({ page }) => {
     const releases: Array<() => void> = [];
     for (const pattern of loadingCase.patterns) {
+      let holdFirstRequest = true;
       await page.route(pattern, async (route) => {
-        await new Promise<void>((resolve) => releases.push(resolve));
+        if (holdFirstRequest) {
+          holdFirstRequest = false;
+          await new Promise<void>((resolve) => releases.push(resolve));
+        }
         await route.fulfill({ status: 503, json: { ok: false, error: 'qa released outage' } });
       });
     }
@@ -115,6 +119,7 @@ for (const loadingCase of loadingCases) {
     const loading = page.getByLabel(loadingCase.label, { exact: true });
     await expect(loading).toBeVisible();
     await expect(loading).toHaveAttribute('aria-busy', 'true');
+    await expect.poll(() => releases.length).toBe(loadingCase.patterns.length);
     for (const release of releases) release();
     await expect(page.getByRole('heading', { name: loadingCase.errorHeading })).toBeVisible();
   });

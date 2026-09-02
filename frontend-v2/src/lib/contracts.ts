@@ -50,10 +50,24 @@ export const PlayerSchema = z.object({
   name: z.string().min(1),
   team: z.string().optional(),
   position: z.string().optional(),
+  price_tenths: z.number().int().nonnegative().nullable().optional(),
+  price: z.number().nonnegative().nullable().optional(),
+  ownership_percent: z.number().min(0).max(100).nullable().optional(),
+  fpl_status: z.string().nullable().optional(),
+  chance_of_playing_next_round: z.number().min(0).max(100).nullable().optional(),
+  news: z.string().optional(),
+  player_metadata_updated_at: z.string().nullable().optional(),
   expected_points: z.number().nullable().optional(),
   expected_minutes: z.number().nullable().optional(),
+  p_blank: z.number().min(0).max(1).nullable().optional(),
+  p_5_plus: z.number().min(0).max(1).nullable().optional(),
   p_10_plus: z.number().min(0).max(1).nullable().optional(),
   p_15_plus: z.number().min(0).max(1).nullable().optional(),
+  p_20_plus: z.number().min(0).max(1).nullable().optional(),
+  q90: z.number().nonnegative().nullable().optional(),
+  q95: z.number().nonnegative().nullable().optional(),
+  distribution_version: z.string().nullable().optional(),
+  tail_semantics: z.string().nullable().optional(),
 }).passthrough();
 
 export const FplDecisionSnapshotSchema = z.object({
@@ -80,11 +94,15 @@ export const FplFixtureResultSchema = z.object({
 export const FplApiSchema = z.object({
   ok: z.literal(true),
   gameweek: z.number().int().min(1).max(38).optional(),
+  prediction_run_id: z.number().int().positive().optional(),
   model_version: z.string().optional(),
   current_model_version: z.string().nullable().optional(),
   generated_at: z.string().optional(),
+  run_type: z.string().optional(),
   decision: FplDecisionSnapshotSchema.nullable().optional(),
   squad: z.array(PlayerSchema).optional().default([]),
+  all_predictions: z.array(PlayerSchema).optional().default([]),
+  top_double_digit: z.array(PlayerSchema).optional().default([]),
   fixture_results: z.array(FplFixtureResultSchema).optional().default([]),
 }).passthrough();
 
@@ -189,11 +207,23 @@ export const ManagerPlanSchema = z.object({
   supersedes_id: z.number().nullable().optional(),
 }).passthrough();
 
+export const ManagerStateSchema = z.object({
+  id: z.number().int().positive(),
+  gameweek: z.number().int().min(1).max(38),
+  captured_at: z.string(),
+  free_transfers: z.number().int().min(0).max(10).nullable(),
+  bank_tenths: z.number().int().nonnegative().nullable(),
+  acquisition_squad_cost_tenths: z.number().int().nonnegative().nullable(),
+  source: z.string().min(1),
+  evidence: z.unknown(),
+}).passthrough();
+
 export const ManagerPlanApiSchema = z.object({
   ok: z.literal(true),
   gameweek: z.number().int().min(1).max(38).nullable(),
   available_gameweeks: z.array(z.number().int().min(1).max(38)),
   plan: ManagerPlanSchema.nullable(),
+  manager_state: ManagerStateSchema.nullable().optional(),
 }).passthrough();
 
 export type Fixture = z.infer<typeof FixtureSchema>;
@@ -204,5 +234,6 @@ export type FixtureFact = z.infer<typeof FixtureFactSchema>;
 export type FixtureFactsApi = z.infer<typeof FixtureFactsApiSchema>;
 export type FixtureFactsItem = z.infer<typeof FixtureFactsItemSchema>;
 export type ManagerPlan = z.infer<typeof ManagerPlanSchema>;
+export type ManagerState = z.infer<typeof ManagerStateSchema>;
 export type ManagerPlanApi = z.infer<typeof ManagerPlanApiSchema>;
 export type Player = z.infer<typeof PlayerSchema>;

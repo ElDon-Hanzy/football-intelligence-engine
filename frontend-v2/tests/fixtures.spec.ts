@@ -114,7 +114,7 @@ test('fixture scan stays compact and opens the accessible matchup modal directly
   const story = await dialog.locator('.match-story p').textContent();
   expect(story).toContain('genuine split');
   expect(story).toContain('0.7pp');
-  expect(story).toContain('5 distinct evidence families');
+  expect(story).toContain('6 distinct evidence families');
   await expect(dialog.getByRole('heading', { name: /Case for Fulham/ })).toBeVisible();
   await expect(dialog.getByRole('heading', { name: /Case against Fulham/ })).toBeVisible();
   await expect(dialog.locator('.modal-evidence-group.is-support li')).toHaveCount(5);

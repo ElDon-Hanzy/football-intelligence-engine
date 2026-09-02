@@ -90,11 +90,11 @@ test('command center is responsive, accessible and decision-first', async ({ pag
   expect(consoleErrors).toEqual([]);
 });
 
-test('navigation and gameweek controls update the URL without loading unfinished modules', async ({ page }) => {
+test('navigation opens the completed FPL workspace and gameweek controls update the URL', async ({ page }) => {
   await page.goto('/');
   const visibleNavigation = page.locator('nav:visible');
   await visibleNavigation.getByRole('button', { name: 'FPL' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'FPL workspace' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'FPL decision workspace' })).toBeVisible();
   await expect(page).toHaveURL(/view=fpl/);
   await page.getByLabel('Gameweek').selectOption('3');
   await expect(page).toHaveURL(/gw=3/);

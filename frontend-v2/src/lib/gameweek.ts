@@ -15,6 +15,13 @@ export const GameweekStatusSchema = z.object({
     first_kickoff: z.string(),
     last_kickoff: z.string(),
   }).passthrough()),
+  teams: z.array(z.object({
+    id: z.number(),
+    fpl_team_id: z.number().int().positive(),
+    name: z.string().min(1),
+    short_name: z.string().min(1),
+    team_code: z.number().int().positive(),
+  }).passthrough()).default([]),
   semantics: z.object({
     frozen_projection_runs_do_not_define_live_gameweek: z.literal(true),
   }).passthrough(),
@@ -25,6 +32,14 @@ export function useLiveGameweek(enabled: boolean) {
     queryKey: ['live-gameweek'],
     queryFn: ({ signal }) => fetchValidated(endpoints.gameweekStatus, GameweekStatusSchema, signal, publicGatewayHeaders),
     enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useGameweekStatus() {
+  return useQuery({
+    queryKey: ['live-gameweek'],
+    queryFn: ({ signal }) => fetchValidated(endpoints.gameweekStatus, GameweekStatusSchema, signal, publicGatewayHeaders),
     staleTime: 5 * 60 * 1000,
   });
 }

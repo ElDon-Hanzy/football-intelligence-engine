@@ -33,7 +33,7 @@ export function MarketsPage({ requestedGameweek }: { requestedGameweek: number }
     <section className="markets-top4" aria-labelledby="top-bets-heading">
       <div className="analysis-section-heading markets-top4-heading">
         <div><span className="page-eyebrow">Current Gameweek only</span><h2 id="top-bets-heading">Top 4 Bets</h2></div>
-        <p>Latest valid pre-kickoff bookmaker snapshots, ranked by robust-positive research EV. Research is not yet a validated staking model.</p>
+        <p>Latest valid pre-kickoff bookmaker snapshots. One strongest candidate per fixture, then ranked by robust-positive research EV. Research is not yet a validated staking model.</p>
       </div>
 
       {shortlist.length ? <div className="top-bet-grid">{shortlist.map((edge, index) => <TopBetCard edge={edge} rank={index + 1} key={`${edge.matchId}-${edge.selection}-${edge.bookmaker}`} />)}</div>
@@ -92,7 +92,7 @@ function MarketFixtureCard({ fixture }: { fixture: BettingFixture }) {
 }
 
 function researchShortlist(fixtures: BettingFixture[]): ResearchEdge[] {
-  const bestByBet = new Map<string, ResearchEdge>();
+  const bestByFixture = new Map<number, ResearchEdge>();
   for (const fixture of fixtures) {
     const rawRows = fixture.edge_research?.top_robust_positive_ev;
     if (!Array.isArray(rawRows)) continue;
@@ -113,12 +113,11 @@ function researchShortlist(fixtures: BettingFixture[]): ResearchEdge[] {
         minEdge: numberOrNull(row.min_edge_across_methods),
         evidenceQuality: typeof row.evidence_quality === 'string' ? row.evidence_quality : null,
       };
-      const key = `${edge.matchId}|${edge.selection}`;
-      const current = bestByBet.get(key);
-      if (!current || (edge.expectedValue ?? -Infinity) > (current.expectedValue ?? -Infinity)) bestByBet.set(key, edge);
+      const current = bestByFixture.get(edge.matchId);
+      if (!current || (edge.expectedValue ?? -Infinity) > (current.expectedValue ?? -Infinity)) bestByFixture.set(edge.matchId, edge);
     }
   }
-  return [...bestByBet.values()].sort((a, b) => (b.expectedValue ?? -Infinity) - (a.expectedValue ?? -Infinity));
+  return [...bestByFixture.values()].sort((a, b) => (b.expectedValue ?? -Infinity) - (a.expectedValue ?? -Infinity));
 }
 
 function topScoreWatch(fixture: BettingFixture): { score: string; odds: number | null } | null {

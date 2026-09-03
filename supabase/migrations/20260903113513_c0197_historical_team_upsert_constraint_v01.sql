@@ -1,0 +1,3 @@
+drop index if exists public.research_c0197_team_match_source_identity_uidx;
+alter table public.research_c0197_team_match_evidence drop constraint if exists research_c0197_team_match_source_identity_key;
+alter table public.research_c0197_team_match_evidence add constraint research_c0197_team_match_source_identity_key unique(source_file_capture_id,source_match_id,source_team_code);

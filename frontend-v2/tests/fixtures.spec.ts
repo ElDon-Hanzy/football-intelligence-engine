@@ -157,6 +157,30 @@ test('fixture scan stays compact and opens the accessible matchup modal directly
   expect(a11y.violations).toEqual([]);
 });
 
+test('historical matchup modal falls back to preserved raw exact-score data when headline fields are absent', async ({ page }) => {
+  const historicalFixtures = fixtureResults.map((fixture, index) => index === 0 ? {
+    ...fixture,
+    prediction: {
+      ...fixture.prediction,
+      headline_score: null,
+      headline_score_probability: null,
+      raw_modal_score: '1-2',
+      raw_modal_probability: 0.091406,
+      top_scorelines: [{ score: '1-2', prob: 0.091406 }, { score: '1-1', prob: 0.0901 }],
+    },
+  } : fixture);
+  await page.unroute('**/fpl-api**');
+  await page.route('**/fpl-api**', async (route) => route.fulfill({ json: { ...fplPayload, fixture_results: historicalFixtures } }));
+
+  await page.goto('/?view=fixtures&gw=3');
+  await page.locator('.fixture-card').first().getByRole('button', { name: 'Open matchup' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Fulham vs Crystal Palace' });
+  const thesis = dialog.locator('.modal-thesis');
+  await expect(thesis.getByText('1-2', { exact: true })).toBeVisible();
+  await expect(thesis.getByText('9.14% exact-score probability', { exact: true })).toBeVisible();
+  await expect(thesis.getByText('Probability unavailable')).toHaveCount(0);
+});
+
 test('finished fixtures always show explicit prediction audit marks, including no-edge top calls', async ({ page }) => {
   const finishedFixtures = fixtureResults.map((fixture, index) => index === 0 ? {
     ...fixture,

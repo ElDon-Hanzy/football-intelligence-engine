@@ -18,11 +18,14 @@ export function MatchupModal({ open, onClose, fixture, facts }: { open: boolean;
   const scriptConfidence = numeric(rawPrediction?.script_confidence);
   const scriptFamily = text(rawPrediction?.script_family);
   const selector = object(rawPrediction?.selector);
+  const preservedTopScore = prediction?.top_scorelines?.[0] ?? null;
+  const scoreCall = prediction?.headline_score ?? prediction?.raw_modal_score ?? preservedTopScore?.score ?? null;
+  const scoreProbability = prediction?.headline_score_probability ?? rawModalProbability ?? preservedTopScore?.prob ?? null;
 
   return <Dialog open={open} onClose={onClose} title={`${home} vs ${away}`} eyebrow="Matchup intelligence">
     <section className="modal-thesis" aria-label="Match thesis">
       <div><span>1X2 thesis</span><strong>{noEdge ? 'No clear edge' : call}</strong><small>{assessment.top ? `${precisePercent(assessment.top.probability)} leading probability` : 'Probability unavailable'}</small></div>
-      <div><span>Score call</span><strong>{prediction?.headline_score ?? '—'}</strong><small>{prediction?.headline_score_probability == null ? 'Probability unavailable' : `${precisePercent(prediction.headline_score_probability)} exact-score probability`}</small></div>
+      <div><span>Score call</span><strong>{scoreCall ?? '—'}</strong><small>{scoreProbability == null ? 'Probability unavailable' : `${precisePercent(scoreProbability)} exact-score probability`}</small></div>
     </section>
 
     <section className="match-story" aria-labelledby={`story-${fixture.match_id}`}>
@@ -45,9 +48,9 @@ export function MatchupModal({ open, onClose, fixture, facts }: { open: boolean;
         <TechnicalItem label="Source layer" value={prediction?.source_change_id ?? '—'} />
         <TechnicalItem label="Captured" value={prediction?.captured_at ? formatTimestamp(prediction.captured_at) : '—'} />
         <TechnicalItem label="Expected goals" value={prediction?.home_lambda == null || prediction.away_lambda == null ? '—' : `${prediction.home_lambda.toFixed(2)} – ${prediction.away_lambda.toFixed(2)}`} />
-        <TechnicalItem label="Headline score" value={prediction?.headline_score ?? '—'} />
-        <TechnicalItem label="Raw modal score" value={prediction?.raw_modal_score ?? '—'} />
-        <TechnicalItem label="Raw modal probability" value={rawModalProbability == null ? '—' : precisePercent(rawModalProbability)} />
+        <TechnicalItem label="Displayed score call" value={scoreCall ?? '—'} />
+        <TechnicalItem label="Raw modal score" value={prediction?.raw_modal_score ?? preservedTopScore?.score ?? '—'} />
+        <TechnicalItem label="Raw modal probability" value={rawModalProbability == null ? (preservedTopScore?.prob == null ? '—' : precisePercent(preservedTopScore.prob)) : precisePercent(rawModalProbability)} />
         <TechnicalItem label="Script family" value={scriptFamily ?? '—'} />
         <TechnicalItem label="Script confidence" value={scriptConfidence == null ? '—' : precisePercent(scriptConfidence)} />
         <TechnicalItem label="Selector rule" value={text(selector?.selector_rule) ?? '—'} wide />

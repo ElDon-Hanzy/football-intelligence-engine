@@ -177,7 +177,7 @@ test('historical matchup modal falls back to preserved raw exact-score data when
   const dialog = page.getByRole('dialog', { name: 'Fulham vs Crystal Palace' });
   const thesis = dialog.locator('.modal-thesis');
   await expect(thesis.getByText('1-2', { exact: true })).toBeVisible();
-  await expect(thesis.getByText('9.14% exact-score probability', { exact: true })).toBeVisible();
+  await expect(thesis.getByText('9.1% exact-score probability', { exact: true })).toBeVisible();
   await expect(thesis.getByText('Probability unavailable')).toHaveCount(0);
 });
 

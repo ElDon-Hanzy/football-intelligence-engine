@@ -140,7 +140,7 @@ with v(fixture,v02_rank,v02_score,overlay,r25,r50,r75,w25,w50,w75,confidence,fea
  select v.*,m.id match_id from v join public.matches m on m.gameweek=3 and (select ht.name from public.teams ht where ht.id=m.home_team_id)||' vs '||(select at.name from public.teams at where at.id=m.away_team_id)=v.fixture
 )
 insert into public.research_c0197_regime_shadow_forward_snapshots(run_key,observation_hash,snapshot_as_of,gameweek,match_id,fixture,v02_rank,v02_score,regime_overlay,rank_w25,rank_w50,rank_w75,v03_w25,v03_w50,v03_w75,confidence,features)
-select 'C0197_REGIME_SHADOW_20260904_V03',md5(concat_ws('|',match_id,v02_score,overlay,r25,r50,r75)),'2026-09-03T23:46:36.498520Z'::timestamptz,3,match_id,fixture,v02_rank,v02_score,overlay,r25,r50,r75,w25,w50,w75,confidence,features from resolved
+select 'C0197_REGIME_SHADOW_20260904_V03',md5(concat_ws('|',match_id,.861,overlay,r25,r50,r75)),'2026-09-03T23:46:36.498520Z'::timestamptz,3,match_id,fixture,v02_rank,v02_score,overlay,r25,r50,r75,w25,w50,w75,confidence,features from resolved
 on conflict do nothing;
 
 create or replace function private.c0197_regime_shadow_status_v03()

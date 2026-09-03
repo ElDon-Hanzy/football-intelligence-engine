@@ -1,0 +1,4 @@
+alter table public.research_c0197_player_match_evidence drop constraint if exists research_c0197_player_match_evidence_mapping_status_check;
+alter table public.research_c0197_player_match_evidence add constraint research_c0197_player_match_evidence_mapping_status_check check (mapping_status in ('mapped','unmapped_match','unmapped_player','unmapped_match_and_player','historical_source_only','historical_player_mapped_current'));
+alter table public.research_c0197_shot_events drop constraint if exists research_c0197_shot_events_mapping_status_check;
+alter table public.research_c0197_shot_events add constraint research_c0197_shot_events_mapping_status_check check (mapping_status in ('mapped','unmapped_match','unmapped_player','unmapped_match_and_player','no_player','historical_source_only','historical_player_mapped_current','historical_no_player'));

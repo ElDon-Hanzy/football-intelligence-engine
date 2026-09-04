@@ -52,6 +52,11 @@ export function FixtureCard({ fixture, facts, evidenceStatus, homeTeamCode = nul
       <CompactTeam name={away} shortName={awayShort} teamCode={awayTeamCode} recent={facts?.away.recent ?? []} away />
     </div>
 
+    <div className="fixture-high-score-intelligence" aria-label="High-Score Intelligence">
+      <span>High-Score Intelligence</span>
+      <small>Research overlay</small>
+    </div>
+
     <button className="fixture-modal-trigger" type="button" disabled={!modalReady} onClick={() => setModalOpen(true)}>
       <span>{modalReady ? 'Open matchup' : evidenceStatus === 'mismatch' ? 'Matchup refreshing' : 'Matchup unavailable'}</span>
       <span aria-hidden="true">→</span>

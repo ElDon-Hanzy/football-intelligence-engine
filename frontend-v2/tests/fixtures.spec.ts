@@ -77,12 +77,53 @@ const factsPayload = {
   })),
 };
 
+const highScoreAvailable = (fixture: (typeof fixtureResults)[number], index: number) => {
+  const archetype = index === 0 ? 'NO_STRONG_SIGNAL' : index === 1 ? 'SHOOTOUT' : index === 2 ? 'DEMOLITION' : 'SHOOTOUT';
+  const strength = index === 0 ? 'LOW' : index === 1 ? 'HIGH' : index === 2 ? 'VERY_HIGH' : 'MEDIUM';
+  const agreement = index === 0 ? 'LOW' : index === 1 ? 'MEDIUM' : 'HIGH';
+  const score = index === 0 ? -0.59 : index === 1 ? 1.17 : 1.36;
+  const route = archetype === 'DEMOLITION' ? 'DEMOLITION' : 'SHOOTOUT';
+  return {
+    match_id: fixture.match_id,
+    gameweek: 3,
+    kickoff_time: fixture.kickoff_time,
+    high_score_intelligence: {
+      available: true,
+      source_change_id: 'C0197',
+      frozen_at: '2026-09-04T07:29:02.603647Z',
+      prediction_semantics: 'research_high_score_archetype_not_probability',
+      archetype,
+      strength,
+      agreement,
+      note: archetype === 'DEMOLITION' ? 'Home 2 one-sided 6+ goal route.' : archetype === 'NO_STRONG_SIGNAL' ? 'No strong 6+ goal signal from the frozen router.' : 'Two-sided 6+ goal route.',
+      router: {
+        structural: { variant_key: 'A_STRUCTURAL', route, score, rank: index + 1, favorite: archetype === 'DEMOLITION' ? 'Home 2' : null, favorite_probability: archetype === 'DEMOLITION' ? .82 : null },
+        disruption: { variant_key: 'B_PLUS_DISRUPTION', route, score, rank: index + 2, favorite: archetype === 'DEMOLITION' ? 'Home 2' : null, favorite_probability: archetype === 'DEMOLITION' ? .82 : null },
+      },
+      supporting_models: { adaptive_history_rank: 2, tactical_clash_rank: 3, tactical_clash_confidence: .6, attack_unit_rank: 2, median_support_rank: 2 },
+      research_only: true,
+      model_effect_enabled: false,
+    },
+  };
+};
+
+const intelligencePayload = {
+  ok: true,
+  gameweek: 3,
+  available_gameweeks: [3],
+  research_only: true,
+  model_effect_enabled: false,
+  contract_version: 'fixture_intelligence_v0.3',
+  fixtures: fixtureResults.map(highScoreAvailable),
+};
+
 const fplPayload = { ok: true, gameweek: 3, model_version: '0.1.3', squad: [], fixture_results: fixtureResults };
 const gameweekStatusPayload = { ok: true, live_gameweek: 3, reason: 'NEXT_UNFINISHED_GAMEWEEK', as_of: '2026-09-02T07:00:00Z', schedule: [{ gameweek: 3, fixtures: 10, finished: 0, unfinished: 10, first_kickoff: '2026-09-04T19:00:00Z', last_kickoff: '2026-09-06T15:30:00Z' }], teams: [{ id: 1, fpl_team_id: 9, name: 'Fulham', short_name: 'FUL', team_code: 54 }, { id: 2, fpl_team_id: 7, name: 'Crystal Palace', short_name: 'CRY', team_code: 31 }], semantics: { frozen_projection_runs_do_not_define_live_gameweek: true } };
 
 test.beforeEach(async ({ page }) => {
   await page.route('**/fpl-api**', async (route) => route.fulfill({ json: fplPayload }));
   await page.route('**/fixture-facts-api**', async (route) => route.fulfill({ json: factsPayload }));
+  await page.route('**/fixture-intelligence-api**', async (route) => route.fulfill({ json: intelligencePayload }));
   await page.route('**/gameweek-status-api**', async (route) => route.fulfill({ json: gameweekStatusPayload }));
 });
 
@@ -100,6 +141,12 @@ test('fixture scan stays compact and opens the accessible matchup modal directly
   await expect(cards.nth(0).getByText(/exact-score probability/i)).toHaveCount(0);
   await expect(cards.nth(0).locator('.fixture-expanded')).toHaveCount(0);
   await expect(cards.nth(0).locator('.club-crest.is-expanded')).toHaveCount(0);
+  await expect(cards.nth(0).getByText('High-Score Intelligence', { exact: true })).toBeVisible();
+  await expect(cards.nth(0).getByText('No strong high-score signal', { exact: true })).toBeVisible();
+  await expect(cards.nth(1).getByText('Shootout', { exact: true })).toBeVisible();
+  await expect(cards.nth(2).getByText(/Demolition · Home 2/)).toBeVisible();
+  await expect(cards.nth(1).getByText(/HIGH signal · Router #2 \/ #3 · Agreement MEDIUM/)).toBeVisible();
+  await expect(cards.nth(1).getByText(/not a probability/i)).toBeVisible();
 
   const openButton = cards.nth(0).getByRole('button', { name: 'Open matchup' });
   await expect(openButton).toBeVisible();

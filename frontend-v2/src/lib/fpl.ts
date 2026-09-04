@@ -29,17 +29,22 @@ export function selectionId(value: unknown): number | null {
 
 export type ResolvedSelection = { id: number; player: Player | undefined };
 
+function projectionPlayerById(data: FplApi | undefined, id: number): Player | undefined {
+  if (!data) return undefined;
+  return data.squad.find((player) => player.id === id)
+    ?? data.all_predictions.find((player) => player.id === id);
+}
+
 export function resolveSelections(data: FplApi | undefined, selections: unknown[] | undefined): ResolvedSelection[] {
-  const byId = new Map((data?.squad ?? []).map((player) => [player.id, player]));
   return (selections ?? [])
     .map(selectionId)
     .filter((id): id is number => id != null)
-    .map((id) => ({ id, player: byId.get(id) }));
+    .map((id) => ({ id, player: projectionPlayerById(data, id) }));
 }
 
 export function findSquadPlayer(data: FplApi | undefined, id: number | null | undefined): Player | undefined {
   if (id == null) return undefined;
-  return data?.squad.find((player) => player.id === id);
+  return projectionPlayerById(data, id);
 }
 
 export function rankProjectionLeaders(players: Player[], limit = 8): Player[] {

@@ -4,7 +4,7 @@ import { assessCall, evidenceMatchesPrediction, useFixturesData } from '../lib/f
 import { useGameweekStatus } from '../lib/gameweek';
 
 export function FixturesPage({ requestedGameweek }: { requestedGameweek: number }) {
-  const { fpl, facts, resolvedGameweek } = useFixturesData(requestedGameweek);
+  const { fpl, facts, intelligence, resolvedGameweek } = useFixturesData(requestedGameweek);
   const gameweekStatus = useGameweekStatus();
   if (fpl.isPending) return <FixturesSkeleton />;
   if (fpl.isError || !fpl.data) return <section className="state-panel" aria-live="polite"><span className="page-eyebrow">Fixtures</span><h1>Fixture predictions are temporarily unavailable.</h1><p>The scan surface will not infer match calls when the authoritative prediction contract fails.</p><Button onClick={() => void fpl.refetch()}>Retry predictions</Button></section>;
@@ -12,12 +12,13 @@ export function FixturesPage({ requestedGameweek }: { requestedGameweek: number 
   const fixtures = fpl.data.fixture_results;
   const factsData = facts.data?.facts_available ? facts.data : null;
   const factsByMatch = new Map((factsData?.fixtures ?? []).map((item) => [item.match_id, item]));
+  const intelligenceByMatch = new Map((intelligence.data?.fixtures ?? []).map((item) => [item.match_id, item.high_score_intelligence]));
   const teamCodeByShort = new Map((gameweekStatus.data?.teams ?? []).map((team) => [team.short_name, team.team_code]));
   const assessments = fixtures.map((fixture) => assessCall(fixture.prediction?.markets));
   const strong = assessments.filter((item) => item.state === 'strong').length;
   const lean = assessments.filter((item) => item.state === 'lean').length;
   const noEdge = assessments.filter((item) => item.state === 'no-edge').length;
-  const evidencePartial = facts.isError || facts.isPending || (facts.data != null && !facts.data.facts_available);
+  const evidencePartial = facts.isError || facts.isPending || intelligence.isError || intelligence.isPending || (facts.data != null && !facts.data.facts_available);
 
   return <div className="fixtures-page">
     <header className="page-intro fixtures-intro">
@@ -32,6 +33,7 @@ export function FixturesPage({ requestedGameweek }: { requestedGameweek: number 
     {fixtures.length ? <section className="fixture-grid" aria-label={`Gameweek ${resolvedGameweek} fixtures`}>
       {fixtures.map((fixture) => {
         const factItem = factsByMatch.get(fixture.match_id);
+        const highScore = intelligenceByMatch.get(fixture.match_id);
         const hasComparableSnapshots = fixture.prediction?.snapshot_id != null && factItem?.alignment_basis?.snapshot_id != null;
         const aligned = hasComparableSnapshots && evidenceMatchesPrediction(fixture, factItem);
         const evidenceStatus = aligned ? 'aligned' as const : hasComparableSnapshots ? 'mismatch' as const : 'unavailable' as const;
@@ -39,6 +41,8 @@ export function FixturesPage({ requestedGameweek }: { requestedGameweek: number 
           key={fixture.match_id}
           fixture={fixture}
           facts={aligned ? factItem : undefined}
+          highScore={highScore}
+          highScorePending={intelligence.isPending}
           evidenceStatus={evidenceStatus}
           homeTeamCode={fixture.home_short ? teamCodeByShort.get(fixture.home_short) ?? null : null}
           awayTeamCode={fixture.away_short ? teamCodeByShort.get(fixture.away_short) ?? null : null}

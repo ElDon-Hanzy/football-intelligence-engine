@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { endpoints, fetchValidated } from './api';
 import { FixtureFactsApiSchema, FplApiSchema, type FixtureFact, type FixtureFactsItem, type FplFixtureResult } from './contracts';
+import { FixtureIntelligenceApiSchema } from './fixture-intelligence-contracts';
 
 export type OutcomeCode = 'H' | 'D' | 'A';
 export type CallState = 'strong' | 'lean' | 'no-edge' | 'unavailable';
@@ -33,7 +34,12 @@ export function useFixturesData(requestedGameweek: number) {
     queryFn: ({ signal }) => fetchValidated(withGameweek(endpoints.fixtureFacts, resolvedGameweek), FixtureFactsApiSchema, signal),
     enabled: resolvedGameweek > 0,
   });
-  return { fpl, facts, resolvedGameweek };
+  const intelligence = useQuery({
+    queryKey: ['fixtures', 'intelligence', resolvedGameweek],
+    queryFn: ({ signal }) => fetchValidated(withGameweek(endpoints.fixtures, resolvedGameweek), FixtureIntelligenceApiSchema, signal),
+    enabled: resolvedGameweek > 0,
+  });
+  return { fpl, facts, intelligence, resolvedGameweek };
 }
 
 export function assessCall(markets: MarketSet | null | undefined): CallAssessment {

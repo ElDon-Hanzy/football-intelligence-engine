@@ -27,7 +27,7 @@ const HighScoreCommonSchema = z.object({
 });
 
 const HighScoreRouterSchema = HighScoreCommonSchema.extend({
-  mode: z.literal('ARCHETYPE_ROUTER'),
+  mode: z.literal('ARCHETYPE_ROUTER').default('ARCHETYPE_ROUTER'),
   prediction_semantics: z.literal('research_high_score_archetype_not_probability'),
   router: z.object({
     structural: HighScoreVariantSchema,

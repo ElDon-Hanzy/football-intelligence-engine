@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
       { data: history },
       { data: highScoreRows, error: highScoreError },
       { data: highScoreRuns, error: highScoreRunError },
+      { data: forwardHighScoreRows, error: forwardHighScoreError },
     ] = await Promise.all([
       sb.from('teams').select('id,name,short_name'),
       sb.from('players').select('id,web_name,position,team_id'),
@@ -74,6 +75,7 @@ Deno.serve(async (req) => {
       sb.from('team_match_intelligence').select('team_id,fixture_kickoff,goals_for,goals_against,xg_for,xg_against,raw').eq('source', 'understat').eq('competition', 'Premier League').order('fixture_kickoff', { ascending: false }),
       sb.from('research_c0197_pregw3_experiment_snapshots').select('experiment_key,variant_key,gameweek,match_id,fixture,score,rank,route,confidence,coverage,features,research_only,model_effect_enabled').eq('gameweek', gameweek).in('experiment_key', ['V04_ADAPTIVE_HISTORY_DECAY', 'V05_TACTICAL_CLASH', 'V06_EXPECTED_ATTACK_UNIT_DELTA', 'V08_SHOOTOUT_DEMOLITION_ROUTER']),
       sb.from('research_c0197_pregw3_experiment_runs').select('run_key,experiment_key,frozen_at,research_only,model_effect_enabled').in('experiment_key', ['V04_ADAPTIVE_HISTORY_DECAY', 'V05_TACTICAL_CLASH', 'V06_EXPECTED_ATTACK_UNIT_DELTA', 'V08_SHOOTOUT_DEMOLITION_ROUTER']),
+      sb.from('research_c0197_shootout_forward_snapshots').select('run_key,snapshot_as_of,match_id,gameweek,home_team,away_team,combined_score_v02,combined_rank,confidence,base_history_coverage,breadth_history_coverage,research_only,model_effect_enabled').eq('gameweek', gameweek),
     ]);
 
     const teamMap = new Map((teams || []).map((team: any) => [Number(team.id), team]));
@@ -95,6 +97,7 @@ Deno.serve(async (req) => {
     const replacementsBySide = group(replacements, (row) => `${row.match_id}:${row.team_id}`);
     const historyByTeam = group(history, (row) => String(row.team_id));
     const highScoreByMatch = group(highScoreRows, (row) => String(row.match_id));
+    const forwardHighScoreByMatch = group(forwardHighScoreRows, (row) => String(row.match_id));
 
     const frozenAt = (highScoreRuns || [])
       .filter((row: any) => row.experiment_key === 'V08_SHOOTOUT_DEMOLITION_ROUTER')
@@ -160,94 +163,149 @@ Deno.serve(async (req) => {
       return { sample: rows.length, team_id: teamId, opponent_team_id: opponentId, wins, draws, losses, under_2_5: under, btts, source: 'Understat', window: 'last_5_H2H_before_kickoff' };
     };
 
-    const highScoreIntelligence = (matchId: number) => {
-      if (highScoreError || highScoreRunError) {
-        return { available: false, reason: 'C0197 high-score research unavailable', research_only: true, model_effect_enabled: false };
+    const forwardFallback = (matchId: number) => {
+      if (forwardHighScoreError) return null;
+      const rows = forwardHighScoreByMatch.get(String(matchId)) || [];
+      const row = [...rows].sort((a: any, b: any) => new Date(b.snapshot_as_of).getTime() - new Date(a.snapshot_as_of).getTime())[0];
+      if (!row) return null;
+      const score = numeric(row.combined_score_v02);
+      const rank = numeric(row.combined_rank);
+      const confidence = String(row.confidence || 'LOW').toUpperCase();
+      const baseCoverage = numeric(row.base_history_coverage);
+      const breadthCoverage = numeric(row.breadth_history_coverage);
+      const minimumCoverage = [baseCoverage, breadthCoverage].filter((value): value is number => value != null).length
+        ? Math.min(...([baseCoverage, breadthCoverage].filter((value): value is number => value != null)))
+        : null;
+
+      let archetype: 'SHOOTOUT' | 'NO_STRONG_SIGNAL' = 'NO_STRONG_SIGNAL';
+      if (score != null && score > 0 && rank != null && rank <= 5) archetype = 'SHOOTOUT';
+
+      let strength: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
+      if (archetype === 'SHOOTOUT' && score != null && rank != null) {
+        if (score >= 0.75 && rank <= 3 && confidence !== 'LOW') strength = 'HIGH';
+        else if (score > 0 && rank <= 5) strength = 'MEDIUM';
       }
-      const rows = highScoreByMatch.get(String(matchId)) || [];
-      const find = (experimentKey: string, variantKey: string) => rows.find((row: any) => row.experiment_key === experimentKey && row.variant_key === variantKey) || null;
-      const structural = find('V08_SHOOTOUT_DEMOLITION_ROUTER', 'A_STRUCTURAL');
-      const disruption = find('V08_SHOOTOUT_DEMOLITION_ROUTER', 'B_PLUS_DISRUPTION');
-      if (!structural || !disruption) {
-        return { available: false, reason: 'No frozen C0197 router snapshot for this fixture', research_only: true, model_effect_enabled: false };
-      }
-
-      const variant = (row: any) => ({
-        variant_key: row.variant_key,
-        route: row.route === 'SHOOTOUT' || row.route === 'DEMOLITION' ? row.route : null,
-        score: numeric(row.score),
-        rank: numeric(row.rank),
-        favorite: typeof row.features?.favorite === 'string' ? row.features.favorite : null,
-        favorite_probability: numeric(row.features?.favorite_probability),
-      });
-      const a = variant(structural);
-      const b = variant(disruption);
-      const routeAgreement = a.route != null && a.route === b.route;
-      const scores = [a.score, b.score].filter((value): value is number => value != null);
-      const ranks = [a.rank, b.rank].filter((value): value is number => value != null);
-      const minimumScore = scores.length ? Math.min(...scores) : null;
-      const maximumScore = scores.length ? Math.max(...scores) : null;
-      const worstRank = ranks.length ? Math.max(...ranks) : null;
-
-      let archetype: 'SHOOTOUT' | 'DEMOLITION' | 'MIXED' | 'NO_STRONG_SIGNAL' = 'NO_STRONG_SIGNAL';
-      if (maximumScore != null && maximumScore > 0) {
-        archetype = routeAgreement && a.route ? a.route : 'MIXED';
-      }
-
-      let strength: 'VERY_HIGH' | 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
-      if (archetype !== 'NO_STRONG_SIGNAL' && archetype !== 'MIXED' && minimumScore != null && worstRank != null) {
-        if (minimumScore >= 1 && worstRank <= 2) strength = 'VERY_HIGH';
-        else if (minimumScore >= 0.75 && worstRank <= 5) strength = 'HIGH';
-        else if (minimumScore > 0 && worstRank <= 7) strength = 'MEDIUM';
-      }
-
-      const v04 = find('V04_ADAPTIVE_HISTORY_DECAY', 'MAX4');
-      const v05 = find('V05_TACTICAL_CLASH', 'B_PLUS_DISRUPTION');
-      const v06 = find('V06_EXPECTED_ATTACK_UNIT_DELTA', 'ATTACK_UNIT_DELTA');
-      const supportRanks = [numeric(v04?.rank), numeric(v05?.rank), numeric(v06?.rank)].filter((value): value is number => value != null);
-      const supportMedianRank = median(supportRanks);
-      const v05Confidence = numeric(v05?.confidence);
-
-      let agreement: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
-      if (routeAgreement && minimumScore != null && minimumScore > 0) {
-        if (archetype === 'SHOOTOUT') {
-          if (supportMedianRank != null && supportMedianRank <= 3 && (v05Confidence ?? 0) >= 0.5) agreement = 'HIGH';
-          else if (supportMedianRank != null && supportMedianRank <= 6 && (v05Confidence ?? 0) >= 0.4) agreement = 'MEDIUM';
-        } else if (archetype === 'DEMOLITION') {
-          if (strength === 'VERY_HIGH') agreement = 'HIGH';
-          else if (strength === 'HIGH' || strength === 'MEDIUM') agreement = 'MEDIUM';
-        }
-      }
-
-      const favorite = a.favorite || b.favorite;
-      const note = archetype === 'SHOOTOUT'
-        ? 'Two-sided 6+ goal route.'
-        : archetype === 'DEMOLITION'
-          ? `${favorite || 'Favorite'} one-sided 6+ goal route.`
-          : archetype === 'MIXED'
-            ? 'Router variants disagree on the high-score archetype.'
-            : 'No strong 6+ goal signal from the frozen router.';
-
+      const agreement: 'HIGH' | 'MEDIUM' | 'LOW' = confidence === 'HIGH' ? 'HIGH' : confidence === 'MEDIUM' ? 'MEDIUM' : 'LOW';
       return {
         available: true,
+        mode: 'SHOOTOUT_FORWARD',
         source_change_id: 'C0197',
-        frozen_at: frozenAt,
-        prediction_semantics: 'research_high_score_archetype_not_probability',
+        frozen_at: row.snapshot_as_of,
+        prediction_semantics: 'research_shootout_forward_score_not_probability',
         archetype,
         strength,
         agreement,
-        note,
-        router: { structural: a, disruption: b },
-        supporting_models: {
-          adaptive_history_rank: numeric(v04?.rank),
-          tactical_clash_rank: numeric(v05?.rank),
-          tactical_clash_confidence: v05Confidence,
-          attack_unit_rank: numeric(v06?.rank),
-          median_support_rank: supportMedianRank,
+        note: archetype === 'SHOOTOUT'
+          ? 'Forward model flags a two-sided high-score watch; no demolition classification is available in this fallback.'
+          : 'Forward shootout model does not flag this fixture as a strong two-sided high-score candidate.',
+        forward: {
+          run_key: row.run_key,
+          score,
+          rank,
+          confidence,
+          base_history_coverage: baseCoverage,
+          breadth_history_coverage: breadthCoverage,
+          minimum_history_coverage: minimumCoverage,
         },
         research_only: true,
         model_effect_enabled: false,
       };
+    };
+
+    const highScoreIntelligence = (matchId: number) => {
+      if (!highScoreError && !highScoreRunError) {
+        const rows = highScoreByMatch.get(String(matchId)) || [];
+        const find = (experimentKey: string, variantKey: string) => rows.find((row: any) => row.experiment_key === experimentKey && row.variant_key === variantKey) || null;
+        const structural = find('V08_SHOOTOUT_DEMOLITION_ROUTER', 'A_STRUCTURAL');
+        const disruption = find('V08_SHOOTOUT_DEMOLITION_ROUTER', 'B_PLUS_DISRUPTION');
+        if (structural && disruption) {
+          const variant = (row: any) => ({
+            variant_key: row.variant_key,
+            route: row.route === 'SHOOTOUT' || row.route === 'DEMOLITION' ? row.route : null,
+            score: numeric(row.score),
+            rank: numeric(row.rank),
+            favorite: typeof row.features?.favorite === 'string' ? row.features.favorite : null,
+            favorite_probability: numeric(row.features?.favorite_probability),
+          });
+          const a = variant(structural);
+          const b = variant(disruption);
+          const routeAgreement = a.route != null && a.route === b.route;
+          const scores = [a.score, b.score].filter((value): value is number => value != null);
+          const ranks = [a.rank, b.rank].filter((value): value is number => value != null);
+          const minimumScore = scores.length ? Math.min(...scores) : null;
+          const maximumScore = scores.length ? Math.max(...scores) : null;
+          const worstRank = ranks.length ? Math.max(...ranks) : null;
+
+          let archetype: 'SHOOTOUT' | 'DEMOLITION' | 'MIXED' | 'NO_STRONG_SIGNAL' = 'NO_STRONG_SIGNAL';
+          if (maximumScore != null && maximumScore > 0) {
+            archetype = routeAgreement && a.route ? a.route : 'MIXED';
+          }
+
+          let strength: 'VERY_HIGH' | 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
+          if (archetype !== 'NO_STRONG_SIGNAL' && archetype !== 'MIXED' && minimumScore != null && worstRank != null) {
+            if (minimumScore >= 1 && worstRank <= 2) strength = 'VERY_HIGH';
+            else if (minimumScore >= 0.75 && worstRank <= 5) strength = 'HIGH';
+            else if (minimumScore > 0 && worstRank <= 7) strength = 'MEDIUM';
+          }
+
+          const v04 = find('V04_ADAPTIVE_HISTORY_DECAY', 'MAX4');
+          const v05 = find('V05_TACTICAL_CLASH', 'B_PLUS_DISRUPTION');
+          const v06 = find('V06_EXPECTED_ATTACK_UNIT_DELTA', 'ATTACK_UNIT_DELTA');
+          const supportRanks = [numeric(v04?.rank), numeric(v05?.rank), numeric(v06?.rank)].filter((value): value is number => value != null);
+          const supportMedianRank = median(supportRanks);
+          const v05Confidence = numeric(v05?.confidence);
+
+          let agreement: 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
+          if (routeAgreement && minimumScore != null && minimumScore > 0) {
+            if (archetype === 'SHOOTOUT') {
+              if (supportMedianRank != null && supportMedianRank <= 3 && (v05Confidence ?? 0) >= 0.5) agreement = 'HIGH';
+              else if (supportMedianRank != null && supportMedianRank <= 6 && (v05Confidence ?? 0) >= 0.4) agreement = 'MEDIUM';
+            } else if (archetype === 'DEMOLITION') {
+              if (strength === 'VERY_HIGH') agreement = 'HIGH';
+              else if (strength === 'HIGH' || strength === 'MEDIUM') agreement = 'MEDIUM';
+            }
+          }
+
+          const favorite = a.favorite || b.favorite;
+          const note = archetype === 'SHOOTOUT'
+            ? 'Two-sided 6+ goal route.'
+            : archetype === 'DEMOLITION'
+              ? `${favorite || 'Favorite'} one-sided 6+ goal route.`
+              : archetype === 'MIXED'
+                ? 'Router variants disagree on the high-score archetype.'
+                : 'No strong 6+ goal signal from the frozen router.';
+
+          return {
+            available: true,
+            mode: 'ARCHETYPE_ROUTER',
+            source_change_id: 'C0197',
+            frozen_at: frozenAt,
+            prediction_semantics: 'research_high_score_archetype_not_probability',
+            archetype,
+            strength,
+            agreement,
+            note,
+            router: { structural: a, disruption: b },
+            supporting_models: {
+              adaptive_history_rank: numeric(v04?.rank),
+              tactical_clash_rank: numeric(v05?.rank),
+              tactical_clash_confidence: v05Confidence,
+              attack_unit_rank: numeric(v06?.rank),
+              median_support_rank: supportMedianRank,
+            },
+            research_only: true,
+            model_effect_enabled: false,
+          };
+        }
+      }
+
+      const fallback = forwardFallback(matchId);
+      if (fallback) return fallback;
+      const reasons = [
+        highScoreError || highScoreRunError ? 'C0197 archetype router unavailable' : 'No frozen C0197 archetype router snapshot for this fixture',
+        forwardHighScoreError ? 'forward model unavailable' : 'no forward C0197 snapshot',
+      ];
+      return { available: false, reason: reasons.join('; '), research_only: true, model_effect_enabled: false };
     };
 
     const side = (matchId: number, teamId: number, kickoff: string) => {
@@ -358,9 +416,10 @@ Deno.serve(async (req) => {
       available_gameweeks: gameweeks,
       research_only: true,
       model_effect_enabled: false,
-      contract_version: 'fixture_intelligence_v0.3',
+      contract_version: 'fixture_intelligence_v0.4',
       limitations: [
-        'high-score intelligence is a frozen research archetype signal, not a calibrated probability',
+        'high-score intelligence is a frozen research signal, not a calibrated probability',
+        'V08 archetype router is preferred when a frozen run exists; scheduled forward fallback is shootout-only and does not infer demolition',
         'C0197 high-score intelligence does not alter production fixture or FPL projections',
         'no exact tactical formation',
         'no left/right flank assignment',

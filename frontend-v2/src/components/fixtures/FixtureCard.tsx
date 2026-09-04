@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { FixtureFactsItem, FplFixtureResult, RecentTeamResultSchema } from '../../lib/contracts';
+import type { HighScoreIntelligence } from '../../lib/fixture-intelligence-contracts';
 import type { z } from 'zod';
 import { assessCall } from '../../lib/fixtures';
 import { auditExactScore, auditOutcomeCode } from '../../lib/prediction-audit';
@@ -12,12 +13,14 @@ type RecentResult = z.infer<typeof RecentTeamResultSchema>;
 type Props = {
   fixture: FplFixtureResult;
   facts: FixtureFactsItem | undefined;
+  highScore: HighScoreIntelligence | undefined;
+  highScorePending?: boolean;
   evidenceStatus: EvidenceStatus;
   homeTeamCode?: number | null;
   awayTeamCode?: number | null;
 };
 
-export function FixtureCard({ fixture, facts, evidenceStatus, homeTeamCode = null, awayTeamCode = null }: Props) {
+export function FixtureCard({ fixture, facts, highScore, highScorePending = false, evidenceStatus, homeTeamCode = null, awayTeamCode = null }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const home = fixture.home_team ?? 'Home';
   const away = fixture.away_team ?? 'Away';
@@ -52,10 +55,7 @@ export function FixtureCard({ fixture, facts, evidenceStatus, homeTeamCode = nul
       <CompactTeam name={away} shortName={awayShort} teamCode={awayTeamCode} recent={facts?.away.recent ?? []} away />
     </div>
 
-    <div className="call-banner fixture-high-score-intelligence" aria-label="High-Score Intelligence">
-      <span>High-Score Intelligence</span>
-      <small>Research overlay</small>
-    </div>
+    <HighScoreBanner intelligence={highScore} pending={highScorePending} />
 
     <button className="fixture-modal-trigger" type="button" disabled={!modalReady} onClick={() => setModalOpen(true)}>
       <span>{modalReady ? 'Open matchup' : evidenceStatus === 'mismatch' ? 'Matchup refreshing' : 'Matchup unavailable'}</span>
@@ -64,6 +64,49 @@ export function FixtureCard({ fixture, facts, evidenceStatus, homeTeamCode = nul
 
     {modalReady && facts ? <MatchupModal open={modalOpen} onClose={() => setModalOpen(false)} fixture={fixture} facts={facts} /> : null}
   </article>;
+}
+
+function HighScoreBanner({ intelligence, pending }: { intelligence: HighScoreIntelligence | undefined; pending: boolean }) {
+  if (pending && !intelligence) {
+    return <div className="call-banner fixture-high-score-intelligence" aria-label="High-Score Intelligence">
+      <span>High-Score Intelligence</span>
+      <strong>Loading model prediction…</strong>
+      <small>C0197 research overlay</small>
+    </div>;
+  }
+
+  if (!intelligence || !intelligence.available) {
+    return <div className="call-banner fixture-high-score-intelligence" aria-label="High-Score Intelligence">
+      <span>High-Score Intelligence</span>
+      <strong>Prediction unavailable</strong>
+      <small>{intelligence?.available === false ? intelligence.reason : 'No frozen C0197 signal returned'} · Research only</small>
+    </div>;
+  }
+
+  const structuralRank = intelligence.router.structural.rank;
+  const disruptionRank = intelligence.router.disruption.rank;
+  const favorite = intelligence.router.structural.favorite ?? intelligence.router.disruption.favorite;
+  const prediction = intelligence.archetype === 'SHOOTOUT'
+    ? 'Shootout'
+    : intelligence.archetype === 'DEMOLITION'
+      ? `Demolition${favorite ? ` · ${favorite}` : ''}`
+      : intelligence.archetype === 'MIXED'
+        ? 'Mixed high-score route'
+        : 'No strong high-score signal';
+  const strength = intelligence.strength.replace('_', ' ');
+  const emphasis = intelligence.strength === 'VERY_HIGH' || intelligence.strength === 'HIGH'
+    ? ' is-strong'
+    : intelligence.strength === 'MEDIUM'
+      ? ' is-lean'
+      : '';
+  const rankText = structuralRank != null && disruptionRank != null ? `Router #${structuralRank} / #${disruptionRank}` : 'Router rank unavailable';
+
+  return <div className={`call-banner fixture-high-score-intelligence${emphasis}`} aria-label="High-Score Intelligence">
+    <span>High-Score Intelligence</span>
+    <strong>{prediction}</strong>
+    <small>{strength} signal · {rankText} · Agreement {intelligence.agreement}</small>
+    <small>{intelligence.note} Research only; not a probability.</small>
+  </div>;
 }
 
 function CompactTeam({ name, shortName, teamCode, recent, away = false }: { name: string; shortName: string; teamCode: number | null; recent: RecentResult[]; away?: boolean }) {

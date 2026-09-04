@@ -14,15 +14,21 @@ const HighScoreVariantSchema = z.object({
   favorite_probability: z.number().min(0).max(1).nullable(),
 }).passthrough();
 
-const HighScoreAvailableSchema = z.object({
+const HighScoreCommonSchema = z.object({
   available: z.literal(true),
   source_change_id: z.literal('C0197'),
   frozen_at: z.string().nullable(),
-  prediction_semantics: z.literal('research_high_score_archetype_not_probability'),
   archetype: HighScoreArchetypeSchema,
   strength: HighScoreStrengthSchema,
   agreement: HighScoreAgreementSchema,
   note: z.string().min(1),
+  research_only: z.literal(true),
+  model_effect_enabled: z.literal(false),
+});
+
+const HighScoreRouterSchema = HighScoreCommonSchema.extend({
+  mode: z.literal('ARCHETYPE_ROUTER'),
+  prediction_semantics: z.literal('research_high_score_archetype_not_probability'),
   router: z.object({
     structural: HighScoreVariantSchema,
     disruption: HighScoreVariantSchema,
@@ -34,8 +40,21 @@ const HighScoreAvailableSchema = z.object({
     attack_unit_rank: z.number().nullable(),
     median_support_rank: z.number().nullable(),
   }).passthrough(),
-  research_only: z.literal(true),
-  model_effect_enabled: z.literal(false),
+}).passthrough();
+
+const HighScoreForwardSchema = HighScoreCommonSchema.extend({
+  mode: z.literal('SHOOTOUT_FORWARD'),
+  prediction_semantics: z.literal('research_shootout_forward_score_not_probability'),
+  archetype: z.enum(['SHOOTOUT', 'NO_STRONG_SIGNAL']),
+  forward: z.object({
+    run_key: z.string().min(1),
+    score: z.number().nullable(),
+    rank: z.number().int().positive().nullable(),
+    confidence: z.enum(['HIGH', 'MEDIUM', 'LOW']),
+    base_history_coverage: z.number().min(0).max(1).nullable(),
+    breadth_history_coverage: z.number().min(0).max(1).nullable(),
+    minimum_history_coverage: z.number().min(0).max(1).nullable(),
+  }).passthrough(),
 }).passthrough();
 
 const HighScoreUnavailableSchema = z.object({
@@ -45,7 +64,7 @@ const HighScoreUnavailableSchema = z.object({
   model_effect_enabled: z.literal(false),
 }).passthrough();
 
-export const HighScoreIntelligenceSchema = z.discriminatedUnion('available', [HighScoreAvailableSchema, HighScoreUnavailableSchema]);
+export const HighScoreIntelligenceSchema = z.union([HighScoreRouterSchema, HighScoreForwardSchema, HighScoreUnavailableSchema]);
 
 export const FixtureIntelligenceItemSchema = z.object({
   match_id: z.number(),

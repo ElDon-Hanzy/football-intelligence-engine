@@ -52,7 +52,7 @@ export function FixtureCard({ fixture, facts, evidenceStatus, homeTeamCode = nul
       <CompactTeam name={away} shortName={awayShort} teamCode={awayTeamCode} recent={facts?.away.recent ?? []} away />
     </div>
 
-    <div className="fixture-high-score-intelligence" aria-label="High-Score Intelligence">
+    <div className="call-banner fixture-high-score-intelligence" aria-label="High-Score Intelligence">
       <span>High-Score Intelligence</span>
       <small>Research overlay</small>
     </div>

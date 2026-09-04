@@ -23,6 +23,19 @@ describe('FPL decision workspace helpers', () => {
     expect(resolved[1]).toEqual({ id: 2, player: undefined });
   });
 
+  it('resolves a planned incoming transfer from the full-pool projection when the current squad still contains the outgoing player', () => {
+    const data = {
+      ok: true,
+      squad: [player(426, 6.32, 0.15, 77)],
+      fixture_results: [],
+      all_predictions: [player(426, 6.32, 0.15, 77), { ...player(427, 7.03, 0.23, 86), name: 'Guéhi', team: 'Man City', position: 'DEF' }],
+      top_double_digit: [],
+    } as FplApi;
+    const resolved = resolveSelections(data, [427]);
+    expect(resolved[0]?.player?.name).toBe('Guéhi');
+    expect(resolved[0]?.player?.expected_points).toBe(7.03);
+  });
+
   it('ranks full-pool projections by xPts with tail/minutes tie-breakers', () => {
     const ranked = rankProjectionLeaders([
       player(1, 7, 0.22, 80),

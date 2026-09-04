@@ -83,6 +83,24 @@ function HighScoreBanner({ intelligence, pending }: { intelligence: HighScoreInt
     </div>;
   }
 
+  const strength = intelligence.strength.replace('_', ' ');
+  const emphasis = intelligence.strength === 'VERY_HIGH' || intelligence.strength === 'HIGH'
+    ? ' is-strong'
+    : intelligence.strength === 'MEDIUM'
+      ? ' is-lean'
+      : '';
+
+  if (intelligence.mode === 'SHOOTOUT_FORWARD') {
+    const prediction = intelligence.archetype === 'SHOOTOUT' ? 'Shootout watch' : 'No strong high-score signal';
+    const rankText = intelligence.forward.rank != null ? `Forward rank #${intelligence.forward.rank}` : 'Forward rank unavailable';
+    return <div className={`call-banner fixture-high-score-intelligence${emphasis}`} aria-label="High-Score Intelligence">
+      <span>High-Score Intelligence</span>
+      <strong>{prediction}</strong>
+      <small>{strength} signal · {rankText} · Confidence {intelligence.agreement}</small>
+      <small>{intelligence.note} Research only; not a probability.</small>
+    </div>;
+  }
+
   const structuralRank = intelligence.router.structural.rank;
   const disruptionRank = intelligence.router.disruption.rank;
   const favorite = intelligence.router.structural.favorite ?? intelligence.router.disruption.favorite;
@@ -93,12 +111,6 @@ function HighScoreBanner({ intelligence, pending }: { intelligence: HighScoreInt
       : intelligence.archetype === 'MIXED'
         ? 'Mixed high-score route'
         : 'No strong high-score signal';
-  const strength = intelligence.strength.replace('_', ' ');
-  const emphasis = intelligence.strength === 'VERY_HIGH' || intelligence.strength === 'HIGH'
-    ? ' is-strong'
-    : intelligence.strength === 'MEDIUM'
-      ? ' is-lean'
-      : '';
   const rankText = structuralRank != null && disruptionRank != null ? `Router #${structuralRank} / #${disruptionRank}` : 'Router rank unavailable';
 
   return <div className={`call-banner fixture-high-score-intelligence${emphasis}`} aria-label="High-Score Intelligence">

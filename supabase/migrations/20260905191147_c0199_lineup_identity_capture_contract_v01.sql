@@ -1,0 +1,2 @@
+alter table public.research_c0197_source_file_captures drop constraint if exists research_c0197_source_file_captures_file_kind_check;
+alter table public.research_c0197_source_file_captures add constraint research_c0197_source_file_captures_file_kind_check check (file_kind = any (array['matches'::text,'playermatchstats'::text,'shots'::text,'xg_by_minute'::text,'players'::text,'lineups'::text]));

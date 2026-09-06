@@ -144,6 +144,31 @@ const ForwardStatusSchema = z.object({
   integrity: z.record(z.string(), z.unknown()).optional(),
 }).passthrough();
 
+const ReadinessBlockerSchema = z.object({
+  stage: z.string(),
+  code: z.string(),
+}).passthrough();
+
+const OrchestrationReadinessSchema = z.object({
+  projection_ready: z.boolean(),
+  decision_ready: z.boolean(),
+  contract_version: z.string().optional(),
+  blockers: z.array(ReadinessBlockerSchema).default([]),
+  lineage: z.array(z.record(z.string(), z.unknown())).default([]),
+  manager_state_ready: z.boolean().optional(),
+  optimizer_ready: z.boolean().optional(),
+}).passthrough();
+
+const OptimizerOrchestrationSchema = z.object({
+  ok: z.boolean(),
+  status: z.string().optional(),
+  ready: z.boolean().optional(),
+  input_signature: z.string().nullable().optional(),
+  request_id: z.number().nullable().optional(),
+  optimizer_run_id: z.number().nullable().optional(),
+  edge_classification: z.string().nullable().optional(),
+}).passthrough();
+
 export const EngineDiagnosticsSchema = z.object({
   ok: z.literal(true),
   gameweek: z.number().int().min(1).max(38),
@@ -173,6 +198,8 @@ export const EngineDiagnosticsSchema = z.object({
   governance: GovernanceSchema,
   decision_evidence_audit: AuditSchema,
   production_evidence_audit: AuditSchema,
+  orchestration_readiness: OrchestrationReadinessSchema.nullable().optional(),
+  optimizer_orchestration: OptimizerOrchestrationSchema.nullable().optional(),
   experiments: z.object({
     A0005: ForwardStatusSchema,
     W0002: ForwardStatusSchema,
@@ -200,6 +227,7 @@ export const EngineDiagnosticsSchema = z.object({
     research_statuses_are_not_production_effects: z.literal(true),
     missing_is_not_zero: z.literal(true),
     immutable_historical_forecasts_preserved: z.literal(true),
+    projection_readiness_is_not_decision_readiness: z.literal(true).optional(),
   }),
 }).passthrough();
 

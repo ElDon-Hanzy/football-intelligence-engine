@@ -54,6 +54,8 @@ Deno.serve(async (req) => {
       governance: status.governance || null,
       decision_evidence_audit: status.decision_evidence_audit || null,
       production_evidence_audit: status.production_evidence_audit || null,
+      orchestration_readiness: status.p2_lineage || null,
+      optimizer_orchestration: status.optimizer_orchestration || null,
       experiments: { A0005: status.a0005 || null, W0002: status.w0002 || null },
       source_health: {
         zero_cost: status.zero_cost || null,
@@ -64,6 +66,7 @@ Deno.serve(async (req) => {
         research_statuses_are_not_production_effects: true,
         missing_is_not_zero: true,
         immutable_historical_forecasts_preserved: true,
+        projection_readiness_is_not_decision_readiness: true,
       },
     }), { headers: cors });
   } catch (error) {

@@ -35,8 +35,18 @@ export function FplPage({ requestedGameweek }: { requestedGameweek: number }) {
   const historicalDecision = !plan ? fplData?.decision ?? null : null;
   const isHistorical = historicalDecision != null;
   const actualManagerDecision = planApi?.actual_manager_decision ?? null;
+  const readiness = planApi?.readiness ?? null;
+  const readinessBlockers = readiness?.blockers ?? [];
 
   if (!plan && !historicalDecision && fplData) {
+    if (readiness && readiness.decision_ready === false) {
+      return <section className="state-panel" aria-live="polite">
+        <span className="page-eyebrow">{gameweek ? `Gameweek ${gameweek}` : 'Current Gameweek'} · C0213 readiness</span>
+        <h1>Decision pipeline is not ready.</h1>
+        <p>{readiness.projection_ready ? 'Projection READY.' : 'Projection BLOCKED.'} Decision BLOCKED. No saved manager plan can be created until every required decision stage is green.</p>
+        {readinessBlockers.length ? <ul className="plain-status-list">{readinessBlockers.map((blocker, index) => <li key={`${blocker.stage}-${blocker.code}-${index}`}><strong>{humanizeMachineText(blocker.stage)}</strong>: {humanizeMachineText(blocker.code)}</li>)}</ul> : null}
+      </section>;
+    }
     return <section className="state-panel" aria-live="polite"><span className="page-eyebrow">FPL history</span><h1>{gameweek ? `No saved FPL decision for GW${gameweek}.` : 'No saved FPL decision is available.'}</h1><p>The workspace will not invent a historical XI, bench or captaincy from today’s projections.</p></section>;
   }
 

@@ -232,6 +232,26 @@ export const ActualManagerDecisionSchema = z.object({
   correction_of_id: z.number().nullable().optional(),
 }).passthrough();
 
+const DecisionReadinessSchema = z.object({
+  projection_ready: z.boolean(),
+  decision_ready: z.boolean(),
+  contract_version: z.string().optional(),
+  manager_state_ready: z.boolean().optional(),
+  optimizer_ready: z.boolean().optional(),
+  blockers: z.array(z.object({ stage: z.string(), code: z.string() }).passthrough()).default([]),
+  lineage: z.array(z.record(z.string(), z.unknown())).default([]),
+}).passthrough();
+
+const ManagerOptimizerStatusSchema = z.object({
+  ok: z.boolean(),
+  status: z.string().optional(),
+  ready: z.boolean().optional(),
+  input_signature: z.string().nullable().optional(),
+  request_id: z.number().nullable().optional(),
+  optimizer_run_id: z.number().nullable().optional(),
+  edge_classification: z.string().nullable().optional(),
+}).passthrough();
+
 export const ManagerPlanApiSchema = z.object({
   ok: z.literal(true),
   gameweek: z.number().int().min(1).max(38).nullable(),
@@ -239,6 +259,8 @@ export const ManagerPlanApiSchema = z.object({
   plan: ManagerPlanSchema.nullable(),
   manager_state: ManagerStateSchema.nullable().optional(),
   actual_manager_decision: ActualManagerDecisionSchema.nullable().optional(),
+  readiness: DecisionReadinessSchema.nullable().optional(),
+  optimizer_orchestration: ManagerOptimizerStatusSchema.nullable().optional(),
 }).passthrough();
 
 export type Fixture = z.infer<typeof FixtureSchema>;

@@ -1,0 +1,23 @@
+{
+  "id": "5de70e01-4e89-4391-b28b-6fd8f2b98d31",
+  "slug": "sync-historical-priors",
+  "name": "sync-historical-priors",
+  "status": "ACTIVE",
+  "version": 3,
+  "created_at": 1787342778254,
+  "updated_at": 1787343791576,
+  "verify_jwt": false,
+  "import_map": true,
+  "ezbr_sha256": "2ceef729877fabf6e76304e58ea32ff66e6f31aaf7bfb431bfb533c39b324214",
+  "archive_note": "Exact live source bundle captured from Supabase before retirement. Non-deployable archive path.",
+  "files": [
+    {
+      "name": "index.ts",
+      "content": "import { createClient } from 'supabase';\nimport Papa from 'papaparse';\nconst ROOT='https://raw.githubusercontent.com/olbauday/FPL-Core-Insights/main/data/2025-2026';\nconst n=(v:any)=>v===undefined||v===null||v===''?0:Number(v)||0;const i=(v:any)=>Math.round(n(v));\nasync function csv(url:string){const r=await fetch(url);if(!r.ok){if(r.status===404)return [];throw new Error(`${r.status} ${url}`)}return Papa.parse(await r.text(),{header:true,skipEmptyLines:true}).data as any[];}\nfunction chunks<T>(a:T[],size=250){const out:T[][]=[];for(let k=0;k<a.length;k+=size)out.push(a.slice(k,k+size));return out;}\nconst isStarter=(v:any)=>v!==undefined&&v!==null&&String(v).trim()!==''&&Number(v)===0;\nDeno.serve(async()=>{const ks=JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')||'{}');const sb=createClient(Deno.env.get('SUPABASE_URL')!,ks.default||Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});const {data:run,error:re}=await sb.from('source_sync_runs').insert({source:'historical_2025_26_prior',status:'running'}).select('id').single();if(re)return Response.json({ok:false,error:re.message},{status:500});try{\nconst players=await csv(`${ROOT}/players.csv`),pmap=new Map<number,any>();for(const p of players)pmap.set(Number(p.player_id),p);const agg=new Map<number,any>();\nconst add=(pid:number,row:any)=>{const meta=pmap.get(pid);if(!meta)return;const code=Number(meta.player_code);if(!code)return;let a=agg.get(code);if(!a){a={season:'2025-2026',player_code:code,first_name:meta.first_name||null,second_name:meta.second_name||null,web_name:meta.web_name||null,position:meta.position||null,matches:0,starts:0,minutes:0,goals:0,assists:0,penalties_scored:0,penalties_missed:0,xg:0,xa:0,xgot:0,shots:0,shots_on_target:0,big_chances:0,big_chances_missed:0,touches_box:0,clearances:0,blocks:0,interceptions:0,tackles:0,recoveries:0,cbit:0,cbirt:0};agg.set(code,a)}const mins=i(row.minutes_played);if(mins<=0)return;a.matches++;if(isStarter(row.start_min))a.starts++;a.minutes+=mins;a.goals+=i(row.goals);a.assists+=i(row.assists);a.penalties_scored+=i(row.penalties_scored);a.penalties_missed+=i(row.penalties_missed);a.xg+=n(row.xg);a.xa+=n(row.xa);a.xgot+=n(row.xgot);a.shots+=i(row.total_shots);a.shots_on_target+=i(row.shots_on_target);if(row.big_chances!==undefined&&row.big_chances!=='')a.big_chances+=i(row.big_chances);a.big_chances_missed+=i(row.big_chances_missed);a.touches_box+=i(row.touches_opposition_box);a.clearances+=i(row.clearances);a.blocks+=i(row.blocks);a.interceptions+=i(row.interceptions);a.tackles+=i(row.tackles);a.recoveries+=i(row.recoveries);const c=i(row.clearances)+i(row.blocks)+i(row.interceptions)+i(row.tackles);a.cbit+=c;a.cbirt+=c+i(row.recoveries)};\nlet files=0,seen=0;for(let st=1;st<=38;st+=5){const jobs=[];for(let gw=st;gw<st+5&&gw<=38;gw++)jobs.push(csv(`${ROOT}/By%20Tournament/Premier%20League/GW${gw}/playermatchstats.csv`).then(rows=>({rows})));for(const x of await Promise.all(jobs)){if(x.rows.length)files++;for(const row of x.rows){seen++;add(Number(row.player_id),row)}}}const rows=[...agg.values()].map(x=>({...x,updated_at:new Date().toISOString()}));for(const c of chunks(rows)){const {error}=await sb.from('historical_player_seasons').upsert(c,{onConflict:'season,player_code'});if(error)throw error}await sb.from('source_sync_runs').update({finished_at:new Date().toISOString(),status:'success',rows_inserted:rows.length,metadata:{season:'2025-2026',gw_files:files,player_match_rows_seen:seen,player_priors:rows.length,start_null_bug_fixed:true}}).eq('id',run.id);return Response.json({ok:true,gw_files:files,rows:seen,priors:rows.length})}catch(e){const msg=e instanceof Error?e.message:String(e);await sb.from('source_sync_runs').update({finished_at:new Date().toISOString(),status:'error',error:msg}).eq('id',run.id);return Response.json({ok:false,error:msg},{status:500})}});"
+    },
+    {
+      "name": "deno.json",
+      "content": "{\"imports\":{\"supabase\":\"jsr:@supabase/supabase-js@2\",\"papaparse\":\"npm:papaparse@5.5.3\"}}"
+    }
+  ]
+}

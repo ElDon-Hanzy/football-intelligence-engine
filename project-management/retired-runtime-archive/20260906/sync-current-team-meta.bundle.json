@@ -1,0 +1,23 @@
+{
+  "id": "50b3969a-7e53-4631-8d37-79d3eb6c0e64",
+  "slug": "sync-current-team-meta",
+  "name": "sync-current-team-meta",
+  "status": "ACTIVE",
+  "version": 2,
+  "created_at": 1787343234441,
+  "updated_at": 1787343260325,
+  "verify_jwt": false,
+  "import_map": true,
+  "ezbr_sha256": "26ca7a950be73fc20e4b76cf32a141db5545a2e55145da27ed090df2f8ef28e5",
+  "archive_note": "Exact live source bundle captured from Supabase before retirement. Non-deployable archive path.",
+  "files": [
+    {
+      "name": "index.ts",
+      "content": "import { createClient } from 'supabase';\nimport Papa from 'papaparse';\nDeno.serve(async()=>{\n const keys=JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS')||'{}');const key=keys.default||Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;const sb=createClient(Deno.env.get('SUPABASE_URL')!,key,{auth:{persistSession:false}});\n try{\n  const r=await fetch('https://raw.githubusercontent.com/olbauday/FPL-Core-Insights/main/data/2026-2027/teams.csv',{cache:'no-store'});if(!r.ok)throw new Error(`teams ${r.status}`);const text=await r.text();const rows=Papa.parse(text,{header:true,skipEmptyLines:true,transformHeader:(h:string)=>h.trim().replace(/^\\uFEFF/,'')}).data as any[];\n  const first=rows[0]||{};const eloKey=Object.keys(first).find(k=>k.trim().toLowerCase()==='elo')||'elo';const payload=rows.map(t=>({fpl_team_id:Number(t.id),team_code:Number(t.code),elo:t[eloKey]===undefined||t[eloKey]===''?null:Number(t[eloKey])}));\n  for(const x of payload){const {error}=await sb.from('teams').update({team_code:x.team_code,elo:x.elo,updated_at:new Date().toISOString()}).eq('fpl_team_id',x.fpl_team_id);if(error)throw error;}\n  return Response.json({ok:true,count:payload.length,keys:Object.keys(first),elo_key:eloKey,first:payload[0],last:payload[payload.length-1]});\n }catch(e){return Response.json({ok:false,error:e instanceof Error?e.message:String(e)},{status:500})}\n});"
+    },
+    {
+      "name": "deno.json",
+      "content": "{\"imports\":{\"supabase\":\"jsr:@supabase/supabase-js@2\",\"papaparse\":\"npm:papaparse@5.5.3\"}}"
+    }
+  ]
+}

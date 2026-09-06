@@ -63,6 +63,8 @@ The one RETIRED API is `projection-benchmark-api`.
 
 `system_consolidation_ok` remains fail-closed against the combined retired external deployment count, so the corrected reporting does not weaken the consolidation gate.
 
+The architecture registry status function retained OID **474789** across the reporting-only replacement.
+
 ## Verification
 
 Post-migration registry status:
@@ -103,15 +105,23 @@ The probe then deliberately raised an exception, rolling the transaction back. T
 
 GW4 decision readiness remains blocked by C0166/C0167 evidence readiness and the no-GW4-decision constraint remains intact.
 
-## Production migration
+Post-P3 persistence audit confirmed:
 
-Supabase migration:
+- GW4 manager plans: **0**
+- GW4 decision snapshots created since P3 migration: **0**
+- tracker governance: **green**
 
-`20260906162529_c0213_p3_canonical_core_and_retired_surface_cleanup_v01`
+## Production migrations
 
-Repository migration:
+Supabase migrations:
 
-`supabase/migrations/20260906162529_c0213_p3_canonical_core_and_retired_surface_cleanup_v01.sql`
+- `20260906162529_c0213_p3_canonical_core_and_retired_surface_cleanup_v01`
+- `20260906162933_c0213_p3_registry_status_label_and_counts_v02`
+
+Repository migrations:
+
+- `supabase/migrations/20260906162529_c0213_p3_canonical_core_and_retired_surface_cleanup_v01.sql`
+- `supabase/migrations/20260906162933_c0213_p3_registry_status_label_and_counts_v02.sql`
 
 ## Remaining P3 consolidation debt
 

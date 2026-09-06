@@ -10,21 +10,31 @@ export function EnginePage({ requestedGameweek }: { requestedGameweek: number })
   const w0002 = data.experiments.W0002;
   const sourceRows = asRecords(data.source_health.zero_cost.sources);
   const governanceClean = data.governance.ok && data.governance.bad_change_ids === 0 && data.governance.completed_not_verified === 0 && data.governance.completed_without_refs === 0;
+  const readiness = data.orchestration_readiness;
+  const projectionReady = readiness?.projection_ready === true;
+  const decisionReady = readiness?.decision_ready === true;
+  const blockers = readiness?.blockers ?? [];
+  const optimizerStatus = data.optimizer_orchestration?.status ?? 'Unavailable';
 
   return <div className="analysis-page engine-page">
     <header className="page-intro analysis-intro">
-      <div><span className="page-eyebrow">Gameweek {data.gameweek} · diagnostics</span><h1>Engine & Research</h1><p>Production identity, source health, validation experiments and governance live here—not in the core decision surfaces.</p></div>
+      <div><span className="page-eyebrow">Gameweek {data.gameweek} · diagnostics</span><h1>Engine & Research</h1><p>Production identity, source health, orchestration readiness, validation experiments and governance live here—not in the core decision surfaces.</p></div>
       <span className={`sync-badge${governanceClean ? '' : ' is-warning'}`} role="status"><span aria-hidden="true" />{governanceClean ? 'Governance clean' : 'Review required'}</span>
     </header>
 
     <section className="analysis-hero" aria-labelledby="engine-title">
       <div><span className="decision-label">Production identity</span><h2 id="engine-title">Model {data.active_model?.version ?? 'unavailable'}</h2><p>{data.production_fixture_layer.change_ids.length ? `Current fixture layer: ${data.production_fixture_layer.change_ids.join(' + ')}.` : 'Fixture-layer identity unavailable.'} Historical forecasts remain immutable.</p></div>
-      <dl className="analysis-hero-metrics"><Metric label="Latest FPL run" value={data.latest_prediction_run ? `#${data.latest_prediction_run.id}` : '—'} /><Metric label="Fixture snapshots" value={String(data.production_fixture_layer.fixtures)} /><Metric label="Decision audit" value={auditLabel(data.decision_evidence_audit)} /><Metric label="Evidence audit" value={auditLabel(data.production_evidence_audit)} /></dl>
+      <dl className="analysis-hero-metrics"><Metric label="Latest FPL run" value={data.latest_prediction_run ? `#${data.latest_prediction_run.id}` : '—'} /><Metric label="Fixture snapshots" value={String(data.production_fixture_layer.fixtures)} /><Metric label="Projection readiness" value={projectionReady ? 'READY' : 'BLOCKED'} /><Metric label="Decision readiness" value={decisionReady ? 'READY' : 'BLOCKED'} /><Metric label="Decision audit" value={auditLabel(data.decision_evidence_audit)} /><Metric label="Evidence audit" value={auditLabel(data.production_evidence_audit)} /></dl>
+    </section>
+
+    <section className="analysis-section two-column-analysis" aria-label="Projection and decision readiness">
+      <article className="analysis-card"><span className="page-eyebrow">Projection pipeline</span><h2>{projectionReady ? 'Projection READY' : 'Projection BLOCKED'}</h2><p className="analysis-card-note">Numerical forecasts can remain available even when the decision chain is intentionally closed.</p><dl className="stacked-metrics"><Metric label="Contract" value={readiness?.contract_version ?? '—'} /><Metric label="3-GW optimizer" value={human(optimizerStatus)} /><Metric label="Manager state" value={readiness?.manager_state_ready === true ? 'READY' : 'NOT READY'} /></dl></article>
+      <article className="analysis-card"><span className="page-eyebrow">Decision pipeline</span><h2>{decisionReady ? 'Decision READY' : 'Decision BLOCKED'}</h2>{blockers.length ? <ul className="plain-status-list">{blockers.map((blocker, index) => <li key={`${blocker.stage}-${blocker.code}-${index}`}><strong>{human(blocker.stage)}</strong>: {human(blocker.code)}</li>)}</ul> : <p className="analysis-card-note">No active decision blockers.</p>}</article>
     </section>
 
     <section className="analysis-section two-column-analysis" aria-label="Governance and production state">
       <article className="analysis-card"><span className="page-eyebrow">Governance</span><h2>{governanceClean ? 'Clean ledger' : 'Attention required'}</h2><dl className="stacked-metrics"><Metric label="Tracker rows" value={String(data.governance.total_rows)} /><Metric label="Decision rows" value={String(data.governance.decision_rows)} /><Metric label="Bad Change IDs" value={String(data.governance.bad_change_ids)} /><Metric label="Completed without refs" value={String(data.governance.completed_without_refs)} /></dl></article>
-      <article className="analysis-card"><span className="page-eyebrow">Production semantics</span><h2>Fail-closed rules active</h2><ul className="plain-status-list"><li>Research status is not production effect.</li><li>Missing data is not zero.</li><li>Historical forecasts remain immutable.</li><li>Evidence audits are read from the recurring production guardrail.</li></ul></article>
+      <article className="analysis-card"><span className="page-eyebrow">Production semantics</span><h2>Fail-closed rules active</h2><ul className="plain-status-list"><li>Research status is not production effect.</li><li>Missing data is not zero.</li><li>Historical forecasts remain immutable.</li><li>Projection readiness is not decision readiness.</li><li>Evidence audits are read from the recurring production guardrail.</li></ul></article>
     </section>
 
     <section className="analysis-section" aria-labelledby="source-heading"><div className="analysis-section-heading"><div><span className="page-eyebrow">Data layer</span><h2 id="source-heading">Source health</h2></div><p>Availability is not the same as production readiness.</p></div><div className="source-health-grid">
@@ -35,7 +45,7 @@ export function EnginePage({ requestedGameweek }: { requestedGameweek: number })
 
     <section className="analysis-section" aria-labelledby="experiment-heading"><div className="analysis-section-heading"><div><span className="page-eyebrow">Frozen experiments</span><h2 id="experiment-heading">Forward validation</h2></div><p>Experiment status is shown explicitly and never promoted by UI wording.</p></div><div className="experiment-grid"><ExperimentCard name="A0005" state={a0005.decision_state ?? 'Unknown'} coverage={a0005.coverage} /><ExperimentCard name="W0002" state={w0002.decision_state ?? 'Unknown'} coverage={w0002.coverage} /></div></section>
 
-    <details className="analysis-details research-details"><summary>Raw diagnostic contract</summary><pre className="diagnostic-json">{JSON.stringify({ production_fixture_layer: data.production_fixture_layer, governance: data.governance, decision_evidence_audit: data.decision_evidence_audit, production_evidence_audit: data.production_evidence_audit }, null, 2)}</pre></details>
+    <details className="analysis-details research-details"><summary>Raw diagnostic contract</summary><pre className="diagnostic-json">{JSON.stringify({ production_fixture_layer: data.production_fixture_layer, orchestration_readiness: data.orchestration_readiness, optimizer_orchestration: data.optimizer_orchestration, governance: data.governance, decision_evidence_audit: data.decision_evidence_audit, production_evidence_audit: data.production_evidence_audit }, null, 2)}</pre></details>
   </div>;
 }
 

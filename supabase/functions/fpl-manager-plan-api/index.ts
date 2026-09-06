@@ -71,6 +71,14 @@ Deno.serve(async (req: Request) => {
     const plan = latestForGameweek(plans || [], gameweek);
     const managerState = latestForGameweek(states || [], gameweek);
     const actualManagerDecision = latestForGameweek(actualDecisions || [], gameweek);
+    let readiness: any = null;
+    let optimizerOrchestration: any = null;
+    if (gameweek != null) {
+      const statusRes = await sb.rpc('engine_diagnostics_status_v01', { p_gameweek: gameweek });
+      if (statusRes.error) throw statusRes.error;
+      readiness = statusRes.data?.p2_lineage ?? null;
+      optimizerOrchestration = statusRes.data?.optimizer_orchestration ?? null;
+    }
 
     return new Response(JSON.stringify({
       ok: true,
@@ -79,6 +87,13 @@ Deno.serve(async (req: Request) => {
       plan,
       manager_state: managerState,
       actual_manager_decision: actualManagerDecision,
+      readiness,
+      optimizer_orchestration: optimizerOrchestration,
+      semantics: {
+        saved_plan_is_authoritative_only_when_present: true,
+        projection_readiness_is_not_decision_readiness: true,
+        missing_manager_state_is_not_zero: true,
+      },
     }), { headers: cors });
   } catch (error) {
     return new Response(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }), { status: 500, headers: cors });

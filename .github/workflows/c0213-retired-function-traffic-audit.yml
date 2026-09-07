@@ -15,7 +15,7 @@ env:
 jobs:
   audit-retired-functions:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Validate scoped Supabase token and project identity
         env:
@@ -63,7 +63,6 @@ jobs:
           expected_count="$(wc -l < retired-slugs.txt | tr -d ' ')"
           test "$expected_count" = "19" || { echo "Expected 19 retired slugs, got $expected_count"; exit 1; }
 
-          # Confirm each target still exists remotely before traffic analysis.
           functions_json="$(curl --fail-with-body -sS \
             -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
             "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/functions")"
@@ -81,13 +80,11 @@ jobs:
           in_list=""
           while IFS= read -r slug; do
             path="/functions/v1/${slug}"
-            escaped="${path//\'/\'\'}"
             if [ -n "$in_list" ]; then in_list+=","; fi
-            in_list+="'${escaped}'"
+            in_list+="'${path}'"
           done < retired-slugs.txt
 
           logs_url="https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/analytics/endpoints/logs"
-          # Query from before this project's engine deployment began through now. The API caps each query at 24h.
           cursor_epoch="$(date -u -d '2026-08-20T00:00:00Z' +%s)"
           now_epoch="$(date -u +%s)"
           : > traffic.tsv
@@ -98,17 +95,40 @@ jobs:
             start="$(date -u -d "@${cursor_epoch}" +%Y-%m-%dT%H:%M:%SZ)"
             finish="$(date -u -d "@${next_epoch}" +%Y-%m-%dT%H:%M:%SZ)"
             sql="select log_attributes['request.pathname'] as pathname, count() as invocations, min(timestamp) as first_seen, max(timestamp) as last_seen from logs where source = 'function_edge_logs' and log_attributes['request.method'] != 'OPTIONS' and log_attributes['request.pathname'] in (${in_list}) group by pathname order by pathname"
-            response="$(curl --fail-with-body -sS --get \
-              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
-              --data-urlencode "sql=${sql}" \
-              --data-urlencode "iso_timestamp_start=${start}" \
-              --data-urlencode "iso_timestamp_end=${finish}" \
-              "$logs_url")"
+
+            response_file="$(mktemp)"
+            http_code=""
+            success=0
+            for attempt in 1 2 3 4 5 6; do
+              http_code="$(curl -sS -o "$response_file" -w '%{http_code}' --get \
+                -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+                --data-urlencode "sql=${sql}" \
+                --data-urlencode "iso_timestamp_start=${start}" \
+                --data-urlencode "iso_timestamp_end=${finish}" \
+                "$logs_url")"
+              if [ "$http_code" = "200" ]; then
+                success=1
+                break
+              fi
+              if [ "$http_code" = "429" ]; then
+                delay=$((attempt * 15))
+                echo "Logs API rate limited for ${start}..${finish}; retrying in ${delay}s (attempt ${attempt}/6)."
+                sleep "$delay"
+                continue
+              fi
+              echo "Logs API HTTP ${http_code} for ${start}..${finish}:"
+              cat "$response_file"
+              exit 1
+            done
+            test "$success" -eq 1 || { echo "Logs API remained rate limited after 6 attempts for ${start}..${finish}"; exit 1; }
+
+            response="$(cat "$response_file")"
+            rm -f "$response_file"
             err="$(jq -r '.error // empty' <<<"$response")"
             test -z "$err" || { echo "Logs API returned error for ${start}..${finish}: $err"; exit 1; }
             jq -r '.result[]? | [.pathname, (.invocations|tostring), .first_seen, .last_seen] | @tsv' <<<"$response" >> traffic.tsv
             cursor_epoch=$((next_epoch + 1))
-            sleep 1
+            sleep 4
           done
 
           if [ -s traffic.tsv ]; then
@@ -138,6 +158,4 @@ jobs:
             echo "NO_RETIRED_FUNCTION_TRAFFIC_FOUND"
           fi
           echo "AUDIT_RESULT_END"
-
-          # This workflow is deliberately audit-only. A separate guarded change is required for deletion.
           echo "No functions were deleted by this workflow."

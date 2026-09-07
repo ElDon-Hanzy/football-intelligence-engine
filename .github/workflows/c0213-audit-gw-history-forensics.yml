@@ -1,0 +1,38 @@
+name: C0213 audit-gw History Forensics
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/c0213-audit-gw-history-forensics.yml
+
+permissions:
+  contents: read
+
+jobs:
+  trace-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout full repository history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Search historical source for audit-gw caller signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "USER_AGENT_HISTORY_BEGIN"
+          git log --all --oneline -S'FootballIntelligence/0.3' -- . || true
+          echo "USER_AGENT_HISTORY_END"
+          echo "AUDIT_GW_URL_HISTORY_BEGIN"
+          git log --all --oneline -S'/functions/v1/audit-gw' -- . || true
+          echo "AUDIT_GW_URL_HISTORY_END"
+          echo "AUDIT_GW_TEXT_HISTORY_BEGIN"
+          git log --all --oneline -S'audit-gw' -- . || true
+          echo "AUDIT_GW_TEXT_HISTORY_END"
+
+          echo "CURRENT_EXACT_MATCHES_BEGIN"
+          git grep -n -E 'FootballIntelligence/0\.3|/functions/v1/audit-gw' HEAD -- ':!.github/workflows/c0213-audit-gw-history-forensics.yml' || true
+          echo "CURRENT_EXACT_MATCHES_END"

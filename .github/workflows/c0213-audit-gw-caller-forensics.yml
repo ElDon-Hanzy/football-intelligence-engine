@@ -17,58 +17,46 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Query current audit-gw request history and safe metadata keys
+      - name: Prove post-fix sync activity and audit-gw silence
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
           test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo "SUPABASE_ACCESS_TOKEN missing"; exit 1; }
-
           project="$(curl --fail-with-body -sS -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}")"
           test "$(jq -r '.ref // empty' <<<"$project")" = "$SUPABASE_PROJECT_REF" || { echo "Project identity mismatch"; exit 1; }
 
           logs_url="https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/analytics/endpoints/logs"
-          sql="select timestamp, log_attributes['request.pathname'] as pathname, log_attributes['request.method'] as method, log_attributes['response.status_code'] as status_code, log_attributes['request.headers.user_agent'] as user_agent, log_attributes['request.headers.x_client_info'] as x_client_info, log_attributes['request.headers.referer'] as referer, log_attributes['request.host'] as host, log_attributes['function_id'] as function_id from logs where source = 'function_edge_logs' and log_attributes['request.pathname'] = '/functions/v1/audit-gw' and log_attributes['request.method'] != 'OPTIONS' order by timestamp"
-
-          api_query() {
-            local query="$1" start="$2" end="$3"
-            local file code response err ok=0
-            file="$(mktemp)"
-            for attempt in 1 2 3 4 5; do
-              code="$(curl -sS -o "$file" -w '%{http_code}' --get \
-                -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
-                --data-urlencode "sql=${query}" \
-                --data-urlencode "iso_timestamp_start=${start}" \
-                --data-urlencode "iso_timestamp_end=${end}" \
-                "$logs_url")"
-              if [ "$code" = 200 ]; then ok=1; break; fi
-              if [ "$code" = 429 ]; then sleep $((attempt*15)); continue; fi
-              echo "HTTP $code"; cat "$file"; rm -f "$file"; exit 1
-            done
-            test "$ok" -eq 1 || { echo "Rate limit did not clear"; rm -f "$file"; exit 1; }
-            response="$(cat "$file")"; rm -f "$file"
-            err="$(jq -r '.error // empty' <<<"$response")"
-            test -z "$err" || { echo "$err"; exit 1; }
-            printf '%s' "$response"
-          }
-
+          start="2026-09-07T17:12:00Z"
           now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-          echo "CALLER_FORENSICS_BEGIN"
-          r1="$(api_query "$sql" "2026-09-06T00:00:00Z" "2026-09-07T00:00:00Z")"
-          echo "WINDOW|SEP06|count=$(jq '.result | length' <<<"$r1")"
-          jq -r '.result[]? | [.timestamp,.pathname,.method,(.status_code|tostring),(.user_agent // ""),(.x_client_info // ""),(.referer // ""),(.host // ""),(.function_id // "")] | @tsv' <<<"$r1"
-          sleep 8
-          r2="$(api_query "$sql" "2026-09-07T00:00:00Z" "$now")"
-          echo "WINDOW|SEP07_CURRENT|count=$(jq '.result | length' <<<"$r2")"
-          jq -r '.result[]? | [.timestamp,.pathname,.method,(.status_code|tostring),(.user_agent // ""),(.x_client_info // ""),(.referer // ""),(.host // ""),(.function_id // "")] | @tsv' <<<"$r2"
-          echo "CALLER_FORENSICS_END"
+          sql="select timestamp, log_attributes['request.pathname'] as pathname, log_attributes['request.method'] as method, log_attributes['response.status_code'] as status_code, log_attributes['request.headers.user_agent'] as user_agent, log_attributes['function_id'] as function_id from logs where source = 'function_edge_logs' and log_attributes['request.pathname'] in ('/functions/v1/sync-gw-results','/functions/v1/audit-gw') and log_attributes['request.method'] != 'OPTIONS' order by timestamp"
 
-          sleep 8
-          key_sql="select timestamp, mapKeys(log_attributes) as attribute_keys from logs where source = 'function_edge_logs' and log_attributes['request.pathname'] = '/functions/v1/audit-gw' and log_attributes['request.method'] != 'OPTIONS' order by timestamp desc limit 1"
-          keys="$(api_query "$key_sql" "2026-09-07T00:00:00Z" "$now")"
-          echo "SAFE_ATTRIBUTE_KEYS_BEGIN"
-          jq -c '.result[]?' <<<"$keys"
-          echo "SAFE_ATTRIBUTE_KEYS_END"
-          echo "OBSERVED_AT=${now}"
+          file="$(mktemp)"; ok=0
+          for attempt in 1 2 3 4 5; do
+            code="$(curl -sS -o "$file" -w '%{http_code}' --get \
+              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+              --data-urlencode "sql=${sql}" \
+              --data-urlencode "iso_timestamp_start=${start}" \
+              --data-urlencode "iso_timestamp_end=${now}" \
+              "$logs_url")"
+            if [ "$code" = 200 ]; then ok=1; break; fi
+            if [ "$code" = 429 ]; then sleep $((attempt*15)); continue; fi
+            echo "HTTP $code"; cat "$file"; rm -f "$file"; exit 1
+          done
+          test "$ok" -eq 1 || { echo "Log query rate limit did not clear"; rm -f "$file"; exit 1; }
+          response="$(cat "$file")"; rm -f "$file"
+          test -z "$(jq -r '.error // empty' <<<"$response")" || { jq -r '.error' <<<"$response"; exit 1; }
+
+          echo "POST_FIX_TRAFFIC_BEGIN"
+          jq -r '.result[]? | [.timestamp,.pathname,.method,(.status_code|tostring),(.user_agent // ""),(.function_id // "")] | @tsv' <<<"$response"
+          echo "POST_FIX_TRAFFIC_END"
+
+          sync_count="$(jq '[.result[]? | select(.pathname == "/functions/v1/sync-gw-results")] | length' <<<"$response")"
+          proof_count="$(jq '[.result[]? | select(.pathname == "/functions/v1/sync-gw-results" and .user_agent == "C0213-Retirement-Proof/1.0" and .status_code == "200")] | length' <<<"$response")"
+          audit_count="$(jq '[.result[]? | select(.pathname == "/functions/v1/audit-gw")] | length' <<<"$response")"
+          echo "POST_FIX_COUNTS|sync=${sync_count}|proof_sync=${proof_count}|audit_gw=${audit_count}|start=${start}|end=${now}"
+          test "$proof_count" -ge 1 || { echo "Proof sync request not visible in hosted logs"; exit 1; }
+          test "$audit_count" -eq 0 || { echo "audit-gw still has post-fix traffic; deletion blocked"; exit 1; }
+          echo "POST_FIX_SILENCE_GATE=PASS"
           echo "No functions were deleted by this workflow."

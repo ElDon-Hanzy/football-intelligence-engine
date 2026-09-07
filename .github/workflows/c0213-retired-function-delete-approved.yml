@@ -1,0 +1,107 @@
+name: C0213 Delete Approved Retired Functions
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/c0213-retired-function-delete-approved.yml
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_PROJECT_REF: knooiwezzsxcwhtjtdap
+
+jobs:
+  delete-approved-retired-functions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Validate token, project and exact runtime identities
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo "SUPABASE_ACCESS_TOKEN missing"; exit 1; }
+
+          project="$(curl --fail-with-body -sS -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}")"
+          test "$(jq -r '.ref // empty' <<<"$project")" = "$SUPABASE_PROJECT_REF" || { echo "Project identity mismatch"; exit 1; }
+
+          cat > approved.tsv <<'EOF'
+          c0206-build-understat-foreign-pairs	791fcbf1-2de3-47a5-8d5c-97c3452ff418	1	17febb99bc06523585bb1d4d53e147eb40119eae31fe0fb25e87f741d29f5553
+          c0206-fit-translation-shadow-v01	34f0342f-9ad0-4e33-b2bb-4993f1f233c2	1	33e3f9a51b2ca371e58fa601c59840e233ea119ebc59f9606be52869fa0302b4
+          fpl-dashboard	876c162b-2217-45d1-b439-dbf7fc59eb84	3	3390d4c1e26ff82ae69030943b6a602cbfa8ad4e9f8d548d5a93210e02497098
+          generate-fixture-predictions	426b0d58-0e9e-45ca-99c2-3b3c8e50ba71	1	4a604faf2ed39d715cf13f1ce80b33f76bbf4c21e437b9c06abdfcbf22604d22
+          generate-fpl-predictions	93c935f0-4304-49a0-8997-de92868c6768	6	6338f1121b34f80c550e7b745f001211d3d365e2babff480e9a5436ee4172b3f
+          generate-fpl-predictions-v012	670dc7ee-a144-4faf-9464-d20428598083	6	954a5c51eab214c7d3b8aa6bf619585bcb70a08c59b78608a1365a7785b794f3
+          generate-fpl-predictions-v013	883fd625-a202-4e01-9b7f-d8f52ff10f82	1	be0c489594a6a17ef9878f374e59f38779204c757b150e3d297fd65cf5a31b7a
+          optimize-fpl-squad	1062a6d0-cb07-4afe-9c14-75fed992bcd2	3	fd42dd112da2a076452ef1f3d8b3b376270a90a266b0f50706b6872cf650cbdc
+          projection-benchmark-api	6ddeaf9a-753f-433c-b040-14c91f8a19cd	1	130d6c6123a9703a69c5b1942566c6a5ad1824069010c4f9015222cd7c90e246
+          publish-dashboard	04df19b5-02df-42e0-8ed3-0c9daef985db	1	54f67278d47e0adfb4f2acbdc5bda307597cbe3cf82912edf0eb8ff6a3e1993b
+          refresh-player-state	f9236778-73cd-4f37-a1e4-dea394a760e6	6	e4a885bfebad7bec2342de7c9864ccb87709440115ab4f3ba111963c27fbaf3b
+          refresh-player-state-v012	32a1729e-854e-4476-9065-5f5d547ad597	1	71b8aa0a6e96cbe9e4b8d4ebe0f28c2ac47005ee594d30a513c407b384c53818
+          refresh-team-state	bba4223e-2db7-406d-9314-3edcce3c390b	1	2b451011ebc329547da1703b30525c1e764e07d6f1af9f49c6cda4616af49808
+          sync-core-insights	d04b2ad3-dbcf-4f43-9642-4c339c599826	2	60edea9c11458d4a9c3d6ec0a673c0c073c38e90122e5379cd051508fd1fb66d
+          sync-current-team-meta	50b3969a-7e53-4631-8d37-79d3eb6c0e64	2	26ca7a950be73fc20e4b76cf32a141db5545a2e55145da27ed090df2f8ef28e5
+          sync-fpl	317ae632-6ccd-4c06-850e-afb1d82681ac	3	601e57dc2fd677d38ee7b4f97b73c97d1a039df648325109acb435c7f8e8f5f9
+          sync-historical-priors	5de70e01-4e89-4391-b28b-6fd8f2b98d31	3	2ceef729877fabf6e76304e58ea32ff66e6f31aaf7bfb431bfb533c39b324214
+          sync-team-priors	eaffe5be-2b50-49d0-b3ad-1f9158054640	2	75f0e64e58c3a3833e5fd2415725bc04c1923b4f9f76c0c54ad8108b239d57c2
+          EOF
+
+          test "$(wc -l < approved.tsv | tr -d ' ')" = 18 || { echo "Approved list must contain exactly 18 targets"; exit 1; }
+          ! grep -q '^audit-gw' approved.tsv || { echo "audit-gw must remain on HOLD"; exit 1; }
+
+          functions="$(curl --fail-with-body -sS -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/functions")"
+          test "$(jq -r '[.[] | select(.slug=="audit-gw")] | length' <<<"$functions")" = 1 || { echo "audit-gw hold target is unexpectedly absent"; exit 1; }
+
+          while IFS=$'\t' read -r slug expected_id expected_version expected_sha; do
+            row="$(jq -c --arg slug "$slug" '.[] | select(.slug==$slug)' <<<"$functions")"
+            test -n "$row" || { echo "Missing target: $slug"; exit 1; }
+            id="$(jq -r '.id' <<<"$row")"
+            version="$(jq -r '.version|tostring' <<<"$row")"
+            sha="$(jq -r '.ezbr_sha256' <<<"$row")"
+            status="$(jq -r '.status' <<<"$row")"
+            test "$id" = "$expected_id" || { echo "UUID drift for $slug"; exit 1; }
+            test "$version" = "$expected_version" || { echo "Version drift for $slug"; exit 1; }
+            test "$sha" = "$expected_sha" || { echo "SHA drift for $slug"; exit 1; }
+            test "$status" = ACTIVE || { echo "Unexpected status for $slug: $status"; exit 1; }
+            echo "Runtime identity verified: $slug v$version $id $sha"
+          done < approved.tsv
+
+      - name: Delete exact approved dormant runtimes and verify absence
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > deleted.txt
+          while IFS=$'\t' read -r slug expected_id expected_version expected_sha; do
+            url="https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/functions/${slug}"
+            body="$(mktemp)"
+            code="$(curl -sS -o "$body" -w '%{http_code}' -X DELETE -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" "$url")"
+            if [ "$code" != 200 ] && [ "$code" != 204 ]; then
+              echo "DELETE failed for $slug (HTTP $code)"; cat "$body"; exit 1
+            fi
+            rm -f "$body"
+            echo "$slug" | tee -a deleted.txt
+            sleep 1
+          done < approved.tsv
+
+          functions="$(curl --fail-with-body -sS -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/functions")"
+          remaining=0
+          while IFS=$'\t' read -r slug _; do
+            if jq -e --arg slug "$slug" '.[] | select(.slug==$slug)' <<<"$functions" >/dev/null; then
+              echo "Target still deployed after DELETE: $slug"
+              remaining=$((remaining+1))
+            fi
+          done < approved.tsv
+          test "$remaining" -eq 0 || exit 1
+          test "$(jq -r '[.[] | select(.slug=="audit-gw")] | length' <<<"$functions")" = 1 || { echo "audit-gw hold target was unexpectedly removed"; exit 1; }
+          test "$(wc -l < deleted.txt | tr -d ' ')" = 18 || { echo "Expected 18 deletions"; exit 1; }
+
+          echo "DELETED_TARGETS_BEGIN"
+          cat deleted.txt
+          echo "DELETED_TARGETS_END"
+          echo "HELD_TARGET=audit-gw"
+          echo "Verified: 18 approved retired runtimes absent; audit-gw remains deployed on traffic hold."

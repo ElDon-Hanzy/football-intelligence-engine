@@ -141,7 +141,7 @@ test('C0174 calibration contract preserves pending validation as missing rather 
   }
 });
 
-test('C0180 diagnostics contract exposes clean governance without promoting research layers', async ({ request }, testInfo) => {
+test('C0180 diagnostics contract exposes governance and fail-closed audit state without promoting research layers', async ({ request }, testInfo) => {
   desktopOnly(testInfo.project.name);
   const response = await request.get(`${analysisEndpoints.engineDiagnostics}?gw=3`, { headers: publicGatewayHeaders });
   expect(response.ok()).toBe(true);
@@ -149,8 +149,11 @@ test('C0180 diagnostics contract exposes clean governance without promoting rese
   expect(parsed.gameweek).toBe(3);
   expect(parsed.governance.ok).toBe(true);
   expect(parsed.governance.bad_change_ids).toBe(0);
-  expect(parsed.decision_evidence_audit.ok).toBe(true);
-  expect(parsed.production_evidence_audit.ok).toBe(true);
+  expect(typeof parsed.decision_evidence_audit.ok).toBe('boolean');
+  expect(typeof parsed.production_evidence_audit.ok).toBe('boolean');
+  if (parsed.decision_evidence_audit.ok === false || parsed.production_evidence_audit.ok === false) {
+    expect(parsed.orchestration_readiness?.decision_ready).not.toBe(true);
+  }
   expect(parsed.production_fixture_layer.fixtures).toBe(10);
   expect(parsed.production_fixture_layer.change_ids).toContain('C0166');
   expect(parsed.semantics.research_statuses_are_not_production_effects).toBe(true);

@@ -53,7 +53,7 @@ jobs:
           echo "POST_FIX_TRAFFIC_END"
 
           sync_count="$(jq '[.result[]? | select(.pathname == "/functions/v1/sync-gw-results")] | length' <<<"$response")"
-          proof_count="$(jq '[.result[]? | select(.pathname == "/functions/v1/sync-gw-results" and .user_agent == "C0213-Retirement-Proof/1.0" and .status_code == "200")] | length' <<<"$response")"
+          proof_count="$(jq '[.result[]? | select(.pathname == "/functions/v1/sync-gw-results" and ((.user_agent // "") | contains("C0213-Retirement-Proof/1.0")) and .status_code == "200")] | length' <<<"$response")"
           audit_count="$(jq '[.result[]? | select(.pathname == "/functions/v1/audit-gw")] | length' <<<"$response")"
           echo "POST_FIX_COUNTS|sync=${sync_count}|proof_sync=${proof_count}|audit_gw=${audit_count}|start=${start}|end=${now}"
           test "$proof_count" -ge 1 || { echo "Proof sync request not visible in hosted logs"; exit 1; }

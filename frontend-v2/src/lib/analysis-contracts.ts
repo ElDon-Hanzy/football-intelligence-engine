@@ -150,13 +150,13 @@ const ReadinessBlockerSchema = z.object({
 }).passthrough();
 
 const OrchestrationReadinessSchema = z.object({
-  projection_ready: z.boolean(),
-  decision_ready: z.boolean(),
+  projection_ready: z.boolean().nullable(),
+  decision_ready: z.boolean().nullable(),
   contract_version: z.string().optional(),
   blockers: z.array(ReadinessBlockerSchema).default([]),
   lineage: z.array(z.record(z.string(), z.unknown())).default([]),
-  manager_state_ready: z.boolean().optional(),
-  optimizer_ready: z.boolean().optional(),
+  manager_state_ready: z.boolean().nullable().optional(),
+  optimizer_ready: z.boolean().nullable().optional(),
 }).passthrough();
 
 const OptimizerOrchestrationSchema = z.object({

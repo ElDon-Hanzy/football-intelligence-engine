@@ -1,0 +1,75 @@
+name: C0213 Retired Function Recent Forensics
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/c0213-retired-function-recent-forensics.yml
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_PROJECT_REF: knooiwezzsxcwhtjtdap
+
+jobs:
+  recent-forensics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect recent traffic for retirement holds
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo "SUPABASE_ACCESS_TOKEN secret is missing"; exit 1; }
+
+          logs_url="https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/analytics/endpoints/logs"
+          targets="'/functions/v1/audit-gw','/functions/v1/c0206-build-understat-foreign-pairs','/functions/v1/c0206-fit-translation-shadow-v01'"
+          : > recent.tsv
+
+          cursor_epoch="$(date -u -d '2026-09-03T00:00:00Z' +%s)"
+          now_epoch="$(date -u +%s)"
+          while [ "$cursor_epoch" -lt "$now_epoch" ]; do
+            next_epoch=$((cursor_epoch + 86340))
+            if [ "$next_epoch" -gt "$now_epoch" ]; then next_epoch="$now_epoch"; fi
+            start="$(date -u -d "@${cursor_epoch}" +%Y-%m-%dT%H:%M:%SZ)"
+            finish="$(date -u -d "@${next_epoch}" +%Y-%m-%dT%H:%M:%SZ)"
+            sql="select timestamp, log_attributes['request.pathname'] as pathname, log_attributes['request.method'] as method, log_attributes['response.status_code'] as status_code, log_attributes['request.headers.x_client_info'] as x_client_info, log_attributes['request.headers.referer'] as referer, log_attributes['function_id'] as function_id, log_attributes['execution_id'] as execution_id from logs where source = 'function_edge_logs' and log_attributes['request.method'] != 'OPTIONS' and log_attributes['request.pathname'] in (${targets}) order by timestamp"
+
+            response_file="$(mktemp)"
+            success=0
+            for attempt in 1 2 3 4; do
+              code="$(curl -sS -o "$response_file" -w '%{http_code}' --get \
+                -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+                --data-urlencode "sql=${sql}" \
+                --data-urlencode "iso_timestamp_start=${start}" \
+                --data-urlencode "iso_timestamp_end=${finish}" \
+                "$logs_url")"
+              if [ "$code" = 200 ]; then success=1; break; fi
+              if [ "$code" = 429 ]; then sleep $((attempt * 15)); continue; fi
+              echo "Logs API HTTP $code"; cat "$response_file"; exit 1
+            done
+            test "$success" -eq 1 || { echo "Logs query could not clear rate limit"; exit 1; }
+            response="$(cat "$response_file")"; rm -f "$response_file"
+            err="$(jq -r '.error // empty' <<<"$response")"
+            test -z "$err" || { echo "Logs API error: $err"; exit 1; }
+            jq -r '.result[]? | [.timestamp,.pathname,.method,(.status_code|tostring),(.x_client_info // ""),(.referer // ""),(.function_id // ""),(.execution_id // "")] | @tsv' <<<"$response" >> recent.tsv
+            cursor_epoch=$((next_epoch + 1))
+            sleep 5
+          done
+
+          echo "FORENSICS_BEGIN"
+          if [ -s recent.tsv ]; then
+            cat recent.tsv
+          else
+            echo "NO_RECENT_TRAFFIC"
+          fi
+          echo "FORENSICS_END"
+
+          echo "### C0213 recent retired-function forensics" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          if [ -s recent.tsv ]; then cat recent.tsv >> "$GITHUB_STEP_SUMMARY"; else echo "NO_RECENT_TRAFFIC" >> "$GITHUB_STEP_SUMMARY"; fi
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "No functions were deleted by this workflow."

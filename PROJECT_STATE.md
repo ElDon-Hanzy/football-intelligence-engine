@@ -1,315 +1,268 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-08-26_
+_Last updated: 2026-09-08 (Dubai) — C0213 architecture-consolidation closure candidate_
 
 ## 1. Purpose and immutable rules
 
 Build one football-intelligence engine for FPL decision quality and betting-market mispricing research.
 
 Permanent rules:
+
 - Historical FPL and betting forecasts are append-only and never rewritten after results.
 - Genuine fixture/model intelligence may update only pre-kickoff and hard-freezes at kickoff.
+- Completed-match evidence may update future decisions only.
 - Retrospective replay/shadow work is stored separately and never presented as a genuine historical prediction.
 - Missing data is not zero.
 - Preserve provenance plus `known_at` / `captured_at` / `evidence_cutoff` timestamps.
 - Never commit secrets/API keys.
-- Unvalidated betting intelligence remains `model_effect_enabled=false` until genuine out-of-sample forward validation passes.
+- Unvalidated intelligence remains research/shadow until its registered forward gate passes.
 - Distinguish Planned / Coded / Committed / Deployed / Executed / Verified.
-- Do not tune on GW1 and call a same-GW rerun independent validation.
-- Process quality and result quality are evaluated separately.
-- Negative experiments are first-class evidence and must not be retuned until they look successful.
-- A0005, E0007 and W0002 are frozen under their registered rules; outcome-driven rewrites require a new experiment/version/Change ID.
+- Do not tune on an outcome and then call a same-sample rerun independent validation.
+- Negative experiments are first-class evidence.
+- Projection readiness is not decision readiness.
 
-## 2. Source of truth and governance
+Canonical architecture references:
+
+- `SYSTEM_ARCHITECTURE.md`
+- `MODEL_REGISTRY.md`
+- `WEEKLY_DATA_PIPELINE.md`
+- `MODEL_CONSUMPTION_AUDIT.md`
+- `DECISIONS_AND_HISTORY.md`
+
+## 2. Production source of truth
 
 Supabase project: `knooiwezzsxcwhtjtdap`.
+GitHub: `ElDon-Hanzy/football-intelligence-engine`.
 Working engineering ledger: `public.change_tracker_working`.
-Fuller local register: `FIE_Tracker_C0137.xlsx`; never commit the Excel tracker to GitHub.
 
-Latest engineering Change ID is **C0137**. Current working-ledger state after reconciling C0133:
-- 64 rows total;
-- 54 Completed / Verified;
-- 2 In Progress / Executed;
-- 6 Monitoring / Executed;
-- 2 Blocked / Executed.
+For a resumed engineering session:
 
-Governance is enforced by `private.enforce_change_tracker_governance_v01()` and audited by `private.audit_change_tracker_governance_v01()`. Completed rows require Verified stage and implementation references; decision-bearing rows require decision references.
-
-For every resumed session:
-1. read this file;
-2. read `DECISIONS_AND_HISTORY.md`;
+1. read this file and `DECISIONS_AND_HISTORY.md`;
+2. read the relevant recent handover/change docs;
 3. query `public.change_tracker_working`;
-4. run the governance audit;
-5. query A0005 and W0002 status functions;
-6. independently inspect current Supabase/GitHub state before material work.
+4. run `private.audit_change_tracker_governance_v01()`;
+5. inspect `private.c0213_architecture_registry_status_v01()`;
+6. inspect the relevant forward-cohort and target-GW readiness status functions;
+7. independently verify current Supabase/GitHub state before material changes.
 
-## 3. Genuine forward-validation cohorts
+Live runtime/registry evidence outranks stale handovers.
 
-### W0001 / A0005 / E0006 — primary independent cohort
+## 3. C0213 architecture consolidation — current state
 
-- GW2 = `VALIDATION`.
-- GW3 = `TEST`.
-- 20 complete fixtures.
-- 7 frozen variants, 140 frozen predictions.
-- `actual_data_used=false`.
-- `model_effect_enabled=false`.
+C0213 audited the whole path:
 
-Latest verified state on 2026-08-26:
-- 0 finished cohort fixtures;
-- 0 forward evaluations;
-- 0 run/prediction/duplicate-evaluation integrity violations;
-- decision state `ACCUMULATING_GW2_VALIDATION`.
+`SOURCE → INGESTION → RAW/CANONICAL → FEATURE/STATE → MODEL/TRANSFORM → PROJECTION → DISTRIBUTION → OPTIMIZER → DECISION → API/UI`
 
-C0115 remains operational:
-- `private.capture_a0005_near_close_v01()` permits genuine 5–20 minute pre-kickoff market capture only;
-- `private.evaluate_a0005_forward_v01()` appends finished-fixture evaluations;
-- unavailable CLV remains `NULL`, never reconstructed;
-- GW2 cannot be used for same-cohort retuning;
-- GW3 remains separate TEST;
-- no automatic promotion.
+and the research path:
 
-Do not modify A0005 before or during scoring.
+`SOURCE → FEATURE/MODEL → SHADOW OUTPUT → EVALUATOR → PROMOTION/REJECTION GATE`.
 
-### W0002 / E0008 — second independently precommitted cohort
+Current architecture status after P4:
 
-C0121 froze W0002 before GW2 outcomes were known:
-- GW4 = `VALIDATION`;
-- GW5 = `TEST`;
-- 20/20 fixtures complete;
-- full pre-kickoff availability/roles/tactics/replacement/matchup/features/forecast chain already populated;
-- dedicated near-close and evaluator crons active;
-- 0 evaluations;
-- 0 integrity violations;
-- decision state `ACCUMULATING_GW4_VALIDATION`;
-- A0005 untouched.
+- registry integrity: **green**
+- system consolidation: **green**
+- components: **632**
+- DB components: **546**
+- active crons: **27**
+- dependency edges: **1,084**
+- production-effect components: **14**
+- required capabilities: **19**
+- missing required capabilities: **0**
+- required capability contradictions: **0**
+- active duplicate cron targets: **0**
+- active RETIRED external deployments: **0**
+- behavioral production proof: **14/14 current PASS**
+- tracker consumption contracts: **61/61 covered**
+- global tracker governance: **green**
 
-## 4. Validation infrastructure — C0049
+P4 adds definition-hash-bound behavioral proof. A future production function/view/runtime change invalidates its old PASS until deliberately reproven.
 
-C0049 remains **In Progress / Executed** only because genuine forward outcome accumulation and resulting comparison/CLV evidence are incomplete. Core infrastructure is operational: canonical snapshots, immutable experiment/ablation registries, walk-forward cohorts, calibration surfaces, promotion gates, historical chronology-safe archive, process-vs-outcome scoring, near-close capture and automatic evaluation.
+Current canonical proof surfaces:
 
-Historical archive evidence is retrospective-safe training evidence, not genuine forward validation.
+- `private.run_c0213_behavioral_consumption_tests_v01(gw)`
+- `private.c0213_behavioral_consumption_status_v01()`
+- `private.c0213_prediction_effect_provenance_v01`
+- `private.c0213_prediction_effect_provenance_status_v01(gw)`
+- `private.c0213_tracker_consumption_governance_v01()`
 
-## 5. Production FPL decision pipeline — C0135 / C0136
+GW4 run 1325 provenance proof:
 
-### C0135 — always-available upcoming-GW snapshot — VERIFIED
+- 604 predictions
+- 604/604 baseline lineage
+- 604/604 team/opponent lambda lineage
+- 604/604 event-distribution lineage
+- 604/604 fixture-generator lineage
+- 514/604 non-zero net xPts deltas vs baseline.
 
-The correct fix for the earlier `No frozen snapshot for GW2` condition was an upstream scheduler, not weakening `fpl-api`.
+## 4. Key C0213 corrections already deployed
 
-Rolling immutable pre-deadline snapshots now:
-- target the earliest future-deadline GW;
-- create a frozen 600-player projection run plus legal 15-man decision snapshot;
-- suppress redundant runs for roughly four hours;
-- permit a final refresh near deadline;
-- refuse generation after deadline;
-- roll automatically to the next future GW.
+### P0 — realized-role consumer bridge
 
-Cron: `football_intelligence_fpl_upcoming_snapshot` every five minutes.
+C0212 realized roles were factual and useful, but downstream fixture-role snapshots could not resolve the quantitative base profile because virtual overlay timestamps/taxonomy leaked into a physical-profile join.
 
-First verified GW2 run 5: 600 predictions, 3-5-2, XI xPts 49.428, Tzolis captain, Mbeumo vice; zero null-core/tail/chronology violations.
+C0213 P0 now preserves:
 
-### C0136 — adaptive current-season assimilation — VERIFIED
+- realized categorical role;
+- physical base-profile identity for quantitative axes;
+- explicit overlay/base evidence;
+- `numeric_role_uplift_enabled=false`.
 
-Completed 2026/27 evidence can update **future rolling FPL projections only**. Frozen betting cohorts are unchanged.
+No new role coefficient was introduced.
 
-Current source hierarchy:
-1. official FPL outcomes/player evidence;
-2. Football-Data.co.uk E0 — 20/20 GW1 team-sides;
-3. Understat xG — 17/20 GW1 team-sides;
-4. FPL-Core-Insights/FotMob-derived competitive enrichment where processed.
+### C0204 continuous projection coverage
 
-Football-Data vs Understat xG overlap on 17 team-sides: correlation 0.9790, MAE 0.1828. When both exist, xG is blended rather than blindly privileging one source.
+Projection eligibility is continuously reconciled. Narrowly defined genuinely new players may receive governed pending exclusion; existing-player/data-regression gaps remain ungoverned and block projection generation.
 
-After one match:
-- retained teams receive 25% base current-season weight;
-- promoted/weak-baseline teams receive 33.3%;
-- coverage reduces effective weight when process evidence is incomplete;
-- current-season weight is capped at 85% as sample grows.
+Current projection universe has no ungoverned missing player.
 
-Process-led blend is null-aware: xG/xGA 50%, shots 15%, shots on target 10%, big chances 10%, goals 10% attack / 15% defensive concession, possession+pass accuracy jointly 5% when available. Missing metrics are excluded, never zero-filled.
+### P1 — architecture / duplicate / selector / full-pool fixes
 
-Actual player goals/assists provide only small positive confirmation with a strong prior and +5% caps.
+- duplicate competitive-core cron removed;
+- tactical current selector now prefers calibrated v0.1.1;
+- decision snapshots fail closed when decision evidence is red;
+- canonical full-pool optimizer deployed;
+- machine-readable component/dependency/capability registry deployed.
 
-Verified immutable GW2 run 9: 600 predictions, 3-5-2, XI xPts 50.141, Tzolis captain, Mbeumo vice; zero null/tail/deadline/target-actual violations.
+### P2 — orchestration/readiness lineage
 
-## 6. Learned signal effects — current decision state
+- upstream FPL horizon extended to first three future GWs;
+- strict C0166 fixture readiness required;
+- immutable optimizer input signature introduced;
+- manager state made explicit;
+- future manager-plan writes fail closed;
+- projection readiness separated from decision readiness;
+- APIs/UI expose readiness semantics.
 
-### C0068 / C0123 — regularized residual effects — VERIFIED
+### P3 — canonical core / retirement consolidation
 
-688 training rows, six-row Jan-31 gap, untouched 210-row Feb–May holdout. No non-zero ridge candidate improved both MAE and RMSE. Decision: `SHRINK_TO_ZERO_NO_DUAL_METRIC_GAIN`. Unsupported tactical/personnel/quality families remain unlearned rather than zero-filled.
+The active core was renamed in-place from the misleading `generate_upcoming_fpl_snapshot_c0160_legacy_v01` to `generate_upcoming_fpl_projection_core_v01`; the function object/OID was preserved.
 
-### C0072 / C0124 — manual vs learned ablation — VERIFIED
+Retired C0206 v01 invocation surfaces were removed. Nineteen lifecycle-RETIRED external runtimes were audited and reconciled to **19/19 physically inactive/deleted**. No live internal consumer remained.
 
-On the same holdout, the small combined manual recent-form package modestly improved both MAE and RMSE; opponent-defence trend alone also improved both; own-form alone worsened RMSE; schedule/fatigue remained negative; learned RSE0001 remained zero.
+### P4 — behavioral consumption + effect provenance
 
-Decision: retain the combined manual form package only as a research comparator. No retrospective activation.
+Every `production_effect_enabled=true` component now requires current behavioral proof. Implemented model-effect tracker work requires an explicit consumer/evaluator/governance pathway. Prediction-level effect lineage is directly inspectable.
 
-### C0073 / C0125 — effect-family promotion gate — VERIFIED
+## 5. Canonical FPL production path
 
-Requires >=50 genuine VALIDATION observations, >=30 TEST observations, >=0.005 Brier improvement in both, no log-loss regression, process MAE within 2%, and zero integrity violations. Historical evidence alone cannot pass; automatic activation is impossible.
+```text
+results + FPL + football sources
+        ↓
+current player/team/role/fixture state
+        ↓
+C0159 bounded fixture derivative
+        ↓
+C0166 bounded symmetric evidence layer
+        ↓
+FPL projection core
+        ↓
+point distribution
+        ↓
+3-GW full-pool optimizer
+        ↓
+decision readiness / Noise-Control
+        ↓
+saved manager plan
+        ↓
+APIs / frontend-v2
+```
 
-### C0069 / C0126 — nonlinear curves — VERIFIED / REJECTED
+The full-pool optimizer is read-only. It does not write `fpl_manager_plans` and therefore cannot bypass manager-state/readiness/Decision-Control.
 
-Linear-unclipped, clipped-linear, tanh and softsign each produced one pass, one fail and one mixed chronological window. Decision: `REJECT_NO_CROSS_WINDOW_STABILITY`.
+There remain two intentionally distinct selectors:
 
-### C0070 / C0127 — coverage shrinkage — VERIFIED
+1. automated current-15 selector in the projection core;
+2. full-pool optimizer + external manager adjudication.
 
-Missing `sample_l10` remains missing; 1–9 prior matches receive residual research weight 0; >=10 receives weight 1. Partial weighting harmed sparse bins.
+The saved manager plan is authoritative only when present and readiness permits it.
 
-### C0071 / C0132 — hierarchical residual shrinkage — VERIFIED / REJECTED
+## 6. Current GW4 readiness — no FPL action yet
 
-Team partial-pooling K=5/10/20/40 helped the earliest historical window but failed later windows. Decision: `REJECT_NO_CROSS_WINDOW_STABILITY`; no team-specific residual coefficient is activated.
+GW3 result run is final, but GW4 decision readiness is still blocked. At the latest audited state the material blockers are:
 
-## 7. Team strength and goal/outcome distribution
+1. **realized-role refresh incomplete** — 203/220 starters mapped (92.27%) against latest final GW3 result run;
+2. **C0167 evidence consistency** — MUN–MCI has one `CATEGORICAL_CALL_WITHOUT_EXPLANATION` hard violation;
+3. **manager state not captured** for GW4;
+4. **full-pool optimizer not current** because exact 3-GW decision-grade inputs are not yet ready/current.
 
-### C0104 / C0105 / C0112 — team-strength calibration — MONITORING
+No GW4 manager plan is authorized. Do not make transfer/captain/bench/chip recommendations until these gates are cleared and the full FPL Decision-Control process is run.
 
-Persistent Elo candidate:
-- 3,496 historical team-side observations;
-- `team_strength_linear_v0.3_elo` beats v0.2 on multiple historical holdouts;
-- 10/10 GW2 and 10/10 GW3 candidates frozen;
-- retrospective GW1 follow-up: 8/10 direction, Brier 0.495188, process MAE 0.677928.
+## 7. A0005 forward validation — now complete and ready for adjudication
 
-This is still Monitoring until genuine GW2/GW3 evidence exists. C0136 affects rolling FPL only and does not change this frozen betting-validation lineage.
+A0005 / E0006 is now fully scored:
 
-### C0106 / C0128 — venue context — VERIFIED / REJECTED
+- GW2 VALIDATION: 10/10 fixtures
+- GW3 TEST: 10/10 fixtures
+- predictions/evaluations: 140
+- near-close coverage: 10/10 in each split
+- integrity violations: 0
+- state: `GW3_COMPLETE_PROMOTION_GATE_ELIGIBLE`
 
-25%, 50% and 100% context-specific venue blends failed cross-window stability. A favorable six-team-side retrospective GW1 diagnostic was too sparse/non-independent to override the historical result. No additional venue effect.
+Per-variant sample is still only 10 fixtures in each split. The registered C0125 effect-family promotion gate requires ≥50 VALIDATION and ≥30 TEST observations plus ≥0.005 Brier gain in both, no log-loss regression, acceptable process MAE and zero integrity violations.
 
-### C0058 — retained score distribution
+Therefore the next task is a **formal promotion/rejection/no-promotion review**, not retuning. Existing promotion-assessment rows were created before the forward cohort completed and are stale for this decision.
 
-Independent Poisson remains retained. Dixon–Coles, bivariate Poisson and generic over-dispersion did not establish a stable multi-metric improvement with fixed lambdas.
+## 8. W0002 remains independently frozen
 
-### C0063 / C0133 — mean-preserving mismatch mixture — VERIFIED / REJECTED
+W0002 / E0008:
 
-C0133 was already executed in production on 2026-08-25 but its working-ledger stage had remained stale until the 2026-08-26 reconciliation.
+- GW4 = VALIDATION
+- GW5 = TEST
+- 20 registered fixtures
+- model effect disabled
+- no current evaluations yet
+- A0005 remains untouched.
 
-Experiment design:
-- chronology-safe 449-fixture lineage;
-- 344 fixtures through 2026-01-31 for candidate screening;
-- 105 Feb–May fixtures reserved as untouched holdout;
-- 50/50 opposite regimes for fixtures above a lambda-gap threshold;
-- regime 1: favorite λ × (1+d), underdog λ × (1-d);
-- regime 2: favorite λ × (1-d), underdog λ × (1+d);
-- equal mixing preserves each team's unconditional mean lambda;
-- thresholds 0.50 / 0.75 / 1.00;
-- deltas 0.10 / 0.20 / 0.30.
+Do not modify its frozen cohort based on A0005 results.
 
-Training result:
-- Poisson control NLL 1029.988205, exact-score log loss 2.994152;
-- every one of the nine mixture candidates was worse;
-- best non-control `GAP100_D10`: NLL 1030.003100, +0.014895 worse, affecting only one training fixture;
-- `GAP050_D10`: +0.277796 NLL worse; larger deltas degraded further.
+## 9. Other active research
 
-Decision: **`REJECT_TRAINING_LIKELIHOOD`**.
+### C0120 / E0007
+Correct Score mispricing hypothesis remains research only. Current finished-candidate evidence is far too sparse for a value claim.
 
-Because no predeclared candidate passed the training screen, none qualified to consume the reserved holdout. Opening the 105-fixture holdout to rescue or select a candidate would violate the pre-registered discipline. The holdout therefore remains untouched. Independent Poisson stays retained.
+### C0154 / C0196
+Score-selector/tail calibration remains open. Current high-tail evidence is interesting but too small for production distribution changes.
 
-Production evidence: `public.mismatch_mixture_benchmarks`; applied migration `20260825112613_c0133_mean_preserving_mismatch_mixture_benchmark_v01`; GitHub migration snapshot and `project-management/C0133_MISMATCH_MIXTURE_BENCHMARK.md`. RLS is enabled, anon/auth direct grants are absent, the table is append-only, `actual_data_used=false`, `model_effect_enabled=false`.
+### C0197
+High-score/shootout research has frozen pre-GW3 experiments and forward evaluations. Chaos-only/eSOT branches failed robust-edge gates; shootout-specific hypotheses remain shadow only. No production effect.
 
-## 8. Player quality / absence consequence — C0091 / C0092 / C0131
+### C0202
+Exact-side inference is useful as a forward shadow, but generic flank xPts effects remain off. Current outcome sample is 33; promotion requires ≥100 paired outcomes over ≥5 GWs plus later holdout evidence.
 
-C0091 remains **Monitoring** because absence-consequence/model-effect validation requires genuine forward evidence.
+### C0203–C0211
+Post-transfer/new-player regime work is mostly monitoring/deferred. Do not pull deferred model families forward merely because architecture consolidation is complete.
 
-C0092 is **Completed / Verified** after C0131 ingested a genuine 2024/25 player season:
-- 38/38 GWs;
-- 11,567 source player-match rows;
-- 7,583 mapped current-player rows;
-- 3,984 intentionally unmapped historical-only rows;
-- identity by stable player code, never display-name-only.
+## 10. Blocked external dependencies
 
-Current v3 outfield priors: 341 total; 216 genuine two-season blends; 125 remain one-season because older EPL evidence is absent/insufficient. Missing evidence is never fabricated. Model effect remains disabled.
+- C0034 — third normalized pre-kickoff Correct Score source.
+- C0082 — genuine licensed spatial/tracking evidence for true pressing/line height/geometry.
 
-## 9. Spatial / tactical evidence — C0082 / C0083 / C0084
+Do not substitute weak proxies just to close these rows.
 
-C0083 ranked defensible production providers: Opta Vision, Hudl integrated event+tracking, SkillCorner. C0084 deployed immutable vendor-neutral spatial manifests/artifact metadata/event index/zone definitions.
+## 11. UI state
 
-C0082 remains **Blocked / Executed** because licensed production spatial/tracking access is still missing. Do not relabel spatial-lite proxies as true pressing, PPDA, line height or side-specific geometry.
+`frontend-v2` is the preferred rebuilt interface and strict CI covers mobile/tablet/desktop contracts, accessibility and deployment integrity.
 
-## 10. Market intelligence
+C0176 controlled primary-route cutover / legacy retirement remains a separate explicit task. Legacy root remains rollback-capable until that item is deliberately closed.
 
-Correct Score remains research-only; `value_edge_available=false` until genuine validation. Bet365 + Unibet remain the main captured sources.
+## 12. Security/performance backlog
 
-### C0034 — third Correct Score source — BLOCKED
+Supabase advisors after C0213 P4 show no new P4-specific mutable-search-path or exposure defect. Existing backlog remains:
 
-Pinnacle produced no usable selections. Genuine GW2 William Hill/Betway/BetVictor tests through Odds-API.io matched 10/10 events but wrote zero normalized selections and encountered 403/429 provider behavior. Sportmonks Premium Odds / TXODDS is the current candidate, but C0034 stays Blocked until a real third provider actually produces normalized pre-kickoff Correct Score selections.
+- many public RLS-enabled tables intentionally have no direct policies and are service-path only;
+- older private functions with mutable `search_path` warnings;
+- `pg_net` installed in `public`;
+- many foreign keys without covering indexes, including `fpl_projection_coverage_audits.prediction_run_id`;
+- many indexes currently reported unused.
 
-### C0120 / E0007 — xG-modal Correct Score hypothesis — IN PROGRESS / EXECUTED
+Treat these as a dedicated security/performance cleanup. Do not remove indexes solely because the current advisor says “unused.”
 
-The historical O/U interpretation failed: gap >=1.2 had closing-average Over 2.5 ROI -7.92%, with Aug–Dec +2.07% and Jan–May -14.05%; disagreement filters worsened robustness.
+## 13. Immediate operating sequence
 
-Do not call raw xG-minus-modal gap a validated O/U edge.
+1. finish formal C0213 verification/closure and keep its architecture gates active permanently;
+2. clear GW4 realized-role / C0167 / manager-state / projection-horizon blockers;
+3. run the completed A0005 promotion/rejection review without retuning;
+4. only after GW4 decision readiness is green, run full-pool FPL optimization and Decision-Control;
+5. then save the authoritative GW4 manager plan if a robust action edge exists.
 
-E0007 remains frozen prospectively: W0001/A0005 only; gap >=1.2; BASE_V03_ELO + FULL_V04_ELO_NO_SCHEDULE; Bet365+Unibet both required; exact-score p>=1%; higher-total scoreline; raw EV>0 across both variants and both books; genuine 5–20 minute near-close preferred; GW2 cannot retune; GW3 remains TEST; model effect disabled.
-
-Current early state remains five Aston Villa–Arsenal scorelines, all `EARLY_FALLBACK` and not recommendations.
-
-## 11. Security — C0045 / C0122 — VERIFIED
-
-C0045 mapped dependencies. C0122 then enabled RLS on legacy exposed tables, removed direct anon/auth table and sequence grants, restricted mutating replay/research RPCs while preserving service-role application paths, and smoke-tested the live APIs. No forecast/model data was changed.
-
-## 12. Retrospective GW1 evidence — reference only
-
-Blind current-engine Elo follow-up: 8/10 direction, Brier 0.495188, score log loss 2.928976, process MAE 0.677928, xG-gap error 0.996323. It is retrospective follow-up, not independent validation.
-
-C0134 dual blind proof-test is also retrospective only:
-- genuine two-book prices for only 3/10 fixtures;
-- five fixed market actions, one win, -3.27u, -65.4% ROI;
-- 1X2 0/3, totals 1/2, strict Correct Score zero bets;
-- FPL optimizer produced 59 points versus 67 same-squad hindsight ceiling = 88.1% captured;
-- full-15 xPts MAE 2.6927, RMSE 3.5694;
-- source FPL prediction batch was generated post-deadline and is excluded from backtest, so blind-to-result is not deadline-valid.
-
-## 13. Current unresolved work
-
-### In Progress / Executed
-- **C0049** — infrastructure operational; awaiting genuine forward outcomes and resulting CLV/comparison completion.
-- **C0120** — E0007 awaits genuine forward near-close prices/outcomes.
-
-### Monitoring / forward-evidence dependent
-- C0066 learned signal effect sizes;
-- C0074 signal interactions;
-- C0091 player quality/absence consequence;
-- C0104 team-strength calibration;
-- C0105 lambda/team-strength signal;
-- C0112 persistent Elo signal.
-
-### Blocked / external dependency
-- **C0034** — third normalized Correct Score source;
-- **C0082** — licensed spatial/tracking data.
-
-There are currently no Planned/Pending rows in the working ledger. Do not manufacture new model complexity merely to create work. The highest-value evidence now is genuine forward scoring.
-
-## 14. Near-term operating sequence
-
-1. Keep A0005, E0007 and W0002 frozen.
-2. Keep C0135/C0136 rolling FPL snapshots pre-deadline and immutable; completed prior matches may update only future FPL decisions.
-3. Let guarded near-close capture run before GW2 fixtures.
-4. If a finished A0005 fixture lacks exactly seven evaluation rows, investigate result-sync/evaluator integrity before model analysis.
-5. At 10/10 GW2 VALIDATION, compare all seven A0005 variants without retuning.
-6. Score E0007 independently under its frozen rule.
-7. Preserve GW3 as TEST and GW4/GW5 as separate W0002 VALIDATION/TEST.
-8. Apply C0125 effect-family gates only after genuine sample thresholds exist.
-9. Do not auto-promote any betting model/effect.
-10. Do not create a new experiment solely because the working ledger has no Planned row; require an independently justified question and Change ID first.
-
-## 15. Reconciliation state — C0129 / C0130 / C0137
-
-C0129 reconciled production through C0128. C0130 repaired a lost finalized local tracker artifact. C0137 then reconciled GitHub and the fuller local Excel tracker through C0136.
-
-A post-C0137 inspection found that C0133 had actually been executed and documented on 2026-08-25 while its working-ledger status remained Planned. That stale state is now corrected in Supabase and the local tracker; the applied migration has also been preserved in GitHub. This did not rerun C0133 or consume its holdout.
-
-Supabase execution truth remains authoritative; documentation/tracker drift is corrected to production, never the other way around.
-
-## 16. Resume command
-
-When the user says to continue:
-1. read `PROJECT_STATE.md` and `DECISIONS_AND_HISTORY.md`;
-2. query `public.change_tracker_working`;
-3. run `private.audit_change_tracker_governance_v01()`;
-4. query A0005 and W0002 status functions;
-5. query C0120 candidates/evaluation without changing E0007;
-6. check the latest upcoming-GW FPL snapshot and C0136 state before FPL decisions;
-7. if GW2 fixtures are finished, verify evaluator completeness before analysis;
-8. preserve all retrospective-vs-forward distinctions and missing-is-not-zero;
-9. update the working ledger before material work;
-10. regenerate/update the local Excel tracker at the end of any material work block; never commit it to GitHub.
+This file is intentionally concise. Detailed architecture, model lifecycle, scheduling and C0213 findings live in the four canonical C0213 documents listed in Section 1.

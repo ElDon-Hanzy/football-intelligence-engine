@@ -11,13 +11,20 @@ permissions:
 
 env:
   SUPABASE_PROJECT_REF: knooiwezzsxcwhtjtdap
+  AUDIT_ID: c45d961c-f053-4b18-89c4-478a28f85d80
+  AUDIT_VERSION: '3'
+  AUDIT_SHA: a9612f244c875f019d887b39b3e0b74e720a2b7b4f370b128e5581d9811415ae
+  SYNC_ID: b491fc7f-eecd-4ac5-9354-228671cd8f8e
+  SYNC_VERSION: '5'
+  SYNC_SHA: 707639a43f3626036fec83f2b833c290f57595c5da2368133203a8c5e0ba5e01
+  POST_FIX_START: 2026-09-07T17:12:00Z
 
 jobs:
   delete-approved-retired-functions:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Validate token, project and exact runtime identities
+      - name: Validate exact runtimes and fresh silence gate
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         shell: bash
@@ -28,80 +35,69 @@ jobs:
           project="$(curl --fail-with-body -sS -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}")"
           test "$(jq -r '.ref // empty' <<<"$project")" = "$SUPABASE_PROJECT_REF" || { echo "Project identity mismatch"; exit 1; }
 
-          cat > approved.tsv <<'EOF'
-          c0206-build-understat-foreign-pairs	791fcbf1-2de3-47a5-8d5c-97c3452ff418	1	17febb99bc06523585bb1d4d53e147eb40119eae31fe0fb25e87f741d29f5553
-          c0206-fit-translation-shadow-v01	34f0342f-9ad0-4e33-b2bb-4993f1f233c2	1	33e3f9a51b2ca371e58fa601c59840e233ea119ebc59f9606be52869fa0302b4
-          fpl-dashboard	876c162b-2217-45d1-b439-dbf7fc59eb84	3	3390d4c1e26ff82ae69030943b6a602cbfa8ad4e9f8d548d5a93210e02497098
-          generate-fixture-predictions	426b0d58-0e9e-45ca-99c2-3b3c8e50ba71	1	4a604faf2ed39d715cf13f1ce80b33f76bbf4c21e437b9c06abdfcbf22604d22
-          generate-fpl-predictions	93c935f0-4304-49a0-8997-de92868c6768	6	6338f1121b34f80c550e7b745f001211d3d365e2babff480e9a5436ee4172b3f
-          generate-fpl-predictions-v012	670dc7ee-a144-4faf-9464-d20428598083	6	954a5c51eab214c7d3b8aa6bf619585bcb70a08c59b78608a1365a7785b794f3
-          generate-fpl-predictions-v013	883fd625-a202-4e01-9b7f-d8f52ff10f82	1	be0c489594a6a17ef9878f374e59f38779204c757b150e3d297fd65cf5a31b7a
-          optimize-fpl-squad	1062a6d0-cb07-4afe-9c14-75fed992bcd2	3	fd42dd112da2a076452ef1f3d8b3b376270a90a266b0f50706b6872cf650cbdc
-          projection-benchmark-api	6ddeaf9a-753f-433c-b040-14c91f8a19cd	1	130d6c6123a9703a69c5b1942566c6a5ad1824069010c4f9015222cd7c90e246
-          publish-dashboard	04df19b5-02df-42e0-8ed3-0c9daef985db	1	54f67278d47e0adfb4f2acbdc5bda307597cbe3cf82912edf0eb8ff6a3e1993b
-          refresh-player-state	f9236778-73cd-4f37-a1e4-dea394a760e6	6	e4a885bfebad7bec2342de7c9864ccb87709440115ab4f3ba111963c27fbaf3b
-          refresh-player-state-v012	32a1729e-854e-4476-9065-5f5d547ad597	1	71b8aa0a6e96cbe9e4b8d4ebe0f28c2ac47005ee594d30a513c407b384c53818
-          refresh-team-state	bba4223e-2db7-406d-9314-3edcce3c390b	1	2b451011ebc329547da1703b30525c1e764e07d6f1af9f49c6cda4616af49808
-          sync-core-insights	d04b2ad3-dbcf-4f43-9642-4c339c599826	2	60edea9c11458d4a9c3d6ec0a673c0c073c38e90122e5379cd051508fd1fb66d
-          sync-current-team-meta	50b3969a-7e53-4631-8d37-79d3eb6c0e64	2	26ca7a950be73fc20e4b76cf32a141db5545a2e55145da27ed090df2f8ef28e5
-          sync-fpl	317ae632-6ccd-4c06-850e-afb1d82681ac	3	601e57dc2fd677d38ee7b4f97b73c97d1a039df648325109acb435c7f8e8f5f9
-          sync-historical-priors	5de70e01-4e89-4391-b28b-6fd8f2b98d31	3	2ceef729877fabf6e76304e58ea32ff66e6f31aaf7bfb431bfb533c39b324214
-          sync-team-priors	eaffe5be-2b50-49d0-b3ad-1f9158054640	2	75f0e64e58c3a3833e5fd2415725bc04c1923b4f9f76c0c54ad8108b239d57c2
-          EOF
-
-          test "$(wc -l < approved.tsv | tr -d ' ')" = 18 || { echo "Approved list must contain exactly 18 targets"; exit 1; }
-          ! grep -q '^audit-gw' approved.tsv || { echo "audit-gw must remain on HOLD"; exit 1; }
-
           functions="$(curl --fail-with-body -sS -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/functions")"
-          test "$(jq -r '[.[] | select(.slug=="audit-gw")] | length' <<<"$functions")" = 1 || { echo "audit-gw hold target is unexpectedly absent"; exit 1; }
+          audit="$(jq -c '.[] | select(.slug=="audit-gw")' <<<"$functions")"
+          sync="$(jq -c '.[] | select(.slug=="sync-gw-results")' <<<"$functions")"
+          test -n "$audit" || { echo "audit-gw is already absent; refusing ambiguous delete"; exit 1; }
+          test -n "$sync" || { echo "sync-gw-results missing"; exit 1; }
 
-          while IFS=$'\t' read -r slug expected_id expected_version expected_sha; do
-            row="$(jq -c --arg slug "$slug" '.[] | select(.slug==$slug)' <<<"$functions")"
-            test -n "$row" || { echo "Missing target: $slug"; exit 1; }
-            id="$(jq -r '.id' <<<"$row")"
-            version="$(jq -r '.version|tostring' <<<"$row")"
-            sha="$(jq -r '.ezbr_sha256' <<<"$row")"
-            status="$(jq -r '.status' <<<"$row")"
-            test "$id" = "$expected_id" || { echo "UUID drift for $slug"; exit 1; }
-            test "$version" = "$expected_version" || { echo "Version drift for $slug"; exit 1; }
-            test "$sha" = "$expected_sha" || { echo "SHA drift for $slug"; exit 1; }
-            test "$status" = ACTIVE || { echo "Unexpected status for $slug: $status"; exit 1; }
-            echo "Runtime identity verified: $slug v$version $id $sha"
-          done < approved.tsv
+          test "$(jq -r '.id' <<<"$audit")" = "$AUDIT_ID" || { echo "audit-gw UUID drift"; exit 1; }
+          test "$(jq -r '.version|tostring' <<<"$audit")" = "$AUDIT_VERSION" || { echo "audit-gw version drift"; exit 1; }
+          test "$(jq -r '.ezbr_sha256' <<<"$audit")" = "$AUDIT_SHA" || { echo "audit-gw SHA drift"; exit 1; }
+          test "$(jq -r '.status' <<<"$audit")" = ACTIVE || { echo "audit-gw not ACTIVE"; exit 1; }
 
-      - name: Delete exact approved dormant runtimes and verify absence
+          test "$(jq -r '.id' <<<"$sync")" = "$SYNC_ID" || { echo "sync-gw-results UUID drift"; exit 1; }
+          test "$(jq -r '.version|tostring' <<<"$sync")" = "$SYNC_VERSION" || { echo "sync-gw-results version drift"; exit 1; }
+          test "$(jq -r '.ezbr_sha256' <<<"$sync")" = "$SYNC_SHA" || { echo "sync-gw-results SHA drift"; exit 1; }
+          test "$(jq -r '.status' <<<"$sync")" = ACTIVE || { echo "sync-gw-results not ACTIVE"; exit 1; }
+          echo "Runtime identities verified: sync-gw-results v${SYNC_VERSION}; audit-gw v${AUDIT_VERSION}."
+
+          logs_url="https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/analytics/endpoints/logs"
+          now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          sql="select timestamp, log_attributes['request.pathname'] as pathname, log_attributes['request.method'] as method, log_attributes['response.status_code'] as status_code, log_attributes['request.headers.user_agent'] as user_agent from logs where source = 'function_edge_logs' and log_attributes['request.pathname'] in ('/functions/v1/sync-gw-results','/functions/v1/audit-gw') and log_attributes['request.method'] != 'OPTIONS' order by timestamp"
+          file="$(mktemp)"; ok=0
+          for attempt in 1 2 3 4 5; do
+            code="$(curl -sS -o "$file" -w '%{http_code}' --get \
+              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+              --data-urlencode "sql=${sql}" \
+              --data-urlencode "iso_timestamp_start=${POST_FIX_START}" \
+              --data-urlencode "iso_timestamp_end=${now}" \
+              "$logs_url")"
+            if [ "$code" = 200 ]; then ok=1; break; fi
+            if [ "$code" = 429 ]; then sleep $((attempt*15)); continue; fi
+            echo "HTTP $code querying hosted logs"; cat "$file"; rm -f "$file"; exit 1
+          done
+          test "$ok" -eq 1 || { echo "Log query rate limit did not clear"; rm -f "$file"; exit 1; }
+          response="$(cat "$file")"; rm -f "$file"
+          test -z "$(jq -r '.error // empty' <<<"$response")" || { jq -r '.error' <<<"$response"; exit 1; }
+
+          proof_count="$(jq '[.result[]? | select(.pathname == "/functions/v1/sync-gw-results" and ((.user_agent // "") | contains("C0213-Retirement-Proof/1.0")) and .status_code == "200")] | length' <<<"$response")"
+          audit_count="$(jq '[.result[]? | select(.pathname == "/functions/v1/audit-gw")] | length' <<<"$response")"
+          echo "PRE_DELETE_TRAFFIC|proof_sync=${proof_count}|audit_gw=${audit_count}|start=${POST_FIX_START}|end=${now}"
+          test "$proof_count" -ge 1 || { echo "Canonical sync proof missing"; exit 1; }
+          test "$audit_count" -eq 0 || { echo "Fresh audit-gw traffic detected; delete blocked"; exit 1; }
+          echo "FRESH_SILENCE_GATE=PASS"
+
+      - name: Delete audit-gw and verify exact absence
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
-          : > deleted.txt
-          while IFS=$'\t' read -r slug expected_id expected_version expected_sha; do
-            url="https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/functions/${slug}"
-            body="$(mktemp)"
-            code="$(curl -sS -o "$body" -w '%{http_code}' -X DELETE -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" "$url")"
-            if [ "$code" != 200 ] && [ "$code" != 204 ]; then
-              echo "DELETE failed for $slug (HTTP $code)"; cat "$body"; exit 1
-            fi
-            rm -f "$body"
-            echo "$slug" | tee -a deleted.txt
-            sleep 1
-          done < approved.tsv
+          url="https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/functions/audit-gw"
+          body="$(mktemp)"
+          code="$(curl -sS -o "$body" -w '%{http_code}' -X DELETE -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" "$url")"
+          if [ "$code" != 200 ] && [ "$code" != 204 ]; then
+            echo "DELETE failed for audit-gw (HTTP $code)"; cat "$body"; rm -f "$body"; exit 1
+          fi
+          rm -f "$body"
 
           functions="$(curl --fail-with-body -sS -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/functions")"
-          remaining=0
-          while IFS=$'\t' read -r slug _; do
-            if jq -e --arg slug "$slug" '.[] | select(.slug==$slug)' <<<"$functions" >/dev/null; then
-              echo "Target still deployed after DELETE: $slug"
-              remaining=$((remaining+1))
-            fi
-          done < approved.tsv
-          test "$remaining" -eq 0 || exit 1
-          test "$(jq -r '[.[] | select(.slug=="audit-gw")] | length' <<<"$functions")" = 1 || { echo "audit-gw hold target was unexpectedly removed"; exit 1; }
-          test "$(wc -l < deleted.txt | tr -d ' ')" = 18 || { echo "Expected 18 deletions"; exit 1; }
-
-          echo "DELETED_TARGETS_BEGIN"
-          cat deleted.txt
-          echo "DELETED_TARGETS_END"
-          echo "HELD_TARGET=audit-gw"
-          echo "Verified: 18 approved retired runtimes absent; audit-gw remains deployed on traffic hold."
+          test "$(jq '[.[] | select(.slug=="audit-gw")] | length' <<<"$functions")" = 0 || { echo "audit-gw still deployed after DELETE"; exit 1; }
+          sync="$(jq -c '.[] | select(.slug=="sync-gw-results")' <<<"$functions")"
+          test "$(jq -r '.id' <<<"$sync")" = "$SYNC_ID" || { echo "sync-gw-results changed during retirement"; exit 1; }
+          test "$(jq -r '.version|tostring' <<<"$sync")" = "$SYNC_VERSION" || { echo "sync-gw-results version changed during retirement"; exit 1; }
+          test "$(jq -r '.ezbr_sha256' <<<"$sync")" = "$SYNC_SHA" || { echo "sync-gw-results SHA changed during retirement"; exit 1; }
+          echo "DELETED_TARGET=audit-gw"
+          echo "FINAL_RETIRED_EDGE_ACTIVE_COUNT_TARGET=0"
+          echo "Verified: audit-gw absent; canonical sync-gw-results v5 remains deployed."

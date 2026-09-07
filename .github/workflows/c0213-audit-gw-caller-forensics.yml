@@ -1,0 +1,48 @@
+name: C0213 audit-gw Caller Forensics
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/c0213-audit-gw-caller-forensics.yml
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_PROJECT_REF: knooiwezzsxcwhtjtdap
+
+jobs:
+  trace-caller:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query recent audit-gw request metadata
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          logs_url="https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/analytics/endpoints/logs"
+          sql="select timestamp, log_attributes['request.pathname'] as pathname, log_attributes['request.method'] as method, log_attributes['response.status_code'] as status_code, log_attributes['request.headers.user_agent'] as user_agent, log_attributes['request.headers.x_client_info'] as x_client_info, log_attributes['request.headers.referer'] as referer, log_attributes['request.host'] as host, log_attributes['function_id'] as function_id from logs where source = 'function_edge_logs' and log_attributes['request.pathname'] = '/functions/v1/audit-gw' and log_attributes['request.method'] != 'OPTIONS' order by timestamp"
+          file="$(mktemp)"
+          ok=0
+          for attempt in 1 2 3 4; do
+            code="$(curl -sS -o "$file" -w '%{http_code}' --get \
+              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+              --data-urlencode "sql=${sql}" \
+              --data-urlencode "iso_timestamp_start=2026-09-06T12:00:00Z" \
+              --data-urlencode "iso_timestamp_end=2026-09-07T02:15:00Z" \
+              "$logs_url")"
+            if [ "$code" = 200 ]; then ok=1; break; fi
+            if [ "$code" = 429 ]; then sleep $((attempt*15)); continue; fi
+            echo "HTTP $code"; cat "$file"; exit 1
+          done
+          test "$ok" -eq 1 || exit 1
+          response="$(cat "$file")"; rm -f "$file"
+          err="$(jq -r '.error // empty' <<<"$response")"
+          test -z "$err" || { echo "$err"; exit 1; }
+          echo "CALLER_FORENSICS_BEGIN"
+          jq -r '.result[]? | [.timestamp,.pathname,.method,(.status_code|tostring),(.user_agent // ""),(.x_client_info // ""),(.referer // ""),(.host // ""),(.function_id // "")] | @tsv' <<<"$response"
+          echo "CALLER_FORENSICS_END"
+          echo "No functions were deleted by this workflow."

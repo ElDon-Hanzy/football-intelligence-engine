@@ -1,238 +1,310 @@
 # Football Intelligence Engine — Decisions & History
 
-_Last updated: 2026-08-26_
+_Last updated: 2026-09-08 (Dubai) — C0213 canonical decision ledger_
 
-This ledger preserves durable reasoning, rejected approaches and integrity rules. `PROJECT_STATE.md` is the operational handover; this file explains why the project reached that state.
+This file preserves the durable decisions that govern the current engine. Detailed pre-C0213 reasoning and the former long-form ledger remain permanently available in Git history; this live file is intentionally concise so it can remain operationally current.
 
 ## 1. Product objective
-The engine has two linked objectives: maximize season-long FPL decision quality and find betting-market mispricing from context that may be incompletely priced. The betting goal is not to reproduce a bookmaker; it is scalable evidence-led value research.
 
-## 2. FPL decision philosophy
-Every serious weekly decision starts by projecting all 15 players. For all 15 estimate xMin, xPts and haul-tail probabilities. Captaincy uses the distribution, not mean xPts alone. Defensive Contributions remain a permanent component.
+The engine has two linked objectives:
 
-## 3. GW1 construction reasoning
-GW1 was built for squad value rather than automatically buying the most expensive/high-owned players. Historical selection decisions remain frozen regardless of later model improvements.
+1. maximize future FPL decision quality and season-long rank;
+2. find football-context market mispricing that survives chronology-safe validation.
 
-## 4. Projection-model recalibration
-The original fixture transform over-compressed elite/easy fixtures toward league average. Recalibration was structural rather than a blanket uplift to mimic external models. External projections are calibration references, not ground truth.
+The betting objective is not to imitate bookmakers. The FPL objective is not to maximize last week’s points or follow ownership. Both products optimize future decision quality under uncertainty.
 
-## 5. Frozen forecasts and append-only history
-Preserve what was genuinely predicted at decision time. Never overwrite forecasts after kickoff/results. Later models may create clearly labelled shadow/research reruns. Fixture intelligence may update only before kickoff and hard-freezes at kickoff.
+## 2. Immutable chronology and data rules
 
-## 6. Prediction-vs-actual audit semantics
-Unexpected upside is not model failure for the decision objective. Final downside tolerance is `max(1, round_half_up(0.20 * xPts))`; red requires an undershoot beyond that tolerance.
+- Historical FPL and betting forecasts are append-only.
+- Fixture/model intelligence may change only before kickoff and freezes at kickoff.
+- Completed-match evidence may update future decisions only.
+- Retrospective replay/shadow evidence must be labelled retrospective.
+- Missing data is not zero.
+- Source/capture/evidence-cutoff provenance is mandatory where material.
+- Negative experiments are preserved; they are not retuned until they look successful.
+- A model is never promoted from one GW, one statistic, one favorable scoreline or one model output.
 
-## 7. Dashboard lessons
-Mobile tables must remain width-contained; modal lookup must search complete relevant datasets; API schema evolution must not produce undefined numeric rendering; missing values display as missing, never fake zero; backend health does not prove browser rendering.
+## 3. FPL Decision-Control doctrine
 
-## 8. Fixture / Correct Score architecture
-Fixture forecasting maintains lambdas, scoreline matrix, ranked exact scores, 1X2, BTTS, totals, clean-sheet probabilities and confidence. A likely score is not automatically a value bet; value requires market comparison.
+Every meaningful FPL decision must:
 
-## 9. Bookmaker Layer 1
-Odds-API.io became the primary Correct Score feed after live testing. Raw snapshots are append-only. Event mapping uses teams plus kickoff. Current reads use the latest valid pre-kickoff snapshot; old snapshots remain for movement/CLV.
+- evaluate the full available player pool, not just the current 15;
+- begin from expected minutes/start probability and tactical role;
+- use projected points plus haul/blank distributions, Defensive Contributions, bonus and clean-sheet probabilities;
+- optimize the legal £100m squad, including marginal value per £1m, club-slot cost, bench leakage, future transfer burden and structural flexibility;
+- keep an explosive-exception bucket outside the top-xMins filter;
+- compare every proposed transfer against ROLL/no action;
+- optimize captaincy separately;
+- apply ownership/EO only as game-theory context, not as proof of quality;
+- classify statistically indistinguishable options as `NO_MEANINGFUL_EDGE` rather than rank noise.
 
-## 10. Mispricing Intelligence concept
-Candidate signal families include form, venue context, tactics, manager behavior, expected XI, injuries, replacement quality, congestion, priorities, travel, pressing/buildup, line height, channels, aerial/set pieces, goalkeeper performance and material weather/pitch effects. H2H is useful only when context persists.
+Captaincy and transfer recommendations require multiple independent supporting signals, including at least one structural signal such as expected minutes, tactical role or fixture quality.
 
-## 11. First observational signal families
-Recent Performance and Schedule/Fatigue were introduced observationally with model effect disabled. Plausibility is not evidence of incremental predictive value.
+## 4. Frozen manager decisions are not rewritten
 
-## 12. Historical-data source decisions
-Football-Data supplies structured results/shots; Understat supplies xG. Different providers for the same real match remain separate raw records but are canonicalized for feature calculations so one match is not double-counted.
+Historical automated snapshots and actual manager actions are separate records. Later model improvements do not rewrite what was recommended or actually done at the time.
 
-## 13. Betting edge roadmap
-Layer-1 ingestion verification precedes de-vig/EV. Long-run quality is judged by calibration, EV and CLV rather than raw hit rate. Recommendation labels remain disabled until forward validation.
+The saved manager plan is authoritative only when it exists and was allowed by the current decision-readiness contract.
 
-## 14. Rejected approaches
-Do not uplift merely to resemble external models, treat external models as truth, rewrite forecasts, fabricate unavailable data, use recent W/D/L as sufficient form, use H2H without context, activate unvalidated intelligence, call a probability pick a value bet without prices, judge betting quality by hit rate alone, or double-count matches.
+## 5. Projection readiness is not decision readiness — C0213
 
-## 15. Supabase connector incident
-A previous conversation had a corrupted connector runtime where discovery worked but execution failed. A fresh conversation later passed 5/5 sequential SQL calls. Operational lesson: isolate tool-runtime problems before changing the project, and distinguish planned/coded/committed/deployed/executed/verified.
+A projection can be numerically valid while a final decision must remain blocked.
 
-## 16. Latest-snapshot bookmaker semantics
-For live reads, the latest valid pre-kickoff snapshot per fixture/bookmaker source is authoritative. A disappeared current market must not be silently resurrected from an older snapshot.
+C0213 formalized the decision lineage:
 
-## 17. Correct Score offered-set de-vig
-Exact-score books can omit extreme outcomes. Fair probability is therefore conditional on the offered set for de-vig comparison, while wager EV remains `P_model_raw * decimal_odds - 1`.
+`RESULTS → FPL_CURRENT_DATA → REALIZED_ROLES → PLAYER_STATE → TEAM_STATE → TACTICAL_FIXTURE_STATE → FIXTURE_PROJECTION → PLAYER_PROJECTION → POINT_DISTRIBUTION → MANAGER_STATE → FULL_POOL_OPTIMIZER → DECISION_READINESS → SAVED_MANAGER_PLAN`
 
-## 18. Two de-vig methods
-Proportional de-vig is retained as the transparent baseline and power de-vig as a second method for possible favorite/longshot bias. Do not average methods opaquely.
+Fail-closed guards protect automated decision snapshots and future manager-plan writes. Numerical projections may continue refreshing while decision output is red.
 
-## 19. Research edge is not a recommendation
-Statuses such as robust positive EV organize research evidence only. `value_edge_available=false` remains until sufficient genuine validation/calibration/CLV evidence exists.
+## 6. Two selector systems are intentionally distinct
 
-## 20. Edge-generation timeout lesson
-The first automatic edge hook timed out because a power exponent was solved repeatedly across a broad scope. Snapshot-scoped generation/materialized intermediate work fixed the computational issue without invalidating Layer 1.
+The engine contains:
 
-## 21. Security findings remain separate from model work
-New intelligence objects are hardened immediately. Legacy permissions are mapped before modification so security cleanup does not silently break application dependencies or obscure model work.
+1. an automated current-15 selector inside the projection core;
+2. a full-pool £100m optimizer feeding an externally adjudicated manager plan.
 
-## 22. Expected XI / Availability design
-Official availability/news plus latest P(start)/xMin can support an observational candidate-XI layer without pretending to know exact tactical lineups. FPL-valid candidate shapes are not tactical formation claims.
+These are not duplicate implementations of the same problem.
 
-## 23. Current-season player-state lineage
-v0.1.3 intentionally consumes the v0.1.2 player-state layer plus manual role intelligence. Completed-match evidence may update only future state. Defensive-action priors are not replaced by non-equivalent fields.
+The full-pool optimizer is canonical but read-only. It cannot save `fpl_manager_plans` and cannot bypass manager state, Noise-Control or Decision-Control.
 
-## 24. Automated Role Intelligence is an archetype model, not positional tracking
-Event-profile archetypes must not be presented as exact tactical coordinates/positions. FPL position is a broad family guardrail, not tactical truth.
+## 7. C0212 realized role is factual state, not a new coefficient
 
-## 25. `UNRESOLVED` is a correct output
-Prefer uncertainty to false certainty. Do not lower thresholds simply to force familiar players into familiar labels.
+The realized-role layer exists because nominal FPL position can differ materially from actual tactical deployment.
 
-## 26. Competitive evidence outranks preseason evidence
-Current competitive evidence progressively overrides preseason/historical priors, but only after matches are completed and only for future decisions. Partial upstream evidence is skipped rather than converted to zero.
+C0212/C0213 decision:
 
-## 27. Manual role research remains separate from automated role profiles
-Manual Bruno/Isak role research is external validation evidence, not silently merged into automated training just to make labels look correct.
+- realized tactical role is production factual state;
+- it changes categorical role semantics;
+- the existing quantitative base profile remains the numerical profile;
+- `numeric_role_uplift_enabled=false`;
+- no ad-hoc “attacking role” multiplier is added merely because one player was observed higher up the pitch.
 
-## 28. Team tactics are modeled as orthogonal axes, not a guessed formation
-Possession control, directness, width/delivery, box occupation, set-piece emphasis and defensive block are separate axes. A dominant label is an organizational summary, not a claimed formation.
+A future numerical realized-role effect requires a separate chronology-safe model and promotion gate.
 
-## 29. Box occupation is not pressing
-`HIGH_BOX_PRESSURE` wording was rejected; `HIGH_BOX_OCCUPATION` is used. True pressing-vs-buildup remains a separate family requiring appropriate evidence.
+## 8. Static dependency proof is insufficient — C0213 P4
 
-## 30. Fixture Role/Tactical snapshots obey the same chronology law as odds
-Learned profiles may update after completed matches, but fixture decision-state snapshots may only use evidence known before that fixture's kickoff. A tactically correct inference built with hindsight is still invalid decision intelligence.
+C0213 found that code/reference graphs alone cannot prove that a factor materially affects production.
 
-## 31. Replacement quality remains disabled as a model effect
-A plausible substitute does not prove equal quality or tactical consequence. Replacement outputs remain observational until forward role, lineup, ability and team-consequence validation exists.
+Permanent decision:
 
-## 32. Why Role v0.2 uses source-capped multi-source blending
-Historical 2025/26 events provide a capped prior, preseason a weak bridge, and current 2026/27 competitive evidence gains weight quickly. Missing fields are excluded from corresponding rate calculations rather than zero-filled.
+Every component with `production_effect_enabled=true` requires current behavioral proof using the correct effect class:
 
-## 33. Absolute role scoring was rejected after taxonomy collapse
-Absolute archetype scoring collapsed positional diversity. v0.2.1 therefore uses position-relative behavioral percentiles so wide/creative/defensive behavior is judged against positional baselines.
+- numeric perturbation;
+- state selection;
+- output lineage; or
+- runtime probe.
 
-## 34. Familiar players are not forced into familiar labels
-Familiarity cannot override separation/confidence thresholds. This is an explicit anti-confirmation-bias rule.
+PASS evidence is bound to the current component definition hash. A production definition/runtime change invalidates the old PASS until deliberately reproven.
 
-## 35. Replacement Quality v0.1.1 is a role-cover proxy, not tactical truth
-Unrestricted behavioral similarity produced implausible cross-position substitutes and was rejected. Candidate compatibility now uses same-position defaults plus explicit role bridges. A high score is not a claim about manager selection or equal football quality.
+Current proof suite: `private.run_c0213_behavioral_consumption_tests_v01(gw)`.
 
-## 36. Absence relevance must be sample-size aware
-Tiny-sample start shares cannot establish material absence relevance. Start shares are discounted by minute/evidence strength.
+## 9. Implemented intelligence requires a consumer or evaluator — C0213 P4
 
-## 37. Forward role validation must use genuinely pre-match snapshots
-A predicted role vector must be captured before kickoff and compared only with subsequent realized match evidence. Zero valid rows is preferable to hindsight contamination.
+“We built it” is not equivalent to “the engine uses it.”
 
-## 38. Replacement proxy promotion gate
-Before replacement quality can affect an active model: validate forward role axes, candidate ranks vs actual lineup paths, ability separately, system consequences, and incremental out-of-sample value.
+Any implemented model-effect tracker item must resolve to an explicit pathway:
 
-## 39. Tactical matchup intelligence uses family-specific score semantics
-Use `ADVANTAGE`, `OPPORTUNITY` and `DISRUPTION` semantics rather than one ambiguous matchup score.
+- production consumer;
+- research evaluator/promotion gate;
+- research infrastructure;
+- blocked external source;
+- program umbrella; or
+- reconciled legacy evidence.
 
-## 40. Tactical matchup components obey missing-is-not-zero
-Null-aware weighted means exclude missing components and reflect coverage/confidence separately. `COALESCE(missing_metric,0)` inside matchup scores is forbidden.
+The global tracker governance audit now fails when governed implemented intelligence has no such contract.
 
-## 41. Do not claim left/right flank mismatches without side/zone evidence
-Broad wide-channel pressure is allowed; left-vs-right claims require genuine side/zone evidence.
+## 10. Production-effect provenance must be inspectable
 
-## 42. Direct-transition opportunity is not high-line-vs-pace
-The current transition signal has no measured defensive line height or player speed. Do not relabel it as high-line-vs-pace.
+A current FPL prediction should expose why it differs from baseline rather than simply return xPts.
 
-## 43. Research fixture intelligence gets an additive API contract
-Do not mutate the frozen FPL API contract to inject unvalidated tactical research. Use the additive `fixture-intelligence-api` and leave historical fixtures empty when genuine pre-kickoff research was not preserved.
+C0213 P4 therefore records/exposes:
 
-## 44. Tactical signal labels need lean states and provenance consistency
-ADVANTAGE signals use explicit lean bands. Displayed direction must agree with stored nested provenance; append-only corrections are required when they diverge.
+- baseline prediction lineage;
+- team/opponent lambdas;
+- player goal/assist lambdas;
+- DC/bonus probabilities;
+- point-distribution version;
+- fixture generator and C0159/C0166 lineage;
+- signed C0166 adjustments;
+- explicit realized-role numeric-effect policy.
 
-## 45. Personnel disruption is continuity research, not player ability
-The personnel signal describes continuity/replacement uncertainty. It does not prove absolute player quality or manager system changes.
+This is an audit surface, not permission to rewrite historical forecasts.
 
-## 46. Foundational-layer stop point reached
-Expected XI, role archetypes, team style, replacement-cover research and tactical matchups are sufficient foundation for product work. Do not delay the product until every future spatial family exists.
+## 11. Canonical production FPL core
 
-## 47. Three different chronology concepts must remain separate
-1. genuine forward intelligence;
-2. blind retrospective context replay;
-3. enriched outcome shadow replay.
-Only the first can eventually be called true forward validation. Categories 2 and 3 must remain explicitly retrospective/non-forward.
+The active production core was previously misleadingly named `generate_upcoming_fpl_snapshot_c0160_legacy_v01`.
 
-## 48. Historical baseline reconstruction has a strict hierarchy
-Use genuine saved pre-kickoff fixture snapshots first, exact reconstruction from genuine pre-kickoff player batches second, otherwise no Original baseline. Do not reconstruct an “original” from post-kickoff model state.
+C0213 renamed the same function object in-place to:
 
-## 49. Enriched Shadow v0.1 coefficients were frozen before evaluation
-Conservative bounded coefficients were fixed before scoring. They must not be altered after seeing the same GW1 results.
+`private.generate_upcoming_fpl_projection_core_v01`
 
-## 50. Enriched Shadow v0.1 produced a negative/neutral aggregate result and must be preserved
-The GW1 enriched shadow failed to improve aggregate proper scores versus defensible Original baselines. Preserve the negative result rather than tuning it away.
+The OID and behavior were preserved. `private.generate_upcoming_fpl_snapshot_v01` remains the coverage/orchestration wrapper rather than a competing model core.
 
-## 51. Current outcome integration is dominated by recent xG trend, not tactical matchups
-Run-2 audit showed recent xG trends drove most lambda movement while tactical axes were small. Future integration should use component ablations over broader chronological samples, not result-hit tuning.
+## 12. Continuous projection coverage is fail-closed
 
-## 52. Shadow-model UI must show evidence, not imply promotion
-Performance may show Original → Shadow → Actual only with provenance, calibration context and research-only wording. A more sophisticated-looking shadow is not evidence for promotion.
+C0204 learned from a newly added FPL player that a one-time “all players covered” proof is insufficient.
 
-## 53. Security hardening must follow dependency mapping, then actually close the exposure
-C0045 mapped live dependencies first. C0122 then enabled RLS, removed broad anon/auth grants and restricted mutating research RPCs while live service APIs remained healthy. Known exposure should not remain Deferred after dependencies are understood.
+Permanent decision:
 
-## 54. Regularization may correctly choose zero
-C0068/C0123 found non-zero residual fits with tiny MAE improvement but worse RMSE. The correct learned result was zero. Do not force a signal merely because an engineering item is called “learned effects.”
+- genuinely new players may be narrowly governed into pending exclusion when both state and baseline are absent and there is no prior eligibility history;
+- restored/existing players, missing-state-only, missing-baseline-only and mass regressions are not auto-excluded;
+- unresolved projection gaps block generation.
 
-## 55. Manual form effects survive only as small research comparators
-C0072/C0124 found modest dual-metric improvement from the combined small form package, while own-form alone and schedule/fatigue were not robust. Retain only a research comparator; do not activate from retrospective evidence.
+## 13. Tactical calibrated-selector bug and fix
 
-## 56. Effect-family promotion requires genuine validation and test evidence
-C0073/C0125 requires >=50 validation observations, >=30 test observations, >=0.005 Brier improvement in both, no log-loss regression, process MAE within 2%, and zero integrity violations. Automatic activation is impossible.
+The v0.1.1 tactical wrapper called v0.1 first, creating a timestamp race that could cause raw v0.1 rows to win a latest-row selector.
 
-## 57. Nonlinear curves are rejected when regime stability fails
-C0069/C0126 gave one pass, one fail and one mixed window for every tested response shape. Decision: `REJECT_NO_CROSS_WINDOW_STABILITY`.
+Permanent decision:
 
-## 58. Sparse L10 evidence is suppressed, not smoothly promoted
-C0070/C0127 found partial weighting harmful in sparse bins. Missing remains missing; 1–9 prior matches receive residual research weight 0; >=10 receives weight 1.
+For the same match/team/signal, current tactical state explicitly prefers v0.1.1. “Latest timestamp” alone is not a valid version selector when wrappers intentionally generate parent rows first.
 
-## 59. Venue effects must survive multiple historical windows; GW1 cannot rescue them
-C0106/C0128 rejected context-specific venue blends after cross-window instability. A favorable six-team-side GW1 diagnostic was too sparse/non-independent to override the historical decision.
+## 14. C0147 is shadow; its bounded derivative is production
 
-## 60. A third Correct Score source remains a real external dependency
-Pinnacle failed, and genuine pre-kickoff William Hill/Betway/BetVictor tests through Odds-API.io wrote no normalized selections. Keep C0034 Blocked until an independent third source actually captures normalized pre-kickoff Correct Score data.
+C0147 tactical matchup predictive intelligence remains SHADOW/research.
 
-## 61. The second forward cohort was precommitted before the first cohort produced results
-C0121 froze E0008/W0002 for GW4/GW5 before GW2 outcomes. Defining future cohorts before prior validation results reduces adaptive bias.
+C0159 consumes a bounded derivative of that evidence. C0166 then adds bounded symmetric season-aware evidence.
 
-## 62. Mean-vs-mode discrepancy is not automatically a betting edge
-The historical xG-minus-modal O/U rule lost money and was chronologically unstable. Do not call it a validated edge. The narrower Correct Score version remains frozen prospectively as E0007.
+Therefore:
 
-## 63. Supabase execution truth outranks stale documentation filenames
-When production, GitHub and Excel drift, reconcile in this order: Supabase working ledger/integrity, GitHub implementation artifacts, handover/history, fuller local Excel, final formula/governance/integrity checks. Never assume a file named CURRENT is current.
+- raw C0147 is not production merely because production code reads its results;
+- C0159/C0166 are the production-effect layers;
+- C0166 evidence adjustment remains capped at `|0.04|` log-lambda per team;
+- target-fixture actual leakage is prohibited.
 
-## 64. Multi-season player ability is a per-player evidence property — C0131
-C0131 ingested genuine 2024/25 FPL-Core-Insights player evidence across 38/38 GWs. Identity uses stable player code, not display name. The v3 prior has 341 current outfield players: 216 genuinely blend two seasons and 125 remain one-season because older EPL evidence is insufficient.
+## 15. Full-pool optimizer decision
 
-Decision: C0092 is complete. Do not fabricate older history merely to make every player “multi-season.” Position-specific persistence, minute reliability, opponent-Elo context, missing-is-not-zero and append-only storage remain required. Model effect stays disabled.
+C0213 closed the absence of a canonical full-player-pool optimizer by deploying `fpl-full-pool-optimizer`.
 
-## 65. Team-specific hierarchical residuals were tested and rejected — C0132
-Fixed team partial-pooling K=5/10/20/40 improved the earliest window but failed later chronological stability: W2 worsened RMSE for every hierarchy and W3 produced regression or metric tradeoff.
+Permanent design:
 
-Decision: `REJECT_NO_CROSS_WINDOW_STABILITY`. Small samples continue to borrow from the global/zero residual baseline. A materially different hierarchy requires a new Change ID and independent design.
+- top ~300 by xMins plus explosive exceptions;
+- position-specific candidate pools;
+- legal 2/5/5/3 squad, max three per club, ≤£100m;
+- weighted 3–5 GW horizon;
+- bench leakage;
+- transfer cost/opportunity cost;
+- manager-state-aware inputs;
+- deterministic search with explicit `search_exact=false` when approximate;
+- model-error margin before declaring an edge;
+- read-only, no direct manager-plan writes.
 
-## 66. Blind-to-result is not the same as deadline-valid — C0134
-The GW1 dual proof-test intentionally remained retrospective. The betting track had genuine two-book pre-kickoff prices for only 3/10 fixtures and a fixed five-action rule lost -3.27u (-65.4% ROI); the strict Correct Score rule produced zero bets. Preserve this negative monetization result.
+The optimizer’s first engineering proof itself returned `NO_MEANINGFUL_EDGE_WITHIN_MODEL_ERROR`, which is an acceptable and desirable output.
 
-The FPL optimizer captured 59/67 = 88.1% of the same-squad hindsight ceiling, but its source projection batch had been generated after the GW1 deadline and was already excluded from backtest.
+## 16. Retired runtimes must actually be retired
 
-Decision: a replay can be blind to final results yet still fail the deadline-valid historical-backtest standard. Never collapse those concepts.
+C0213 found 19 lifecycle-RETIRED external components still physically active.
 
-## 67. The upcoming FPL decision surface must exist before the deadline without serving mutable state — C0135
-When GW2 returned “No frozen snapshot,” the correct fix was not to weaken `fpl-api`. The missing layer was an upstream scheduler that generates rolling immutable pre-deadline snapshots.
+Permanent decision:
 
-Decision: while a deadline is future, newer frozen snapshots may supersede older ones for display; generation is refused after deadline; the scheduler rolls to the next future GW. Historical snapshots remain immutable.
+- a component is not considered consolidated simply because the registry labels it RETIRED;
+- retirement requires consumer proof, rollback/source evidence and physical runtime reconciliation;
+- broad destructive pruning is not acceptable for targeted retirement.
 
-## 68. Current-season evidence may update future FPL decisions but must not contaminate frozen betting cohorts — C0136
-The early season must not remain anchored almost entirely to 2025/26. Completed 2026/27 evidence now gains weight quickly in rolling FPL projections using multiple sources and a process-led, coverage-aware blend.
+All 19 were reconciled to inactive/deleted; active retired external deployment count is now zero.
 
-After one match, retained teams receive 25% base current-season weight and promoted/weak-baseline teams 33.3%, then coverage scaling. xG carries the largest process weight; goals are deliberately smaller components. Missing metrics are excluded, not zero-filled. Actual player goals/assists provide only capped positive confirmation.
+## 17. Research promotion discipline
 
-Decision: C0136 is accepted for **future rolling FPL only**. W0001/A0005, E0007 and W0002 remain frozen and unchanged. Current-season FPL assimilation is not evidence for promoting the betting model.
+### Effect-family gate — C0125
 
-## 69. Reconciliation is itself governed work — C0137
-Material implementation moved production beyond the last consolidated handover. A new reconciliation therefore requires its own Change ID before documentation/tracker writes.
+Registered effect-family promotion requires, at minimum:
 
-Decision: Supabase remains authoritative, GitHub handover/history must be brought forward to verified production, and the local Excel tracker is regenerated afterward. Reconciliation never changes model forecasts merely to match stale documentation.
+- ≥50 genuine VALIDATION observations;
+- ≥30 genuine TEST observations;
+- ≥0.005 absolute Brier improvement in both;
+- no log-loss regression;
+- process MAE within 2%;
+- zero integrity violations;
+- manual review;
+- no automatic activation.
 
-## 70. A candidate that fails the training screen does not earn access to the holdout — C0133
-C0133 tested a predeclared 3×3 grid of mean-preserving two-regime mismatch mixtures on 344 chronology-safe training fixtures. The equal 50/50 opposite-regime construction preserves each team’s unconditional lambda; thresholds were 0.50/0.75/1.00 and regime deltas 0.10/0.20/0.30.
+Historical evidence alone cannot pass.
 
-Every non-control candidate worsened training exact-score likelihood. The least-bad candidate, gap >=1.00 / delta 0.10, was still +0.014895 NLL worse than Poisson and affected only one training fixture. The 105-fixture Feb–May holdout therefore remained untouched.
+### A0005
 
-Decision: `REJECT_TRAINING_LIKELIHOOD`. Do not open a reserved holdout merely to rescue a candidate that already failed the predeclared training screen, and do not expand the grid after seeing failure. Independent Poisson remains retained; upstream lambda quality remains the higher-priority modeling problem.
+GW2 VALIDATION and GW3 TEST are now complete. The cohort is eligible for a formal review, but per-variant sample is only 10 fixtures in each split and test-set improvements are small. The correct next action is formal no-retuning adjudication, not coefficient hunting.
+
+### W0002
+
+W0002 was precommitted before A0005 outcomes and remains independent:
+
+- GW4 VALIDATION;
+- GW5 TEST;
+- model effect disabled.
+
+It must not be altered to fit A0005 results.
+
+## 18. Preserved negative/rejected model evidence
+
+The project intentionally retains negative findings, including:
+
+- regularized residual effects where non-zero fits failed the dual-metric gate → shrink to zero;
+- nonlinear response curves without cross-window stability → reject;
+- hierarchical team residual shrinkage without cross-window stability → reject;
+- context-specific venue blends without robust stability → reject;
+- generic schedule/fatigue heuristic → reject;
+- mean-preserving mismatch mixture → reject on training likelihood without opening the holdout to rescue it;
+- generic Chaos-only high-score dispersion → no meaningful edge;
+- eSOT chaos activation → no robust high-tail edge;
+- generic flank xPts adjustment → off after holdout collapse.
+
+Do not retune rejected models merely because later anecdotal examples look favorable.
+
+## 19. Correct Score / market edge discipline
+
+A likely score is not automatically a value bet. Value requires current market comparison, de-vig awareness, raw model probability and chronology-safe pricing.
+
+C0034 remains blocked until a genuine third Correct Score source produces normalized pre-kickoff selections.
+
+C0120/E0007 remains research-only. The current sample is too sparse for a value claim.
+
+## 20. Spatial/tactical truth must match evidence quality
+
+Do not call event/proxy data “true pressing,” “line height,” “high line vs pace” or exact left/right geometry without evidence capable of supporting those claims.
+
+C0082 remains blocked on genuine spatial/tracking access. C0202 exact-side inference may be used as a shadow label where validated, but generic flank-weakness xPts effects remain off until the registered forward gate passes.
+
+## 21. UI/presentation cannot imply model promotion
+
+Presentation may summarize research, but:
+
+- research diagnostics must not masquerade as production semantics;
+- missing values must display as missing, never fake zero;
+- historical prediction and actual manager action must remain visually distinct;
+- weak/no-edge fixtures must not be forced into categorical calls;
+- UI success does not prove model correctness, and backend health does not prove browser rendering.
+
+`frontend-v2` is the preferred interface. Primary-route legacy retirement remains a separate C0176 decision with rollback protection.
+
+## 22. Security/performance cleanup is separate from model tuning
+
+New objects are hardened at creation. Existing advisor debt is tracked separately so architecture/model work does not silently mutate legacy access paths or drop indexes without evidence.
+
+Current known backlog includes older mutable-search-path functions, `pg_net` in public, many service-path RLS/no-policy INFOs, unindexed FKs and unused-index candidates.
+
+“Unused” is not sufficient evidence to remove an index.
+
+## 23. C0213 closure decision
+
+C0213 is considered structurally complete only when all of the following are true:
+
+- architecture registry integrity green;
+- no required capability missing/contradictory;
+- no active duplicate cron target;
+- no active retired external runtime;
+- all production-effect components have current definition-bound behavioral PASS;
+- implemented governed model-effect tracker work has a consumer/evaluator contract;
+- prediction-level effect provenance is available;
+- canonical architecture/model/pipeline/consumption docs are current;
+- strict repository CI and live Pages integrity pass;
+- tracker is marked Completed/Verified only after those proofs.
+
+## 24. Immediate post-C0213 sequence
+
+After formal C0213 verification:
+
+1. clear remaining GW4 readiness blockers — realized-role mapping, C0167 evidence consistency, current 3-GW projections, manager state and exact-signature full-pool optimizer;
+2. adjudicate completed A0005 without retuning;
+3. only when GW4 decision readiness is green, execute the full FPL Decision-Control process;
+4. save a GW4 manager plan only if a robust edge exists; otherwise ROLL/no-action remains a valid outcome.
+
+This sequence prevents architecture cleanup, research evaluation and live FPL decisioning from contaminating each other.

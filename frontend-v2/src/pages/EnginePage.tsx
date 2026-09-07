@@ -11,8 +11,8 @@ export function EnginePage({ requestedGameweek }: { requestedGameweek: number })
   const sourceRows = asRecords(data.source_health.zero_cost.sources);
   const governanceClean = data.governance.ok && data.governance.bad_change_ids === 0 && data.governance.completed_not_verified === 0 && data.governance.completed_without_refs === 0;
   const readiness = data.orchestration_readiness;
-  const projectionReady = readiness?.projection_ready === true;
-  const decisionReady = readiness?.decision_ready === true;
+  const projectionState = readinessLabel(readiness?.projection_ready);
+  const decisionState = readinessLabel(readiness?.decision_ready);
   const blockers = readiness?.blockers ?? [];
   const optimizerStatus = data.optimizer_orchestration?.status ?? 'Unavailable';
 
@@ -24,12 +24,12 @@ export function EnginePage({ requestedGameweek }: { requestedGameweek: number })
 
     <section className="analysis-hero" aria-labelledby="engine-title">
       <div><span className="decision-label">Production identity</span><h2 id="engine-title">Model {data.active_model?.version ?? 'unavailable'}</h2><p>{data.production_fixture_layer.change_ids.length ? `Current fixture layer: ${data.production_fixture_layer.change_ids.join(' + ')}.` : 'Fixture-layer identity unavailable.'} Historical forecasts remain immutable.</p></div>
-      <dl className="analysis-hero-metrics"><Metric label="Latest FPL run" value={data.latest_prediction_run ? `#${data.latest_prediction_run.id}` : '—'} /><Metric label="Fixture snapshots" value={String(data.production_fixture_layer.fixtures)} /><Metric label="Projection readiness" value={projectionReady ? 'READY' : 'BLOCKED'} /><Metric label="Decision readiness" value={decisionReady ? 'READY' : 'BLOCKED'} /><Metric label="Decision audit" value={auditLabel(data.decision_evidence_audit)} /><Metric label="Evidence audit" value={auditLabel(data.production_evidence_audit)} /></dl>
+      <dl className="analysis-hero-metrics"><Metric label="Latest FPL run" value={data.latest_prediction_run ? `#${data.latest_prediction_run.id}` : '—'} /><Metric label="Fixture snapshots" value={String(data.production_fixture_layer.fixtures)} /><Metric label="Projection readiness" value={projectionState} /><Metric label="Decision readiness" value={decisionState} /><Metric label="Decision audit" value={auditLabel(data.decision_evidence_audit)} /><Metric label="Evidence audit" value={auditLabel(data.production_evidence_audit)} /></dl>
     </section>
 
     <section className="analysis-section two-column-analysis" aria-label="Projection and decision readiness">
-      <article className="analysis-card"><span className="page-eyebrow">Projection pipeline</span><h2>{projectionReady ? 'Projection READY' : 'Projection BLOCKED'}</h2><p className="analysis-card-note">Numerical forecasts can remain available even when the decision chain is intentionally closed.</p><dl className="stacked-metrics"><Metric label="Contract" value={readiness?.contract_version ?? '—'} /><Metric label="3-GW optimizer" value={human(optimizerStatus)} /><Metric label="Manager state" value={readiness?.manager_state_ready === true ? 'READY' : 'NOT READY'} /></dl></article>
-      <article className="analysis-card"><span className="page-eyebrow">Decision pipeline</span><h2>{decisionReady ? 'Decision READY' : 'Decision BLOCKED'}</h2>{blockers.length ? <ul className="plain-status-list">{blockers.map((blocker, index) => <li key={`${blocker.stage}-${blocker.code}-${index}`}><strong>{human(blocker.stage)}</strong>: {human(blocker.code)}</li>)}</ul> : <p className="analysis-card-note">No active decision blockers.</p>}</article>
+      <article className="analysis-card"><span className="page-eyebrow">Projection pipeline</span><h2>Projection {projectionState}</h2><p className="analysis-card-note">Numerical forecasts can remain available even when the decision chain is intentionally closed. Unknown means the readiness contract is not applicable or not available; it is never treated as blocked.</p><dl className="stacked-metrics"><Metric label="Contract" value={readiness?.contract_version ?? '—'} /><Metric label="3-GW optimizer" value={human(optimizerStatus)} /><Metric label="Manager state" value={readinessLabel(readiness?.manager_state_ready)} /></dl></article>
+      <article className="analysis-card"><span className="page-eyebrow">Decision pipeline</span><h2>Decision {decisionState}</h2>{blockers.length ? <ul className="plain-status-list">{blockers.map((blocker, index) => <li key={`${blocker.stage}-${blocker.code}-${index}`}><strong>{human(blocker.stage)}</strong>: {human(blocker.code)}</li>)}</ul> : <p className="analysis-card-note">{decisionState === 'UNKNOWN' ? 'Decision readiness is unknown for this contract.' : 'No active decision blockers.'}</p>}</article>
     </section>
 
     <section className="analysis-section two-column-analysis" aria-label="Governance and production state">
@@ -53,6 +53,7 @@ function ExperimentCard({ name, state, coverage }: { name: string; state: string
   const record = asRecord(coverage);
   return <article className="analysis-card experiment-card"><span className="page-eyebrow">{name}</span><h2>{human(state)}</h2><dl className="stacked-metrics"><Metric label="Fixtures" value={String(record.fixtures ?? '—')} /><Metric label="Evaluations" value={String(record.evaluations ?? '—')} /><Metric label="Predictions" value={String(record.predictions ?? '—')} /></dl><p className="analysis-card-note">Research / validation state. No automatic production promotion.</p></article>;
 }
+function readinessLabel(value: boolean | null | undefined): 'READY' | 'BLOCKED' | 'UNKNOWN' { return value === true ? 'READY' : value === false ? 'BLOCKED' : 'UNKNOWN'; }
 function auditLabel(value: Record<string, unknown>): string { return value.ok === true ? 'PASS' : value.ok === false ? 'FAIL' : '—'; }
 function asRecord(value: unknown): Record<string, unknown> { return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function asRecords(value: unknown): Record<string, unknown>[] { return Array.isArray(value) ? value.filter((item) => item && typeof item === 'object').map((item) => item as Record<string, unknown>) : []; }

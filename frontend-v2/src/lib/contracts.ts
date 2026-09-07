@@ -233,11 +233,11 @@ export const ActualManagerDecisionSchema = z.object({
 }).passthrough();
 
 const DecisionReadinessSchema = z.object({
-  projection_ready: z.boolean(),
-  decision_ready: z.boolean(),
+  projection_ready: z.boolean().nullable(),
+  decision_ready: z.boolean().nullable(),
   contract_version: z.string().optional(),
-  manager_state_ready: z.boolean().optional(),
-  optimizer_ready: z.boolean().optional(),
+  manager_state_ready: z.boolean().nullable().optional(),
+  optimizer_ready: z.boolean().nullable().optional(),
   blockers: z.array(z.object({ stage: z.string(), code: z.string() }).passthrough()).default([]),
   lineage: z.array(z.record(z.string(), z.unknown())).default([]),
 }).passthrough();

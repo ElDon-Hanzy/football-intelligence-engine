@@ -1,18 +1,24 @@
 # C0213 P3 — Retired External Deployment Retirement Audit
 
-Date: 2026-09-06
+Date: 2026-09-07
 Change: C0213
 Scope: architecture consolidation only. No numerical model change. No historical forecast rewrite. No GW4 manager decision output.
 
 ## Objective
 
-Audit the 19 runtime components classified `RETIRED` but still physically deployed, prove whether any current production path consumes them, identify canonical successors, establish a fail-closed retirement/rollback contract, durably preserve the exact live runtime bundles, and physically delete only after both rollback and runtime-traffic gates are proven.
+Audit the 19 external runtime components classified `RETIRED`, prove current consumption/traffic, preserve deterministic rollback, and physically remove only runtimes that pass static-consumer, traffic, rollback and exact-runtime-identity gates.
 
 ## Current result
 
-All 19 retired deployments are **STATIC_RETIREMENT_READY** and all 19 now have **durable rollback source**.
+**18 of the 19 RETIRED external runtimes have now been physically deleted.**
 
-Static consumer proof is green for every item:
+`audit-gw` remains physically ACTIVE on an explicit traffic hold. The architecture registry correctly remains fail-closed with exactly one active RETIRED external deployment and `system_consolidation_ok=false`.
+
+No FPL projection coefficient, frozen forecast, research cohort or manager decision was changed. GW4 manager-plan count remains zero.
+
+## Static consumer proof
+
+Static consumer proof is green for all 19 manifest items:
 
 - dependency-graph incoming edges: 0
 - dependency-graph outgoing edges: 0
@@ -21,158 +27,165 @@ Static consumer proof is green for every item:
 - trigger/view consumers: 0
 - canonical UI/API dependency edges: 0
 
-Two initial text matches were rejected as substring false positives rather than counted as consumers:
+Two initial text matches were substring false positives:
 
-- `sync-fpl` matched cron 25 only because the actual target is `sync-fpl-data`.
-- `c0206-build-understat-foreign-pairs` matched `private.invoke_engine_ingest` only because the allowlist contains the canonical successor `c0206-build-understat-foreign-pairs-v02`.
+- `sync-fpl` matched cron 25 only because the live target is `sync-fpl-data`.
+- `c0206-build-understat-foreign-pairs` matched `private.invoke_engine_ingest` only because the allowlist retains successor `c0206-build-understat-foreign-pairs-v02`.
 
-The two superseded C0206 v01 endpoints remain blocked from internal invocation and return `Function not allowed` when addressed through the canonical invoker.
-
-## Retirement manifest
-
-Initial production migration:
-
-`20260906172600_c0213_p3_retired_external_retirement_manifest_v01`
-
-Repository migration:
-
-`supabase/migrations/20260906172600_c0213_p3_retired_external_retirement_manifest_v01.sql`
-
-Archive reconciliation production migration:
-
-`c0213_p3_retired_runtime_archive_reconciliation_v01`
-
-Repository migration:
-
-`supabase/migrations/20260906184500_c0213_p3_retired_runtime_archive_reconciliation_v01.sql`
-
-Objects:
-
-- `private.c0213_retired_external_retirement_manifest`
-- `private.c0213_retired_external_retirement_status_v01()`
-
-The manifest records for every retired deployment:
-
-- component key and slug
-- runtime kind
-- live Supabase function UUID
-- live runtime version
-- live deployment SHA-256
-- JWT-gateway setting
-- canonical successor where one exists
-- static consumer counts
-- repository runtime-source location
-- durable rollback-source status
-- runtime-traffic visibility status
-- retirement state
-- whether physical deletion is currently allowed
-- rollback requirements
-
-## Retired deployment set
-
-| Retired deployment | Successor / current owner |
-|---|---|
-| `sync-fpl` | `sync-fpl-data` |
-| `sync-core-insights` | `ingest-competitive-core-stats` |
-| `sync-historical-priors` | no live endpoint consumer; legacy historical-prior path retired |
-| `refresh-player-state` | `refresh-current-player-state` |
-| `sync-team-priors` | database-native current-season team assimilation |
-| `refresh-team-state` | database-native current-season team assimilation |
-| `sync-current-team-meta` | `sync-fpl-data` |
-| `generate-fpl-predictions` | `private.generate_upcoming_fpl_snapshot_v01(...)` |
-| `optimize-fpl-squad` | `fpl-full-pool-optimizer` + canonical decision orchestration |
-| `fpl-dashboard` | `frontend-v2` |
-| `publish-dashboard` | GitHub Pages workflow |
-| `audit-gw` | database-native audit/readiness functions |
-| `projection-benchmark-api` | no current consumer |
-| `generate-fpl-predictions-v012` | canonical DB FPL snapshot wrapper |
-| `refresh-player-state-v012` | `refresh-current-player-state` |
-| `generate-fpl-predictions-v013` | canonical DB FPL snapshot wrapper |
-| `generate-fixture-predictions` | `private.refresh_c0166_fixture_cycle_v01(...)` |
-| `c0206-build-understat-foreign-pairs` | `c0206-build-understat-foreign-pairs-v02` |
-| `c0206-fit-translation-shadow-v01` | `c0206-fit-translation-shadow-v02` |
+The two superseded C0206 v01 endpoints were already blocked from canonical internal invocation before physical deletion.
 
 ## Durable rollback archive
 
-The exact runtime bundles for the 18 previously runtime-only deployments are now stored outside `supabase/functions/` under:
+All 19 manifest items have durable rollback source.
+
+The 18 previously runtime-only bundles are stored outside `supabase/functions/` under:
 
 `project-management/retired-runtime-archive/20260906/`
 
-This is intentionally a non-deployable archive namespace, so a bulk Supabase function deployment cannot accidentally resurrect retired runtimes.
-
-Each `.bundle.json` records the live deployment metadata and exact runtime files captured from Supabase, including the live function UUID, runtime version, `verify_jwt` state and recorded Supabase runtime SHA-256.
-
-The nineteenth deployment, `c0206-fit-translation-shadow-v01`, already had repository-backed runtime source and therefore did not require a duplicate archive bundle.
+The archive is intentionally non-deployable so bulk function deployment cannot accidentally resurrect legacy runtimes. Each bundle records the captured runtime UUID, version, `verify_jwt` state, SHA-256 and exact runtime files. `c0206-fit-translation-shadow-v01` already had repository-backed source.
 
 Archive commits:
 
-- `3f3d29d7cf860d22e009ee8867f955b7578a54b2` — initial `sync-fpl` runtime bundle
-- `22ee2613a7d8ced3a18b3506b1c923a347b3c73b` — remaining runtime-only rollback bundles
+- `3f3d29d7cf860d22e009ee8867f955b7578a54b2`
+- `22ee2613a7d8ced3a18b3506b1c923a347b3c73b`
+- archive reconciliation: `a7bb796199b790f3583a7749f5de8f0e70636219`
 
-Archive reconciliation migration repository commit:
+No access token or service credential is stored in the archive.
 
-- `a7bb796199b790f3583a7749f5de8f0e70636219`
+## Runtime-traffic audit
 
-No hard-coded service token or personal access token was introduced into the archive; the captured legacy runtimes obtain credentials through runtime environment variables/backend-secret lookup.
+The scoped `SUPABASE_ACCESS_TOKEN` was supplied through GitHub Actions secrets; it was never committed or printed.
 
-## Why physical deletion has not yet been performed
+Audit workflow:
 
-The rollback gate is now fully green, but physical deletion remains fail-closed on a separate platform-evidence gate.
+`.github/workflows/c0213-retired-function-traffic-audit.yml`
 
-Current Supabase documentation confirms Edge Function invocation evidence is available from function invocation logs / hosted log queries. For hosted projects, the relevant ClickHouse source is `function_edge_logs` for HTTP request/response invocation records. Static dependency proof cannot substitute for this evidence because an unknown external client could call a retired HTTP endpoint directly.
+Successful historical traffic run:
 
-The connected Supabase capability in this environment exposes Edge Function list/get/deploy but does **not** expose hosted `query_logs`/invocation-log querying.
+- run `34074665804`
+- queried `function_edge_logs` in <=24-hour windows from 2026-08-20 through 2026-09-07
+- excluded OPTIONS traffic
+- validated expected Supabase project identity and 19/19 live target presence before audit
 
-Current Supabase documentation also confirms physical function deletion is performed through:
+Every retired runtime had historical traffic, but 16 stopped on 2026-08-21/22. The two C0206 v01 runtimes had isolated recent research/probe POSTs only:
 
-`DELETE /v1/projects/{ref}/functions/{function_slug}`
+- `c0206-build-understat-foreign-pairs`: one POST on 2026-09-04 23:55:10 UTC
+- `c0206-fit-translation-shadow-v01`: two POSTs on 2026-09-05 15:51:21 and 15:51:35 UTC
 
-or an authenticated Supabase CLI delete operation. The connected Supabase capability does **not** expose the Edge Function delete action or a generic authenticated Management API transport.
+No recurring caller existed for either v01 runtime, their canonical successors are deployed, their internal allowlist entries are removed, and both were included in the approved physical-retirement set.
 
-We intentionally did not substitute:
+## `audit-gw` traffic hold
 
-- `deploy --prune`
-- tombstone redeployments
-- registry relabeling
-- guessed/unavailable credentials
-- unauthenticated Management API calls
+`audit-gw` is different and was **not deleted**.
 
-Those approaches would either risk unrelated runtime functions, destroy useful rollback identity, or make the architecture registry claim a physical state that is not true.
+Historical audit found 184 non-OPTIONS invocations, with traffic continuing through 2026-09-06 22:45:09.485 UTC. Recent forensics showed repeated successful GETs close to a 15-minute cadence.
 
-## Rollback gate
+Detailed caller-forensics workflow:
 
-Current status after archive reconciliation:
+`.github/workflows/c0213-audit-gw-caller-forensics.yml`
+
+Run `34074994748` established the recent requests have:
+
+- method: GET
+- status: 200
+- User-Agent: `FootballIntelligence/0.3`
+- no `x_client_info`
+- no referer
+
+Exact searches of current DB functions, active cron commands, current views and the current repository found no caller string for either `audit-gw` or `FootballIntelligence/0.3`. Current `net.http_request_queue` also contains no matching queued request.
+
+Therefore the endpoint remains `RETIRED` but physically `ACTIVE`, with manifest state `HOLD` and reason:
+
+`RECENT_15_MIN_ENGINE_OWNED_TRAFFIC_CALLER_NOT_YET_LOCATED`
+
+We do not infer that an unidentified engine-owned caller is safe to break.
+
+## Physical retirement execution
+
+Deletion workflow:
+
+`.github/workflows/c0213-retired-function-delete-approved.yml`
+
+Commit:
+
+`7de99737ad89891a7fe0d06e861682200a24b2a9`
+
+Run:
+
+`34075158188`
+
+Before deletion the workflow failed closed unless every approved target matched its manifest-captured:
+
+- slug
+- Supabase runtime UUID
+- runtime version
+- runtime `ezbr_sha256`
+- ACTIVE status
+
+It also asserted `audit-gw` was present and not in the deletion list.
+
+All 18 runtime identities matched. The workflow then issued exact Management API DELETE calls one-by-one and verified all 18 were absent afterward while `audit-gw` remained present.
+
+Physically deleted:
+
+1. `c0206-build-understat-foreign-pairs`
+2. `c0206-fit-translation-shadow-v01`
+3. `fpl-dashboard`
+4. `generate-fixture-predictions`
+5. `generate-fpl-predictions`
+6. `generate-fpl-predictions-v012`
+7. `generate-fpl-predictions-v013`
+8. `optimize-fpl-squad`
+9. `projection-benchmark-api`
+10. `publish-dashboard`
+11. `refresh-player-state`
+12. `refresh-player-state-v012`
+13. `refresh-team-state`
+14. `sync-core-insights`
+15. `sync-current-team-meta`
+16. `sync-fpl`
+17. `sync-historical-priors`
+18. `sync-team-priors`
+
+Held:
+
+- `audit-gw`
+
+## Manifest / registry reconciliation
+
+Production migrations:
+
+- `c0213_p3_retired_external_physical_retirement_18_v01`
+- `c0213_p3_audit_gw_active_hold_registry_truth_v01`
+
+Repository mirrors:
+
+- `supabase/migrations/20260907020730_c0213_p3_retired_external_physical_retirement_18_v01.sql`
+- `supabase/migrations/20260907020910_c0213_p3_audit_gw_active_hold_registry_truth_v01.sql`
+
+The second migration is deliberately important. An intermediate label `ACTIVE_TRAFFIC_HOLD` caused the existing registry counter to miss the still-active retired runtime. That would have made `system_consolidation_ok=true` while `audit-gw` was still physically deployed. C0213 corrected this immediately: `audit-gw` remains `deployment_status='ACTIVE'`, with traffic-hold detail stored separately in evidence.
+
+Current truthful architecture state:
+
+- registry integrity: true
+- required capability missing: 0
+- required capability contradictions: 0
+- duplicate active cron targets: 0
+- active RETIRED external deployments: **1**
+- active RETIRED Edge deployments: **1**
+- active RETIRED API deployments: **0**
+- `system_consolidation_ok=false`
+
+Retirement manifest:
 
 - manifest rows: 19
-- static-retirement-ready: 19
-- durable rollback sources: **19**
-- rollback sources not archived: **0**
-- physical delete allowed: **0**
-- physically deleted: **0**
-- holds: 0
-
-Rollback is now deterministic: reconstruct the retired function from its repository bundle/source, preserve the recorded `verify_jwt` state, redeploy, and validate against the recorded runtime identity/hash lineage.
-
-## Remaining platform gate
-
-Exactly two platform capabilities remain necessary before destructive retirement can be truthfully completed:
-
-1. **Runtime traffic visibility** — query recent `function_edge_logs` / function invocation records and prove no unexplained live HTTP consumer exists for each retired slug over the available retention window.
-2. **Authenticated delete transport** — expose the Supabase Edge Function delete action or authenticated Management API/CLI access to `DELETE /v1/projects/{ref}/functions/{function_slug}`.
-
-Until both are available, `physical_delete_allowed` remains false and all 19 deployments remain physically ACTIVE even though they are architecturally RETIRED.
-
-## Integrity verification
-
-After archive reconciliation:
-
-- retirement status function: `ok=true`
-- manifest rows: 19
-- static-retirement-ready: 19
+- physically deleted: **18**
+- holds: **1**
 - durable rollback sources: 19
 - rollback sources not archived: 0
-- holds: 0
-- physical delete allowed: 0
-- physically deleted: 0
 
-No projection coefficients, model effects, frozen forecasts, research cohorts, or manager decisions were changed.
+## Remaining action
+
+Locate and disable/replace the external scheduler sending `User-Agent: FootballIntelligence/0.3` to `audit-gw`. Only after a confirmed quiet period should `audit-gw` pass a final live runtime-identity check and be physically deleted.
+
+Until then, one consolidation blocker remains by design.

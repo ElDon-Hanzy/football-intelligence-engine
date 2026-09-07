@@ -1,0 +1,143 @@
+name: C0213 Retired Function Traffic Audit
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/c0213-retired-function-traffic-audit.yml
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_PROJECT_REF: knooiwezzsxcwhtjtdap
+
+jobs:
+  audit-retired-functions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Validate scoped Supabase token and project identity
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${SUPABASE_ACCESS_TOKEN:-}" || { echo "SUPABASE_ACCESS_TOKEN secret is missing"; exit 1; }
+          response="$(curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}")"
+          ref="$(jq -r '.ref // empty' <<<"$response")"
+          test "$ref" = "$SUPABASE_PROJECT_REF" || { echo "Project identity mismatch: ${ref:-missing}"; exit 1; }
+          echo "Supabase token authenticated against expected project ref: $ref"
+
+      - name: Audit complete available function-edge traffic history for retired slugs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > retired-slugs.txt <<'EOF'
+          audit-gw
+          c0206-build-understat-foreign-pairs
+          c0206-fit-translation-shadow-v01
+          fpl-dashboard
+          generate-fixture-predictions
+          generate-fpl-predictions
+          generate-fpl-predictions-v012
+          generate-fpl-predictions-v013
+          optimize-fpl-squad
+          projection-benchmark-api
+          publish-dashboard
+          refresh-player-state
+          refresh-player-state-v012
+          refresh-team-state
+          sync-core-insights
+          sync-current-team-meta
+          sync-fpl
+          sync-historical-priors
+          sync-team-priors
+          EOF
+
+          expected_count="$(wc -l < retired-slugs.txt | tr -d ' ')"
+          test "$expected_count" = "19" || { echo "Expected 19 retired slugs, got $expected_count"; exit 1; }
+
+          # Confirm each target still exists remotely before traffic analysis.
+          functions_json="$(curl --fail-with-body -sS \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+            "https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/functions")"
+          jq -r '.[]?.slug // empty' <<<"$functions_json" | sort -u > live-slugs.txt
+          missing=0
+          while IFS= read -r slug; do
+            if ! grep -Fxq "$slug" live-slugs.txt; then
+              echo "Target not currently deployed: $slug"
+              missing=$((missing+1))
+            fi
+          done < retired-slugs.txt
+          test "$missing" -eq 0 || { echo "Fail closed: $missing retirement targets were not found in live function inventory"; exit 1; }
+          echo "Live inventory gate: 19/19 retirement targets present."
+
+          in_list=""
+          while IFS= read -r slug; do
+            path="/functions/v1/${slug}"
+            escaped="${path//\'/\'\'}"
+            if [ -n "$in_list" ]; then in_list+=","; fi
+            in_list+="'${escaped}'"
+          done < retired-slugs.txt
+
+          logs_url="https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}/analytics/endpoints/logs"
+          # Query from before this project's engine deployment began through now. The API caps each query at 24h.
+          cursor_epoch="$(date -u -d '2026-08-20T00:00:00Z' +%s)"
+          now_epoch="$(date -u +%s)"
+          : > traffic.tsv
+
+          while [ "$cursor_epoch" -lt "$now_epoch" ]; do
+            next_epoch=$((cursor_epoch + 86340))
+            if [ "$next_epoch" -gt "$now_epoch" ]; then next_epoch="$now_epoch"; fi
+            start="$(date -u -d "@${cursor_epoch}" +%Y-%m-%dT%H:%M:%SZ)"
+            finish="$(date -u -d "@${next_epoch}" +%Y-%m-%dT%H:%M:%SZ)"
+            sql="select log_attributes['request.pathname'] as pathname, count() as invocations, min(timestamp) as first_seen, max(timestamp) as last_seen from logs where source = 'function_edge_logs' and log_attributes['request.method'] != 'OPTIONS' and log_attributes['request.pathname'] in (${in_list}) group by pathname order by pathname"
+            response="$(curl --fail-with-body -sS --get \
+              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+              --data-urlencode "sql=${sql}" \
+              --data-urlencode "iso_timestamp_start=${start}" \
+              --data-urlencode "iso_timestamp_end=${finish}" \
+              "$logs_url")"
+            err="$(jq -r '.error // empty' <<<"$response")"
+            test -z "$err" || { echo "Logs API returned error for ${start}..${finish}: $err"; exit 1; }
+            jq -r '.result[]? | [.pathname, (.invocations|tostring), .first_seen, .last_seen] | @tsv' <<<"$response" >> traffic.tsv
+            cursor_epoch=$((next_epoch + 1))
+            sleep 1
+          done
+
+          if [ -s traffic.tsv ]; then
+            awk -F '\t' '
+              {count[$1]+=$2; if (!first[$1] || $3<first[$1]) first[$1]=$3; if (!last[$1] || $4>last[$1]) last[$1]=$4}
+              END {for (p in count) printf "%s\t%d\t%s\t%s\n",p,count[p],first[p],last[p]}
+            ' traffic.tsv | sort > traffic-summary.tsv
+          else
+            : > traffic-summary.tsv
+          fi
+
+          echo "### C0213 retired function traffic audit" >> "$GITHUB_STEP_SUMMARY"
+          echo "Window: 2026-08-20 UTC through current workflow time." >> "$GITHUB_STEP_SUMMARY"
+          echo "Non-OPTIONS invocation counts for the exact 19 retired slugs:" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          if [ -s traffic-summary.tsv ]; then
+            cat traffic-summary.tsv >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "NO_RETIRED_FUNCTION_TRAFFIC_FOUND" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+          echo "AUDIT_RESULT_BEGIN"
+          if [ -s traffic-summary.tsv ]; then
+            cat traffic-summary.tsv
+          else
+            echo "NO_RETIRED_FUNCTION_TRAFFIC_FOUND"
+          fi
+          echo "AUDIT_RESULT_END"
+
+          # This workflow is deliberately audit-only. A separate guarded change is required for deletion.
+          echo "No functions were deleted by this workflow."

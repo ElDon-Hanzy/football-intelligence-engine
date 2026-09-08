@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-08 (Dubai) — C0213 architecture-consolidation closure candidate_
+_Last updated: 2026-09-08 (Dubai) — through C0218 current GW4 plan_
 
 ## 1. Purpose and immutable rules
 
@@ -20,14 +20,16 @@ Permanent rules:
 - Do not tune on an outcome and then call a same-sample rerun independent validation.
 - Negative experiments are first-class evidence.
 - Projection readiness is not decision readiness.
+- Every meaningful FPL action must compare against ROLL and pass Noise-Control / Decision-Control.
 
-Canonical architecture references:
+Canonical references:
 
 - `SYSTEM_ARCHITECTURE.md`
 - `MODEL_REGISTRY.md`
 - `WEEKLY_DATA_PIPELINE.md`
 - `MODEL_CONSUMPTION_AUDIT.md`
 - `DECISIONS_AND_HISTORY.md`
+- `project-management/C0218_CONVERSATION_HANDOVER_20260908.md`
 
 ## 2. Production source of truth
 
@@ -35,234 +37,232 @@ Supabase project: `knooiwezzsxcwhtjtdap`.
 GitHub: `ElDon-Hanzy/football-intelligence-engine`.
 Working engineering ledger: `public.change_tracker_working`.
 
-For a resumed engineering session:
+For every resumed engineering session:
 
 1. read this file and `DECISIONS_AND_HISTORY.md`;
-2. read the relevant recent handover/change docs;
+2. read the latest relevant handover/change docs;
 3. query `public.change_tracker_working`;
 4. run `private.audit_change_tracker_governance_v01()`;
-5. inspect `private.c0213_architecture_registry_status_v01()`;
-6. inspect the relevant forward-cohort and target-GW readiness status functions;
-7. independently verify current Supabase/GitHub state before material changes.
+5. inspect relevant architecture/readiness/forward-cohort status functions;
+6. independently verify current Supabase/GitHub state before material changes.
 
-Live runtime/registry evidence outranks stale handovers.
+Live runtime/registry evidence outranks stale documentation.
 
-## 3. C0213 architecture consolidation — current state
+## 3. C0213 architecture consolidation
 
-C0213 audited the whole path:
+C0213 is **Completed / Verified**.
 
-`SOURCE → INGESTION → RAW/CANONICAL → FEATURE/STATE → MODEL/TRANSFORM → PROJECTION → DISTRIBUTION → OPTIMIZER → DECISION → API/UI`
+Current permanent architecture controls include:
 
-and the research path:
+- canonical production and research pathways;
+- machine-readable component/dependency/capability registry;
+- 14/14 production-effect components with definition-hash-bound behavioral proof;
+- prediction-level effect provenance;
+- tracker consumption/evaluator governance;
+- zero duplicate active cron targets;
+- zero active RETIRED external deployments;
+- all 19 previously active RETIRED external runtimes physically deleted;
+- system consolidation green.
 
-`SOURCE → FEATURE/MODEL → SHADOW OUTPUT → EVALUATOR → PROMOTION/REJECTION GATE`.
+The active production FPL path remains:
 
-Current architecture status after P4:
+`RESULTS → CURRENT DATA → REALIZED ROLES → PLAYER/TEAM STATE → TACTICAL/FIXTURE STATE → C0159 → C0166 → PLAYER PROJECTION → DISTRIBUTION → FULL-POOL OPTIMIZER → DECISION READINESS → SAVED MANAGER PLAN → API/UI`
 
-- registry integrity: **green**
-- system consolidation: **green**
-- components: **632**
-- DB components: **546**
-- active crons: **27**
-- dependency edges: **1,084**
-- production-effect components: **14**
-- required capabilities: **19**
-- missing required capabilities: **0**
-- required capability contradictions: **0**
-- active duplicate cron targets: **0**
-- active RETIRED external deployments: **0**
-- behavioral production proof: **14/14 current PASS**
-- tracker consumption contracts: **61/61 covered**
-- global tracker governance: **green**
+## 4. C0214 realized-role / evidence repair
 
-P4 adds definition-hash-bound behavioral proof. A future production function/view/runtime change invalidates its old PASS until deliberately reproven.
+C0214 is **Completed / Verified**.
 
-Current canonical proof surfaces:
+- GW3 realized-role starter mapping repaired to **220/220**.
+- Realized-role ingestion now uses canonical FotMob identity mappings with append-only mapping-aware correction semantics.
+- MUN–MCI C0167 explanation integrity repaired using signed C0159 evidence already embedded in the final forecast; no probability was changed.
+- GW4/GW5/GW6 projection horizon reconciled to **604/604 each**.
 
-- `private.run_c0213_behavioral_consumption_tests_v01(gw)`
-- `private.c0213_behavioral_consumption_status_v01()`
-- `private.c0213_prediction_effect_provenance_v01`
-- `private.c0213_prediction_effect_provenance_status_v01(gw)`
-- `private.c0213_tracker_consumption_governance_v01()`
+## 5. A0005 / C0215
 
-GW4 run 1325 provenance proof:
+Frozen GW2 VALIDATION + GW3 TEST review is complete.
 
-- 604 predictions
-- 604/604 baseline lineage
-- 604/604 team/opponent lambda lineage
-- 604/604 event-distribution lineage
-- 604/604 fixture-generator lineage
-- 514/604 non-zero net xPts deltas vs baseline.
+Decision: **NO PROMOTION — ACCUMULATE MORE FORWARD EVIDENCE**.
 
-## 4. Key C0213 corrections already deployed
+`TACTICAL_QUALITY` had favorable signs but the TEST edge was inside normal model/sample noise. No rescue retuning or production activation occurred.
 
-### P0 — realized-role consumer bridge
+W0002 remains independently frozen for GW4 VALIDATION / GW5 TEST.
 
-C0212 realized roles were factual and useful, but downstream fixture-role snapshots could not resolve the quantitative base profile because virtual overlay timestamps/taxonomy leaked into a physical-profile join.
+## 6. C0216 deferred MHTR research
 
-C0213 P0 now preserves:
+The Manager High-Stakes Tactical Regime plan is saved at:
 
-- realized categorical role;
-- physical base-profile identity for quantitative axes;
-- explicit overlay/base evidence;
-- `numeric_role_uplift_enabled=false`.
+`project-management/C0216_MANAGER_HIGH_STAKES_TACTICAL_REGIME_PLAN.md`
 
-No new role coefficient was introduced.
+It models manager/context tactical-regime changes in derbies, finals, knockouts, must-win/draw-is-enough states and similar high-stakes conditions, with separate downstream FPL and betting consumers.
 
-### C0204 continuous projection coverage
+User explicitly deferred development. Do not activate yet.
 
-Projection eligibility is continuously reconciled. Narrowly defined genuinely new players may receive governed pending exclusion; existing-player/data-regression gaps remain ungoverned and block projection generation.
+## 7. C0217 storage / ingestion redesign
 
-Current projection universe has no ungoverned missing player.
+C0217 is **Completed / Verified**.
 
-### P1 — architecture / duplicate / selector / full-pool fixes
+### Projection cadence
 
-- duplicate competitive-core cron removed;
-- tactical current selector now prefers calibrated v0.1.1;
-- decision snapshots fail closed when decision evidence is red;
-- canonical full-pool optimizer deployed;
-- machine-readable component/dependency/capability registry deployed.
+- current decision GW: at most one full daily projection snapshot;
+- one final forced refresh beginning about T−2h before the FPL deadline;
+- next two GWs: one baseline each until promoted forward;
+- cron is an eligibility check, not a full-write cadence.
 
-### P2 — orchestration/readiness lineage
+### Odds scope
 
-- upstream FPL horizon extended to first three future GWs;
-- strict C0166 fixture readiness required;
-- immutable optimizer input signature introduced;
-- manager state made explicit;
-- future manager-plan writes fail closed;
-- projection readiness separated from decision readiness;
-- APIs/UI expose readiness semantics.
+Only these four market families are stored/normalized for now:
 
-### P3 — canonical core / retirement consolidation
+1. H2H / 1X2
+2. Totals
+3. Both Teams To Score
+4. Correct Score
 
-The active core was renamed in-place from the misleading `generate_upcoming_fpl_snapshot_c0160_legacy_v01` to `generate_upcoming_fpl_projection_core_v01`; the function object/OID was preserved.
+Non-approved markets are discarded before DB write. Filtered payload hashing skips consecutive identical market states. The redundant hourly odds writer is disabled.
 
-Retired C0206 v01 invocation surfaces were removed. Nineteen lifecycle-RETIRED external runtimes were audited and reconciled to **19/19 physically inactive/deleted**. No live internal consumer remained.
+Historical non-approved normalized markets and raw market objects were removed while retaining the four approved market chronologies.
 
-### P4 — behavioral consumption + effect provenance
+Observed DB size during C0217 fell from approximately **571.3 MB → 517.2 MB** after logical cleanup and physical reclamation.
 
-Every `production_effect_enabled=true` component now requires current behavioral proof. Implemented model-effect tracker work requires an explicit consumer/evaluator/governance pathway. Prediction-level effect lineage is directly inspectable.
+## 8. FPL manager state — entry 3559923
 
-## 5. Canonical FPL production path
+Public FPL Team ID: `3559923` (`ElDon`).
 
-```text
-results + FPL + football sources
-        ↓
-current player/team/role/fixture state
-        ↓
-C0159 bounded fixture derivative
-        ↓
-C0166 bounded symmetric evidence layer
-        ↓
-FPL projection core
-        ↓
-point distribution
-        ↓
-3-GW full-pool optimizer
-        ↓
-decision readiness / Noise-Control
-        ↓
-saved manager plan
-        ↓
-APIs / frontend-v2
-```
+FPL public API exposes locked history but hides current pre-deadline private team endpoints (`403`). Current GW4 state is therefore based on public GW3 history plus the user's explicit confirmation: **no transfers since GW3**.
 
-The full-pool optimizer is read-only. It does not write `fpl_manager_plans` and therefore cannot bypass manager-state/readiness/Decision-Control.
+Current authoritative GW4 manager state:
 
-There remain two intentionally distinct selectors:
+- squad: 15/15 proven and unchanged from GW3;
+- free transfers: **3**;
+- ITB: **£0.0m**;
+- acquisition squad cost: **£100.0m**;
+- current liquidation value: **£99.6m** after Tzolis £6.5→£6.4 and Isak £9.0→£9.1 (Isak selling value remains £9.0).
 
-1. automated current-15 selector in the projection core;
-2. full-pool optimizer + external manager adjudication.
+Manager state id: **4**.
 
-The saved manager plan is authoritative only when present and readiness permits it.
+## 9. C0218 optimizer repair
 
-## 6. Current GW4 readiness — no FPL action yet
+C0218 remains **In Progress** only because the final T−2h refresh / deadline lock is intentionally pending. Its current implementation is **Verified**.
 
-GW3 result run is final, but GW4 decision readiness is still blocked. At the latest audited state the material blockers are:
+Fixed defects:
 
-1. **realized-role refresh incomplete** — 203/220 starters mapped (92.27%) against latest final GW3 result run;
-2. **C0167 evidence consistency** — MUN–MCI has one `CATEGORICAL_CALL_WITHOUT_EXPLANATION` hard violation;
-3. **manager state not captured** for GW4;
-4. **full-pool optimizer not current** because exact 3-GW decision-grade inputs are not yet ready/current.
+- PostgREST row-limit truncation: load the three GW projection runs separately (1,812 rows total).
+- FPL selling-value accounting.
+- position-safe transfer pairs.
+- transfer hit subtraction exactly once.
+- explicit 0FT / 1FT / 2FT / 3FT scenario ladder against ROLL.
+- optimizer runtime/contract version participates in input signature.
+- impossible MAX_4FT serialization removed when only 3 FTs exist.
 
-No GW4 manager plan is authorized. Do not make transfer/captain/bench/chip recommendations until these gates are cleared and the full FPL Decision-Control process is run.
+Latest optimizer runtime: **v6**.
+Latest contract: `C0218_FULL_POOL_SCENARIO_V03`.
+Latest optimizer request: **3681**.
+Latest optimizer run: **5**.
 
-## 7. A0005 forward validation — now complete and ready for adjudication
+Current scenario objectives after the £99.6m price refresh:
 
-A0005 / E0006 is now fully scored:
+- ROLL: **147.097**
+- 1FT: **150.517** (+3.421)
+- 2FT: **154.254** (+7.157)
+- 3FT: **158.459** (+11.363)
 
-- GW2 VALIDATION: 10/10 fixtures
-- GW3 TEST: 10/10 fixtures
-- predictions/evaluations: 140
-- near-close coverage: 10/10 in each split
-- integrity violations: 0
-- state: `GW3_COMPLETE_PROMOTION_GATE_ELIGIBLE`
+The raw 3FT optimum is not automatically authoritative. Its third move requires Palmer → Schade plus Gabriel over Calafiori and was rejected by red-team because the incremental edge is not robust to Chelsea–Hull fixture/captaincy context, Palmer's penalty role, premium re-entry flexibility and model uncertainty.
 
-Per-variant sample is still only 10 fixtures in each split. The registered C0125 effect-family promotion gate requires ≥50 VALIDATION and ≥30 TEST observations plus ≥0.005 Brier gain in both, no log-loss regression, acceptable process MAE and zero integrity violations.
+## 10. Current GW4 Manager Plan
 
-Therefore the next task is a **formal promotion/rejection/no-promotion review**, not retuning. Existing promotion-assessment rows were created before the forward cohort completed and are stale for this decision.
+Current active append-only head: **Plan 10**, superseding 9 → 8.
 
-## 8. W0002 remains independently frozen
+Status: `CURRENT_GW4_PLAN_PENDING_FINAL_T_MINUS_2H_REFRESH`.
 
-W0002 / E0008:
+### Transfers
 
-- GW4 = VALIDATION
-- GW5 = TEST
-- 20 registered fixtures
-- model effect disabled
-- no current evaluations yet
-- A0005 remains untouched.
+1. **O'Reilly → Guéhi**
+2. **Mosquera → Calafiori**
 
-Do not modify its frozen cohort based on A0005 results.
+After the moves:
 
-## 9. Other active research
+- retain Palmer;
+- keep **1 FT**;
+- projected bank **£0.2m**;
+- chip: **NONE**;
+- captain: **João Pedro**;
+- vice-captain: **Bruno Fernandes**;
+- risk: **MEDIUM**.
 
-### C0120 / E0007
-Correct Score mispricing hypothesis remains research only. Current finished-candidate evidence is far too sparse for a value claim.
+### Current XI
 
-### C0154 / C0196
-Score-selector/tail calibration remains open. Current high-tail evidence is interesting but too small for production distribution changes.
+- Verbruggen
+- Calafiori
+- Guéhi
+- N. Williams
+- Bruno Fernandes
+- Mbeumo
+- Palmer
+- Semenyo
+- Tzolis
+- João Pedro (C)
+- Isak
+
+Bench order:
+
+1. Forster (GK)
+2. Dalot
+3. van Ewijk
+4. Kusi-Asare
+
+Captaincy note: Bruno's raw GW4 model xPts (5.544) vs João Pedro (5.347) is inside normal model error. Fixture/role context currently breaks the tie toward João Pedro at home to Hull; Bruno remains vice.
+
+Do not execute this plan as final lock before the scheduled T−2h refresh.
+
+## 11. C0197 / C0196 post-GW3 research
 
 ### C0197
-High-score/shootout research has frozen pre-GW3 experiments and forward evaluations. Chaos-only/eSOT branches failed robust-edge gates; shootout-specific hypotheses remain shadow only. No production effect.
 
-### C0202
-Exact-side inference is useful as a forward shadow, but generic flank xPts effects remain off. Current outcome sample is 33; promotion requires ≥100 paired outcomes over ≥5 GWs plus later holdout evidence.
+80/80 frozen pre-GW3 experiment snapshots were evaluated without retuning. V05 Tactical Clash A was the most interesting small-sample signal, but evidence remains far too sparse for promotion. Monitor only.
 
-### C0203–C0211
-Post-transfer/new-player regime work is mostly monitoring/deferred. Do not pull deferred model families forward merely because architecture consolidation is complete.
+### C0196
 
-## 10. Blocked external dependencies
+GW1–GW3 tail calibration currently shows no robust reason to alter the score distribution:
 
-- C0034 — third normalized pre-kickoff Correct Score source.
-- C0082 — genuine licensed spatial/tracking evidence for true pressing/line height/geometry.
+- 4+ goals: 10 actual vs ~9.95 expected
+- 5+: 5 vs ~5.30
+- 6+: 2 vs ~2.46
+- 7+: 2 vs ~1.02
 
-Do not substitute weak proxies just to close these rows.
+Headline score selection remains under monitoring after underperforming raw modal in GW3, but no production selector change is justified from one GW.
 
-## 11. UI state
+## 12. CI / repository state
 
-`frontend-v2` is the preferred rebuilt interface and strict CI covers mobile/tablet/desktop contracts, accessibility and deployment integrity.
+Relevant recent commits:
 
-C0176 controlled primary-route cutover / legacy retirement remains a separate explicit task. Legacy root remains rollback-capable until that item is deliberately closed.
+- C0217 durability mirror: `78f69b5aec3538afd432cf11514ccba8c6eac239`
+- C0218 v6 optimizer/migration mirror: `d6edc890d554009520908d4cd34e375d0ce66dbc`
+- C0218 conversation handover: `10c4bad3125283234102d9fa509ced83e78bb298`
 
-## 12. Security/performance backlog
+Workflow `34203106584` first attempt failed only from transient live Supabase endpoint timeouts/non-2xx responses on historical APIs. It was rerun **unchanged** and the latest attempt completed **SUCCESS**:
 
-Supabase advisors after C0213 P4 show no new P4-specific mutable-search-path or exposure defect. Existing backlog remains:
+- typecheck green;
+- unit tests green;
+- build green;
+- bundle budget green;
+- all E2E/accessibility tests green;
+- artifact verification green;
+- Pages deployment green;
+- live legacy root + `/v2/` verification green.
 
-- many public RLS-enabled tables intentionally have no direct policies and are service-path only;
-- older private functions with mutable `search_path` warnings;
-- `pg_net` installed in `public`;
-- many foreign keys without covering indexes, including `fpl_projection_coverage_audits.prediction_run_id`;
-- many indexes currently reported unused.
+## 13. Tracker / governance
 
-Treat these as a dedicated security/performance cleanup. Do not remove indexes solely because the current advisor says “unused.”
+- C0217: **Completed / Verified**.
+- C0218: **In Progress / Verified implementation**, final T−2h decision refresh pending.
+- global tracker governance: **green**.
+- no completed-not-verified rows, missing implementation references, bad change IDs, or consumption-contract violations.
 
-## 13. Immediate operating sequence
+## 14. Immediate sequence
 
-1. finish formal C0213 verification/closure and keep its architecture gates active permanently;
-2. clear GW4 realized-role / C0167 / manager-state / projection-horizon blockers;
-3. run the completed A0005 promotion/rejection review without retuning;
-4. only after GW4 decision readiness is green, run full-pool FPL optimization and Decision-Control;
-5. then save the authoritative GW4 manager plan if a robust action edge exists.
+1. Do not make additional GW4 moves before the final refresh simply because Plan 10 exists.
+2. Around T−2h before the GW4 deadline, refresh current injuries, press conferences, predicted XIs, roles/xMins, prices/ownership, GW4–GW6 projections, manager liquidation value/bank/FT state.
+3. Rerun the full-pool optimizer and separate captaincy model.
+4. Apply Noise-Control and Decision-Control against ROLL and Plan 10.
+5. If the robust decision survives, save a new append-only deadline-lock plan superseding Plan 10.
+6. Continue deferred research / security-performance debt afterward according to tracker priority.
 
-This file is intentionally concise. Detailed architecture, model lifecycle, scheduling and C0213 findings live in the four canonical C0213 documents listed in Section 1.
+This file is the operational state summary; detailed reasoning and change history remain in the tracker, migration history, canonical architecture documents, and `project-management/C0218_CONVERSATION_HANDOVER_20260908.md`.

@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-08 (Dubai) — through C0218 current GW4 plan_
+_Last updated: 2026-09-08 (Dubai) — through C0219 cadence reconciliation_
 
 ## 1. Purpose and immutable rules
 
@@ -30,6 +30,7 @@ Canonical references:
 - `MODEL_CONSUMPTION_AUDIT.md`
 - `DECISIONS_AND_HISTORY.md`
 - `project-management/C0218_CONVERSATION_HANDOVER_20260908.md`
+- `project-management/C0219_PROJECTION_CADENCE_OPTIMIZER_RECONCILIATION_20260908.md`
 
 ## 2. Production source of truth
 
@@ -167,7 +168,29 @@ Current scenario objectives after the £99.6m price refresh:
 
 The raw 3FT optimum is not automatically authoritative. Its third move requires Palmer → Schade plus Gabriel over Calafiori and was rejected by red-team because the incremental edge is not robust to Chelsea–Hull fixture/captaincy context, Palmer's penalty role, premium re-entry flexibility and model uncertainty.
 
-## 10. Current GW4 Manager Plan
+## 10. C0219 projection-cadence / optimizer reconciliation
+
+C0219 is a **Critical production reliability repair** discovered during the post-C0218 preflight.
+
+Production evidence showed two immutable projection runs had been created on 2026-09-08 for each of GW4/GW5/GW6 even though C0217 intended bounded cadence. C0217's own cadence function was correct; the older C0213 optimizer orchestrator was independently marking projections stale whenever frequently refreshed C0166/player-state timestamps became newer, then directly invoking the raw snapshot generator.
+
+C0219 reconciles the contracts:
+
+- **C0217 is now the sole projection-cadence controller**;
+- the C0213 optimizer orchestrator no longer directly calls the raw FPL snapshot generator;
+- upstream completeness remains fail-closed;
+- optimizer readiness accepts a complete frozen snapshot that is valid under the C0217 cadence;
+- current-GW cadence is one snapshot per 24h plus a final T−2h window snapshot;
+- GW+1/GW+2 complete frozen baselines remain valid until promoted;
+- newer live upstream state is surfaced as `upstream_drifted_since_snapshot` rather than silently forcing storage writes.
+
+Verification used runs **1334 / 1335 / 1336**, preserved optimizer input signature `ebd72d6b64c38db63c9a0238c415ffc8`, and reused optimizer run **5**. Projection counts were **2/2/2 before and after** the verification orchestration, so no third duplicate was created. Existing accidental duplicates remain immutable evidence and were not deleted or rewritten.
+
+Migration: `20260908090429_c0219_projection_cadence_optimizer_reconciliation_v01`.
+
+No manager decision changed from C0219.
+
+## 11. Current GW4 Manager Plan
 
 Current active append-only head: **Plan 10**, superseding 9 → 8.
 
@@ -213,7 +236,7 @@ Captaincy note: Bruno's raw GW4 model xPts (5.544) vs João Pedro (5.347) is ins
 
 Do not execute this plan as final lock before the scheduled T−2h refresh.
 
-## 11. C0197 / C0196 post-GW3 research
+## 12. C0197 / C0196 post-GW3 research
 
 ### C0197
 
@@ -230,15 +253,17 @@ GW1–GW3 tail calibration currently shows no robust reason to alter the score d
 
 Headline score selection remains under monitoring after underperforming raw modal in GW3, but no production selector change is justified from one GW.
 
-## 12. CI / repository state
+## 13. CI / repository state
 
 Relevant recent commits:
 
 - C0217 durability mirror: `78f69b5aec3538afd432cf11514ccba8c6eac239`
 - C0218 v6 optimizer/migration mirror: `d6edc890d554009520908d4cd34e375d0ce66dbc`
 - C0218 conversation handover: `10c4bad3125283234102d9fa509ced83e78bb298`
+- C0219 migration mirror: `d072c3c6681d494b4eb5f0ddf7502292b8ac3ce8`
+- C0219 reasoning note: `a62fc79f20417de55549e0b0e6351e68b015a263`
 
-Workflow `34203106584` first attempt failed only from transient live Supabase endpoint timeouts/non-2xx responses on historical APIs. It was rerun **unchanged** and the latest attempt completed **SUCCESS**:
+Workflow `34203106584` first attempt failed only from transient live Supabase endpoint timeouts/non-2xx responses on historical APIs. It was rerun **unchanged** and attempt 3 completed **SUCCESS**:
 
 - typecheck green;
 - unit tests green;
@@ -249,20 +274,23 @@ Workflow `34203106584` first attempt failed only from transient live Supabase en
 - Pages deployment green;
 - live legacy root + `/v2/` verification green.
 
-## 13. Tracker / governance
+C0219 source-mirror CI must be checked independently before C0219 is marked Completed.
+
+## 14. Tracker / governance
 
 - C0217: **Completed / Verified**.
 - C0218: **In Progress / Verified implementation**, final T−2h decision refresh pending.
-- global tracker governance: **green**.
-- no completed-not-verified rows, missing implementation references, bad change IDs, or consumption-contract violations.
+- C0219: **In Progress / Verified production implementation**, repository/CI closeout pending.
+- global tracker governance must remain green after C0219 registration/closeout.
 
-## 14. Immediate sequence
+## 15. Immediate sequence
 
-1. Do not make additional GW4 moves before the final refresh simply because Plan 10 exists.
-2. Around T−2h before the GW4 deadline, refresh current injuries, press conferences, predicted XIs, roles/xMins, prices/ownership, GW4–GW6 projections, manager liquidation value/bank/FT state.
-3. Rerun the full-pool optimizer and separate captaincy model.
-4. Apply Noise-Control and Decision-Control against ROLL and Plan 10.
-5. If the robust decision survives, save a new append-only deadline-lock plan superseding Plan 10.
-6. Continue deferred research / security-performance debt afterward according to tracker priority.
+1. Finish C0219 repository/CI/governance closeout without altering Plan 10.
+2. Do not make additional GW4 moves before the final refresh simply because Plan 10 exists.
+3. At approximately **14:30 Dubai time on 2026-09-12** (T−2h for the 16:30 Dubai GW4 deadline), refresh current injuries, press conferences, predicted XIs, roles/xMins, prices/ownership, GW4–GW6 projections, manager liquidation value/bank/FT state.
+4. Rerun the full-pool optimizer and separate captaincy model.
+5. Apply Noise-Control and Decision-Control against ROLL and Plan 10.
+6. If the robust decision survives, save a new append-only deadline-lock plan superseding Plan 10.
+7. Continue deferred research / security-performance debt afterward according to tracker priority.
 
-This file is the operational state summary; detailed reasoning and change history remain in the tracker, migration history, canonical architecture documents, and `project-management/C0218_CONVERSATION_HANDOVER_20260908.md`.
+This file is the operational state summary; detailed reasoning and change history remain in the tracker, migration history, canonical architecture documents, and project-management notes.

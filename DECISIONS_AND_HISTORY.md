@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Decisions & History
 
-_Last updated: 2026-09-08 (Dubai) — C0213 canonical decision ledger_
+_Last updated: 2026-09-08 (Dubai) — through C0219 cadence reconciliation_
 
 This file preserves the durable decisions that govern the current engine. Detailed pre-C0213 reasoning and the former long-form ledger remain permanently available in Git history; this live file is intentionally concise so it can remain operationally current.
 
@@ -308,3 +308,23 @@ After formal C0213 verification:
 4. save a GW4 manager plan only if a robust edge exists; otherwise ROLL/no-action remains a valid outcome.
 
 This sequence prevents architecture cleanup, research evaluation and live FPL decisioning from contaminating each other.
+
+## 25. C0219 — bounded projection cadence outranks live timestamp parity
+
+C0217 changed the projection system from “regenerate whenever an upstream timestamp is newer” to a deliberate storage cadence: one current-GW snapshot per 24 hours, one final T−2h refresh, and frozen GW+1/GW+2 baselines until promotion.
+
+A 2026-09-08 production audit found an architectural contradiction: the older C0213 optimizer readiness/orchestration path still required projection timestamps to be newer than frequently refreshed C0166/player-state timestamps and directly called the raw projection generator when that condition failed. This bypassed C0217 and produced a second immutable projection run for each of GW4/GW5/GW6.
+
+Permanent decision:
+
+- **C0217 is the sole controller of projection-write cadence.**
+- Optimizer readiness must distinguish upstream completeness, snapshot completeness, cadence validity and upstream drift.
+- Upstream completeness remains fail-closed; missing evidence is never treated as zero.
+- A complete current-GW frozen snapshot is optimizer-valid while it satisfies the 24-hour cadence, and inside the final window it must come from the T−2h window.
+- A complete GW+1/GW+2 frozen baseline remains optimizer-valid until that GW is promoted.
+- Newer upstream state is exposed as `upstream_drifted_since_snapshot`; it is evidence for the next permitted refresh, not an independent permission to write.
+- The optimizer orchestrator may invoke the C0217 cadence controller, but it may not bypass it by calling the raw FPL snapshot generator directly.
+- Accidentally duplicated frozen forecasts are preserved as immutable evidence; do not delete or rewrite them merely to restore storage neatness.
+- This contract repair is reliability-only and does not justify changing a manager plan.
+
+C0219 verification reused projection runs 1334/1335/1336 and optimizer run 5 without changing the optimizer input signature. A repeated orchestration check left GW4/GW5/GW6 projection-run counts at 2/2/2, proving the direct duplicate-writer path was removed. Plan 10 remained unchanged.

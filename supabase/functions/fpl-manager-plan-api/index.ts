@@ -47,6 +47,7 @@ Deno.serve(async (req: Request) => {
     const managerState = latestForGameweek(states || [], gameweek);
     const actualManagerDecision = latestForGameweek(actualDecisions || [], gameweek);
     const liveRow = latestForGameweek(livePublications || [], gameweek);
+    const rawLivePlan: any = liveRow?.plan || {};
     const livePlan = liveRow ? {
       ...liveRow,
       plan: {
@@ -54,11 +55,14 @@ Deno.serve(async (req: Request) => {
         captured_at: liveRow.captured_at,
         risk_level: liveRow.publication_status === 'CONTESTED' ? 'HIGH' : liveRow.publication_status === 'FINAL' ? 'LOCKED' : 'MEDIUM',
         rationale: { publication_status: liveRow.publication_status, final_status: liveRow.final_status, freshness: liveRow.freshness, blockers: liveRow.blockers, layer_lineage: liveRow.layer_lineage },
-        ...(liveRow.plan || {}),
+        ...rawLivePlan,
+        gameweek: Number(rawLivePlan.gameweek ?? liveRow.gameweek),
+        horizon: rawLivePlan.horizon == null ? (liveRow.horizon == null ? null : String(liveRow.horizon)) : String(rawLivePlan.horizon),
+        source: rawLivePlan.source ?? liveRow.source ?? null,
       },
     } : null;
 
-    // C0239: plan serving must remain available independently of heavyweight diagnostics.
+    // C0239: manager-plan serving is independent of heavyweight diagnostics.
     const readiness = null;
     const optimizerOrchestration = null;
 
@@ -85,6 +89,7 @@ Deno.serve(async (req: Request) => {
         projection_readiness_is_not_decision_readiness: true,
         missing_manager_state_is_not_zero: true,
         diagnostics_decoupled_from_plan_serving: true,
+        live_horizon_normalized_for_browser_contract: true,
       },
     }), { headers: cors });
   } catch (error) {

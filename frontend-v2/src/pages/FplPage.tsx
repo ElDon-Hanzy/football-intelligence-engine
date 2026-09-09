@@ -27,13 +27,16 @@ export function FplPage({ requestedGameweek }: { requestedGameweek: number }) {
   const fplData = fpl.data;
   const planApi = managerPlan.data;
   if (fplData?.gameweek && planApi?.gameweek && fplData.gameweek !== planApi.gameweek) {
-    return <section className="state-panel" aria-live="polite"><span className="page-eyebrow">Integrity gate</span><h1>Gameweek contracts do not align.</h1><p>The saved plan and latest projection resolved to different Gameweeks, so the workspace refuses to merge them.</p><Button onClick={() => { void fpl.refetch(); void managerPlan.refetch(); }}>Refresh both contracts</Button></section>;
+    return <section className="state-panel" aria-live="polite"><span className="page-eyebrow">Integrity gate</span><h1>Gameweek contracts do not align.</h1><p>The current plan and latest projection resolved to different Gameweeks, so the workspace refuses to merge them.</p><Button onClick={() => { void fpl.refetch(); void managerPlan.refetch(); }}>Refresh both contracts</Button></section>;
   }
 
   const gameweek = planApi?.gameweek ?? fplData?.gameweek ?? (requestedGameweek || null);
   const isHistorical = fplData?.snapshot_stage === 'HISTORICAL_FROZEN';
-  const savedPlan = planApi?.plan ?? null;
-  const plan = isHistorical ? null : savedPlan;
+  const servedPlan = planApi?.plan ?? null;
+  const plan = isHistorical ? null : servedPlan;
+  const isLivePublication = !isHistorical && Boolean(plan?.source?.startsWith('C0237_ALWAYS_LIVE_PLAN_'));
+  const livePlanContested = isLivePublication && plan?.status === 'CONTESTED';
+  const livePlanFinal = isLivePublication && plan?.status === 'FINAL';
   const historicalDecision = isHistorical ? fplData?.decision ?? null : null;
   const historicalProjectionUnavailable = isHistorical && fplData?.historical_projection_valid === false;
   const actualManagerDecision = planApi?.actual_manager_decision ?? null;
@@ -52,13 +55,13 @@ export function FplPage({ requestedGameweek }: { requestedGameweek: number }) {
   if (!plan && !historicalDecision && fplData) {
     if (!isHistorical && readiness && readiness.decision_ready === false) {
       return <section className="state-panel" aria-live="polite">
-        <span className="page-eyebrow">{gameweek ? `Gameweek ${gameweek}` : 'Current Gameweek'} · C0213 readiness</span>
-        <h1>Decision pipeline is not ready.</h1>
-        <p>{readiness.projection_ready ? 'Projection READY.' : 'Projection BLOCKED.'} Decision BLOCKED. No saved manager plan can be created until every required decision stage is green.</p>
+        <span className="page-eyebrow">{gameweek ? `Gameweek ${gameweek}` : 'Current Gameweek'} · publication integrity</span>
+        <h1>Best-current plan cannot be published yet.</h1>
+        <p>{readiness.projection_ready ? 'Projection READY.' : 'Projection BLOCKED.'} A live plan requires the complete decision and research-layer chain; negative verdicts are allowed, skipped required layers are not.</p>
         {readinessBlockers.length ? <ul className="plain-status-list">{readinessBlockers.map((blocker, index) => <li key={`${blocker.stage}-${blocker.code}-${index}`}><strong>{humanizeMachineText(blocker.stage)}</strong>: {humanizeMachineText(blocker.code)}</li>)}</ul> : null}
       </section>;
     }
-    return <section className="state-panel" aria-live="polite"><span className="page-eyebrow">FPL history</span><h1>{gameweek ? `No saved FPL decision for GW${gameweek}.` : 'No saved FPL decision is available.'}</h1><p>The workspace will not invent a historical XI, bench or captaincy from today’s projections.</p></section>;
+    return <section className="state-panel" aria-live="polite"><span className="page-eyebrow">FPL history</span><h1>{gameweek ? `No FPL decision for GW${gameweek}.` : 'No FPL decision is available.'}</h1><p>The workspace will not invent a historical XI, bench or captaincy from today’s projections.</p></section>;
   }
 
   const managerState = !isHistorical && planApi?.manager_state?.gameweek === gameweek ? planApi.manager_state : null;
@@ -68,7 +71,7 @@ export function FplPage({ requestedGameweek }: { requestedGameweek: number }) {
     ? { label: 'Historical frozen projection aligned to the saved decision snapshot', projectionNewer: false }
     : plan
       ? projectionRelation(plan.captured_at, fplData?.generated_at)
-      : { label: 'Projection available without a saved manager plan', projectionNewer: false };
+      : { label: 'Projection available without a current plan', projectionNewer: false };
   const captainId = plan?.captain_player_id ?? historicalDecision?.captain_player_id ?? null;
   const viceId = plan?.vice_player_id ?? historicalDecision?.vice_player_id ?? null;
   const captain = findSquadPlayer(fplData, captainId);
@@ -78,29 +81,40 @@ export function FplPage({ requestedGameweek }: { requestedGameweek: number }) {
   const reasons = decisionReasons(plan);
   const leaders = rankProjectionLeaders(fplData?.all_predictions ?? [], 8);
   const stageLabel = snapshotStageLabel(fplData?.snapshot_stage);
-  const syncWarning = !isHistorical && (partial || freshness.stale || relation.projectionNewer === true);
+  const syncWarning = !isHistorical && (partial || freshness.stale || relation.projectionNewer === true || livePlanContested);
   const syncLabel = isHistorical
     ? 'Historical snapshot'
-    : partial
-      ? `${stageLabel} · partial data`
-      : freshness.stale
-        ? `${stageLabel} · plan needs refresh`
-        : relation.projectionNewer
-          ? `${stageLabel} · newer projection`
-          : stageLabel;
+    : livePlanContested
+      ? 'Best current plan · CONTESTED'
+      : livePlanFinal
+        ? 'Final authorized plan'
+        : partial
+          ? `${stageLabel} · partial data`
+          : freshness.stale
+            ? `${stageLabel} · plan needs refresh`
+            : relation.projectionNewer
+              ? `${stageLabel} · newer projection`
+              : isLivePublication
+                ? 'Best current plan · PROVISIONAL'
+                : stageLabel;
   const actualCaptain = findSquadPlayer(fplData, actualManagerDecision?.captain_player_id);
   const actualVice = findSquadPlayer(fplData, actualManagerDecision?.vice_player_id);
   const historicalMetadataUnavailable = isHistorical && fplData?.metadata_availability?.price_ownership_source === 'UNAVAILABLE_HISTORICALLY';
 
   return <div className="fpl-page">
     <header className="page-intro fpl-intro">
-      <div><span className="page-eyebrow">{gameweek ? `Gameweek ${gameweek}` : 'Current Gameweek'} · {isHistorical ? 'historical record' : stageLabel}</span><h1>{isHistorical ? 'FPL decision history' : 'FPL decision workspace'}</h1><p>{isHistorical ? 'The frozen pre-deadline model decision is shown exactly as stored. Any recorded real manager action is kept separate so history is not rewritten.' : 'Saved manager action first. Current projections are a separate analytical layer and never silently overwrite the plan.'}</p></div>
+      <div><span className="page-eyebrow">{gameweek ? `Gameweek ${gameweek}` : 'Current Gameweek'} · {isHistorical ? 'historical record' : stageLabel}</span><h1>{isHistorical ? 'FPL decision history' : 'FPL decision workspace'}</h1><p>{isHistorical ? 'The frozen pre-deadline model decision is shown exactly as stored. Any recorded real manager action is kept separate so history is not rewritten.' : 'The best current fully evaluated engine plan stays live at all times. PRE-FINAL plans may be provisional or contested; final execution authority remains separate until the T−2h gate.'}</p></div>
       <span className={`sync-badge${syncWarning ? ' is-warning' : ''}`} role="status"><span aria-hidden="true" />{syncLabel}</span>
     </header>
 
     {!isHistorical && fplData?.snapshot_stage === 'PRE_FINAL' ? <div className="projection-separation" role="note">
       <div><span>Production stage</span><strong>PRE-FINAL · Run #{fplData.prediction_run_id ?? '—'}</strong></div>
       <p>This is the latest immutable daily production snapshot. A newer PRE-FINAL may supersede it on the next daily cycle; the separate final generation begins at T−2h.</p>
+    </div> : null}
+
+    {isLivePublication ? <div className={`projection-separation${livePlanFinal ? '' : ' is-warning'}`} role="note">
+      <div><span>Live decision publication</span><strong>{livePlanFinal ? 'FINAL · execution authorized' : `${humanizeMachineText(plan?.status ?? 'PROVISIONAL')} · not final`}</strong></div>
+      <p>This is the engine’s best current plan after the required optimizer, uncertainty, structural, forward-management, rank-control, red-team and final-gate layers. Negative findings keep the plan visible as contested; a skipped required layer blocks publication. Shadow-model evidence is public research input only and has zero numeric production effect.</p>
     </div> : null}
 
     {historicalMetadataUnavailable ? <div className="projection-separation is-warning" role="note">
@@ -111,12 +125,12 @@ export function FplPage({ requestedGameweek }: { requestedGameweek: number }) {
     <section className="fpl-decision-board" aria-labelledby="fpl-action-title">
       <div className="fpl-action-head">
         <div>
-          <span className="decision-label">{isHistorical ? 'Frozen model decision snapshot' : 'Authoritative saved manager plan'}</span>
+          <span className="decision-label">{isHistorical ? 'Frozen model decision snapshot' : isLivePublication ? `Best current engine plan · ${humanizeMachineText(plan?.status ?? 'PROVISIONAL')}` : 'Saved manager plan'}</span>
           <h2 id="fpl-action-title">{isHistorical ? `GW${gameweek ?? '—'} frozen model decision` : decisionLabel(plan)}</h2>
           <p>{isHistorical ? 'Preserved from the original pre-deadline prediction run. Later results and later model versions do not alter this record.' : planNarrative(plan)}</p>
-          <small className={`plan-freshness${!isHistorical && freshness.stale ? ' is-stale' : ''}`}>{isHistorical ? (fplData?.generated_at ? `Frozen ${formatTimestamp(fplData.generated_at)}` : 'Historical timestamp unavailable') : freshness.label}</small>
+          <small className={`plan-freshness${!isHistorical && (freshness.stale || livePlanContested) ? ' is-stale' : ''}`}>{isHistorical ? (fplData?.generated_at ? `Frozen ${formatTimestamp(fplData.generated_at)}` : 'Historical timestamp unavailable') : isLivePublication ? `${freshness.label} · ${livePlanFinal ? 'FINAL' : 'PRE-FINAL'}` : freshness.label}</small>
         </div>
-        <div className="fpl-plan-stats" aria-label={isHistorical ? 'Historical model snapshot' : 'Saved manager state'}>
+        <div className="fpl-plan-stats" aria-label={isHistorical ? 'Historical model snapshot' : 'Current manager state'}>
           {isHistorical ? <>
             <PlanMetric label="Snapshot" value="Frozen" />
             <PlanMetric label="Prediction run" value={fplData?.prediction_run_id ? `#${fplData.prediction_run_id}` : '—'} />
@@ -126,12 +140,12 @@ export function FplPage({ requestedGameweek }: { requestedGameweek: number }) {
             <PlanMetric label="Free transfers" value={managerState?.free_transfers == null ? '—' : `${managerState.free_transfers} FT`} />
             <PlanMetric label="In the bank" value={formatBank(managerState?.bank_tenths)} />
             <PlanMetric label="Chip" value={chipLabel(plan?.chip)} />
-            <PlanMetric label="Risk" value={plan?.risk_level ? humanizeMachineText(plan.risk_level) : '—'} />
+            <PlanMetric label="Status" value={plan?.status ? humanizeMachineText(plan.status) : '—'} />
           </>}
         </div>
       </div>
 
-      <div className="fpl-captain-strip" aria-label={isHistorical ? 'Frozen model captaincy' : 'Saved captaincy'}>
+      <div className="fpl-captain-strip" aria-label={isHistorical ? 'Frozen model captaincy' : 'Current plan captaincy'}>
         <CaptainSummary role={isHistorical ? 'Model captain' : 'Captain'} marker="C" player={captain} fallbackId={captainId} />
         <CaptainSummary role={isHistorical ? 'Model vice' : 'Vice'} marker="VC" player={vice} fallbackId={viceId} />
       </div>
@@ -141,19 +155,19 @@ export function FplPage({ requestedGameweek }: { requestedGameweek: number }) {
         <p>Only fields explicitly recorded after the Gameweek are shown here. Missing fields remain unknown. This overlay does not overwrite the frozen model decision above.</p>
       </div> : null}
 
-      <div className="fpl-compact-squad" aria-label={isHistorical ? 'Frozen model squad selection' : 'Saved squad selection'}>
+      <div className="fpl-compact-squad" aria-label={isHistorical ? 'Frozen model squad selection' : 'Current plan squad selection'}>
         <CompactSelection label={`${isHistorical ? 'Frozen XI' : 'XI'} · ${xi.length}/11`} selections={xi} />
         <CompactSelection label={`${isHistorical ? 'Frozen bench' : 'Bench'} · ${bench.length}/4`} selections={bench} />
       </div>
 
       <div className={`projection-separation${!isHistorical && relation.projectionNewer ? ' is-warning' : ''}`} role="note">
         <div><span>{isHistorical ? 'Frozen projection layer' : stageLabel}</span><strong>{fplData?.prediction_run_id ? `Run #${fplData.prediction_run_id}` : 'Run unavailable'}</strong></div>
-        <p>{relation.label}. {fplData?.generated_at ? `Generated ${formatTimestamp(fplData.generated_at)}.` : ''} {isHistorical ? 'This historical layer is preserved for review and is not recalculated with later information.' : 'This layer is analysis only and is not a saved manager decision.'}</p>
+        <p>{relation.label}. {fplData?.generated_at ? `Generated ${formatTimestamp(fplData.generated_at)}.` : ''} {isHistorical ? 'This historical layer is preserved for review and is not recalculated with later information.' : isLivePublication ? 'This projection is an input to the live decision publication; final execution authority is separate.' : 'This projection remains separate from the saved manager ledger.'}</p>
       </div>
     </section>
 
     <section className="fpl-section" aria-labelledby="saved-lineup-heading">
-      <div className="fpl-section-heading"><div><span className="page-eyebrow">{isHistorical ? 'Frozen selection' : 'Manager plan'}</span><h2 id="saved-lineup-heading">{isHistorical ? 'Frozen XI & bench' : 'Saved XI & bench'}</h2></div><small>{isHistorical ? 'Player metrics are from that Gameweek’s frozen prediction run, not today’s model.' : 'Player metrics below are from the latest projection, while selection status remains the saved plan.'}</small></div>
+      <div className="fpl-section-heading"><div><span className="page-eyebrow">{isHistorical ? 'Frozen selection' : isLivePublication ? 'Live plan' : 'Manager plan'}</span><h2 id="saved-lineup-heading">{isHistorical ? 'Frozen XI & bench' : 'Current XI & bench'}</h2></div><small>{isHistorical ? 'Player metrics are from that Gameweek’s frozen prediction run, not today’s model.' : 'Player metrics and selection are from the best currently served decision state; a later full-stack publication may supersede them before deadline.'}</small></div>
       <div className="saved-lineup-grid">
         <div className="lineup-panel"><h3>Starting XI <span>{xi.length}/11</span></h3><div className="player-tile-grid">{xi.map((selection) => <PlayerTile key={selection.id} selection={selection} captainId={captainId} viceId={viceId} />)}</div></div>
         <div className="bench-panel"><h3>Bench <span>{bench.length}/4</span></h3><div className="bench-list">{bench.map((selection, index) => <PlayerTile key={selection.id} selection={selection} captainId={captainId} viceId={viceId} benchOrder={index + 1} />)}</div></div>
@@ -161,8 +175,8 @@ export function FplPage({ requestedGameweek }: { requestedGameweek: number }) {
     </section>
 
     <section className="fpl-section" aria-labelledby="captain-lens-heading">
-      <div className="fpl-section-heading"><div><span className="page-eyebrow">{isHistorical ? 'Frozen event distribution' : 'Current-event distribution'}</span><h2 id="captain-lens-heading">{isHistorical ? 'Frozen captaincy through its original model' : 'Saved captaincy through the latest model'}</h2></div><small>{isHistorical ? 'These probabilities belong to the historical frozen run. Missing tail metrics are left blank rather than backfilled from a later model.' : 'xPts and xMin are current projections. P10+, P15+, q90 and q95 are shown only from the direct C0160 event distribution.'}</small></div>
-      <div className="captain-lens-grid"><DistributionCard role={isHistorical ? 'Frozen model captain' : 'Saved captain'} player={captain} historical={isHistorical} /><DistributionCard role={isHistorical ? 'Frozen model vice' : 'Saved vice'} player={vice} historical={isHistorical} /></div>
+      <div className="fpl-section-heading"><div><span className="page-eyebrow">{isHistorical ? 'Frozen event distribution' : 'Current-event distribution'}</span><h2 id="captain-lens-heading">{isHistorical ? 'Frozen captaincy through its original model' : 'Current plan captaincy through the latest model'}</h2></div><small>{isHistorical ? 'These probabilities belong to the historical frozen run. Missing tail metrics are left blank rather than backfilled from a later model.' : 'xPts and xMin are current projections. P10+, P15+, q90 and q95 are shown only from the direct C0160 event distribution.'}</small></div>
+      <div className="captain-lens-grid"><DistributionCard role={isHistorical ? 'Frozen model captain' : 'Current captain'} player={captain} historical={isHistorical} /><DistributionCard role={isHistorical ? 'Frozen model vice' : 'Current vice'} player={vice} historical={isHistorical} /></div>
     </section>
 
     {isHistorical ? <section className="fpl-section decision-detail-grid" aria-label="Historical FPL decision provenance">
@@ -174,19 +188,20 @@ export function FplPage({ requestedGameweek }: { requestedGameweek: number }) {
     </section> : <section className="fpl-section decision-detail-grid" aria-label="Transfer decision and plan provenance">
       <div className="decision-detail-card">
         <span className="page-eyebrow">Transfer decision</span><h2>{decisionLabel(plan)}</h2>
-        {plan?.transfers.length ? <ol className="transfer-list">{plan.transfers.map((transfer, index) => <li key={index}>{transferDescription(transfer, index)}</li>)}</ol> : <p>No transfer is encoded in the saved manager plan. Rolling remains the stored action until that plan is superseded.</p>}
+        {plan?.transfers.length ? <ol className="transfer-list">{plan.transfers.map((transfer, index) => <li key={index}>{transferDescription(transfer, index)}</li>)}</ol> : <p>No transfer is encoded in the current plan. Rolling remains the evaluated baseline and can remain the published action when it wins the full process.</p>}
         {reasons.length ? <ul className="decision-reasons">{reasons.map((reason) => <li key={reason}>{reason}</li>)}</ul> : null}
       </div>
       <div className="decision-detail-card">
-        <span className="page-eyebrow">Plan provenance</span><h2>Keep decision and model truth separate</h2>
-        <dl className="provenance-list"><div><dt>Plan saved</dt><dd>{plan?.captured_at ? formatTimestamp(plan.captured_at) : '—'}</dd></div><div><dt>Plan source</dt><dd>{plan?.source ?? '—'}</dd></div><div><dt>Projection</dt><dd>{fplData?.prediction_run_id ? `Run #${fplData.prediction_run_id}` : '—'}</dd></div><div><dt>Manager state</dt><dd>{managerState?.source ?? '—'}</dd></div></dl>
+        <span className="page-eyebrow">Plan provenance</span><h2>Keep publication and final authority separate</h2>
+        <dl className="provenance-list"><div><dt>{isLivePublication ? 'Published' : 'Plan saved'}</dt><dd>{plan?.captured_at ? formatTimestamp(plan.captured_at) : '—'}</dd></div><div><dt>Plan source</dt><dd>{plan?.source ?? '—'}</dd></div><div><dt>Projection</dt><dd>{fplData?.prediction_run_id ? `Run #${fplData.prediction_run_id}` : '—'}</dd></div><div><dt>Manager state</dt><dd>{managerState?.source ?? '—'}</dd></div></dl>
+        {isLivePublication ? <p>{livePlanFinal ? 'This publication passed final authorization.' : 'This publication is the best current fully evaluated plan, but it is not final execution authority yet.'}</p> : null}
         {managerState ? <details className="fpl-details"><summary>FT / bank provenance</summary><p>Captured {formatTimestamp(managerState.captured_at)}. Acquisition-squad cost: {managerState.acquisition_squad_cost_tenths == null ? 'unavailable' : `£${(managerState.acquisition_squad_cost_tenths / 10).toFixed(1)}m`}. Missing state is never interpreted as zero.</p></details> : null}
       </div>
     </section>}
 
     <section className="fpl-section secondary-analysis" aria-labelledby="full-pool-heading">
       <details className="fpl-details full-pool-details">
-        <summary><span><strong id="full-pool-heading">Full-pool projection leaders</strong><small>{isHistorical ? 'Historical frozen model view · not current transfer recommendations' : 'Secondary model view · not transfer recommendations'}</small></span><span aria-hidden="true">+</span></summary>
+        <summary><span><strong id="full-pool-heading">Full-pool projection leaders</strong><small>{isHistorical ? 'Historical frozen model view · not current transfer recommendations' : 'Secondary model view · not standalone transfer recommendations'}</small></span><span aria-hidden="true">+</span></summary>
         <div className="leader-list">{leaders.length ? leaders.map((player, index) => <ProjectionLeader key={player.id} player={player} rank={index + 1} />) : <p>Full-pool rankings are unavailable.</p>}</div>
       </details>
     </section>
@@ -202,7 +217,7 @@ function CaptainSummary({ role, marker, player, fallbackId }: { role: string; ma
 }
 
 function CompactSelection({ label, selections }: { label: string; selections: ResolvedSelection[] }) {
-  return <div className="compact-selection"><span>{label}</span><p>{selections.length ? selections.map((selection) => selection.player?.name ?? `Player #${selection.id}`).join(' · ') : 'No saved selections available'}</p></div>;
+  return <div className="compact-selection"><span>{label}</span><p>{selections.length ? selections.map((selection) => selection.player?.name ?? `Player #${selection.id}`).join(' · ') : 'No selections available'}</p></div>;
 }
 
 function PlayerTile({ selection, captainId, viceId, benchOrder }: { selection: ResolvedSelection; captainId: number | null | undefined; viceId: number | null | undefined; benchOrder?: number }) {

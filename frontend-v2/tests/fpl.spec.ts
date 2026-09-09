@@ -41,12 +41,22 @@ function fplPayload(gameweek: number) {
   const historical = gameweek <= 2;
   return {
     ok: true,
+    contract_version: 'fpl_api_v12_chronology_safe',
     gameweek,
     prediction_run_id: gameweek === 3 ? 1256 : gameweek === 2 ? 14 : 1,
     model_version: historical ? '0.1.3' : '0.3',
     current_model_version: '0.3',
     generated_at: historical ? '2026-08-26T16:15:00.144744+00:00' : '2026-09-01T20:05:00.417983+00:00',
     run_type: 'pre_deadline',
+    historical_projection_valid: true,
+    historical_unavailable_reason: null,
+    snapshot_stage: historical ? 'HISTORICAL_FROZEN' : 'PRE_DEADLINE',
+    metadata_availability: {
+      historical,
+      price_ownership_source: historical ? 'FPL_PRICE_SNAPSHOT' : 'CURRENT_FPL_BOOTSTRAP',
+      historical_price_players: historical ? squad.length : 0,
+      current_metadata_not_backfilled_into_history: true,
+    },
     decision: historical ? {
       captain_player_id: 29,
       vice_player_id: gameweek === 2 ? 471 : 470,

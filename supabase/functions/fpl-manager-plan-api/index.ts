@@ -58,14 +58,9 @@ Deno.serve(async (req: Request) => {
       },
     } : null;
 
-    let readiness: any = null;
-    let optimizerOrchestration: any = null;
-    if (gameweek != null) {
-      const statusRes = await sb.rpc('engine_diagnostics_status_v01', { p_gameweek: gameweek });
-      if (statusRes.error) throw statusRes.error;
-      readiness = statusRes.data?.p2_lineage ?? null;
-      optimizerOrchestration = statusRes.data?.optimizer_orchestration ?? null;
-    }
+    // C0239: plan serving must remain available independently of heavyweight diagnostics.
+    const readiness = null;
+    const optimizerOrchestration = null;
 
     return new Response(JSON.stringify({
       ok: true,
@@ -89,6 +84,7 @@ Deno.serve(async (req: Request) => {
         shadow_research_has_zero_numeric_production_effect: true,
         projection_readiness_is_not_decision_readiness: true,
         missing_manager_state_is_not_zero: true,
+        diagnostics_decoupled_from_plan_serving: true,
       },
     }), { headers: cors });
   } catch (error) {

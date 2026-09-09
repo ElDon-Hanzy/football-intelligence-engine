@@ -1,10 +1,10 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-08 (Dubai) — through C0219 cadence reconciliation_
+_Last updated: 2026-09-09 (Dubai) — through C0236 chronology-safe serving closeout_
 
 ## 1. Purpose and immutable rules
 
-Build one football-intelligence engine for FPL decision quality and betting-market mispricing research.
+Build one football-intelligence engine for FPL decision quality and betting-market mispricing research, with one FPL objective: maximize the probability of finishing #1 Overall.
 
 Permanent rules:
 
@@ -14,13 +14,15 @@ Permanent rules:
 - Retrospective replay/shadow work is stored separately and never presented as a genuine historical prediction.
 - Missing data is not zero.
 - Preserve provenance plus `known_at` / `captured_at` / `evidence_cutoff` timestamps.
-- Never commit secrets/API keys.
+- Never commit secrets/service-role credentials.
 - Unvalidated intelligence remains research/shadow until its registered forward gate passes.
 - Distinguish Planned / Coded / Committed / Deployed / Executed / Verified.
 - Do not tune on an outcome and then call a same-sample rerun independent validation.
 - Negative experiments are first-class evidence.
 - Projection readiness is not decision readiness.
 - Every meaningful FPL action must compare against ROLL and pass Noise-Control / Decision-Control.
+- Ownership/EO has **zero direct xPts effect**. It may influence rank-aware decision utility only after football/value alternatives are already within the model-error band.
+- A final autonomous decision gate is allowed to refuse action.
 
 Canonical references:
 
@@ -29,8 +31,9 @@ Canonical references:
 - `WEEKLY_DATA_PIPELINE.md`
 - `MODEL_CONSUMPTION_AUDIT.md`
 - `DECISIONS_AND_HISTORY.md`
-- `project-management/C0218_CONVERSATION_HANDOVER_20260908.md`
-- `project-management/C0219_PROJECTION_CADENCE_OPTIMIZER_RECONCILIATION_20260908.md`
+- `project-management/C0226_AUTONOMOUS_FPL_DECISION_ARCHITECTURE_PLAN_20260909.md`
+- `project-management/C0226_AUTONOMOUS_FPL_DECISION_ARCHITECTURE_CLOSEOUT_20260909.md`
+- `project-management/C0236_CHRONOLOGY_SAFE_HISTORY_SERVING_CLOSEOUT_20260909.md`
 
 ## 2. Production source of truth
 
@@ -47,250 +50,368 @@ For every resumed engineering session:
 5. inspect relevant architecture/readiness/forward-cohort status functions;
 6. independently verify current Supabase/GitHub state before material changes.
 
-Live runtime/registry evidence outranks stale documentation.
+Live runtime/registry evidence outranks documentation if they disagree.
 
-## 3. C0213 architecture consolidation
+## 3. Canonical production path
 
-C0213 is **Completed / Verified**.
+C0213 architecture consolidation is **Completed / Verified**.
 
-Current permanent architecture controls include:
+Current production path:
 
-- canonical production and research pathways;
+`RESULTS → CURRENT DATA → REALIZED ROLES → PLAYER/TEAM STATE → TACTICAL/FIXTURE STATE → C0159 → C0166 → PLAYER PROJECTION → DISTRIBUTION → FULL-POOL OPTIMIZER → STRUCTURAL ENSEMBLE → UNCERTAINTY/ROBUSTNESS → RANK-AWARE DECISION CONTROL → RED-TEAM → AUTONOMOUS FINAL GATE → SAVED MANAGER PLAN → API/UI`
+
+C0213 controls remain active:
+
 - machine-readable component/dependency/capability registry;
-- 14/14 production-effect components with definition-hash-bound behavioral proof;
 - prediction-level effect provenance;
 - tracker consumption/evaluator governance;
-- zero duplicate active cron targets;
-- zero active RETIRED external deployments;
-- all 19 previously active RETIRED external runtimes physically deleted;
-- system consolidation green.
+- definition-hash-bound production behavioral tests;
+- retired external runtimes physically removed;
+- projection readiness separated from decision readiness.
 
-The active production FPL path remains:
+Latest verified production-effect proof on GW4 run 1354: **14/14 passing**.
 
-`RESULTS → CURRENT DATA → REALIZED ROLES → PLAYER/TEAM STATE → TACTICAL/FIXTURE STATE → C0159 → C0166 → PLAYER PROJECTION → DISTRIBUTION → FULL-POOL OPTIMIZER → DECISION READINESS → SAVED MANAGER PLAN → API/UI`
+## 4. C0214–C0219 reliability foundation
 
-## 4. C0214 realized-role / evidence repair
+### C0214
 
-C0214 is **Completed / Verified**.
+Completed / Verified.
 
-- GW3 realized-role starter mapping repaired to **220/220**.
-- Realized-role ingestion now uses canonical FotMob identity mappings with append-only mapping-aware correction semantics.
-- MUN–MCI C0167 explanation integrity repaired using signed C0159 evidence already embedded in the final forecast; no probability was changed.
-- GW4/GW5/GW6 projection horizon reconciled to **604/604 each**.
+- GW3 realized-role starter mapping repaired to 220/220.
+- Realized roles use canonical identity mappings and append-only correction semantics.
+- C0167 explanation integrity repaired without altering probabilities.
 
-## 5. A0005 / C0215
+### C0215 / A0005
 
-Frozen GW2 VALIDATION + GW3 TEST review is complete.
+No promotion. Frozen forward evidence remains insufficient; accumulate more genuine forward samples.
 
-Decision: **NO PROMOTION — ACCUMULATE MORE FORWARD EVIDENCE**.
+W0002 remains frozen independently.
 
-`TACTICAL_QUALITY` had favorable signs but the TEST edge was inside normal model/sample noise. No rescue retuning or production activation occurred.
+### C0216
 
-W0002 remains independently frozen for GW4 VALIDATION / GW5 TEST.
+Manager High-Stakes Tactical Regime remains **deferred**. Do not activate without explicit new decision + validation.
 
-## 6. C0216 deferred MHTR research
+### C0217
 
-The Manager High-Stakes Tactical Regime plan is saved at:
-
-`project-management/C0216_MANAGER_HIGH_STAKES_TACTICAL_REGIME_PLAN.md`
-
-It models manager/context tactical-regime changes in derbies, finals, knockouts, must-win/draw-is-enough states and similar high-stakes conditions, with separate downstream FPL and betting consumers.
-
-User explicitly deferred development. Do not activate yet.
-
-## 7. C0217 storage / ingestion redesign
-
-C0217 is **Completed / Verified**.
-
-### Projection cadence
+Completed / Verified storage/ingestion redesign.
 
 - current decision GW: at most one full daily projection snapshot;
-- one final forced refresh beginning about T−2h before the FPL deadline;
-- next two GWs: one baseline each until promoted forward;
-- cron is an eligibility check, not a full-write cadence.
+- final forced refresh at about T−2h;
+- forward GWs use bounded baselines;
+- odds scope limited to H2H/1X2, totals, BTTS and correct score;
+- redundant writes filtered/disabled.
 
-### Odds scope
+### C0218
 
-Only these four market families are stored/normalized for now:
+Optimizer implementation is verified, but final GW4 decision lock remains pending the T−2h refresh.
 
-1. H2H / 1X2
-2. Totals
-3. Both Teams To Score
-4. Correct Score
+### C0219
 
-Non-approved markets are discarded before DB write. Filtered payload hashing skips consecutive identical market states. The redundant hourly odds writer is disabled.
+Completed / Verified cadence reconciliation.
 
-Historical non-approved normalized markets and raw market objects were removed while retaining the four approved market chronologies.
+- C0217 is the sole projection-cadence controller;
+- optimizer orchestration no longer forces raw projection writes because live upstream state drifted;
+- valid frozen snapshots remain usable until cadence permits a new one;
+- accidental historical duplicate runs remain immutable evidence.
 
-Observed DB size during C0217 fell from approximately **571.3 MB → 517.2 MB** after logical cleanup and physical reclamation.
+## 5. C0220 forecast-integrity repair
 
-## 8. FPL manager state — entry 3559923
+C0220 is **Completed / Verified**.
 
-Public FPL Team ID: `3559923` (`ElDon`).
+Production player forecast now explicitly handles:
 
-FPL public API exposes locked history but hides current pre-deadline private team endpoints (`403`). Current GW4 state is therefore based on public GW3 history plus the user's explicit confirmation: **no transfers since GW3**.
+- penalty-attempt/conversion hierarchy and penalty misses;
+- realized-role numeric adaptation only for stable material attacking↔defensive/control changes;
+- competition-budget constraints so team start probability/minutes do not exceed 11 starters / 990 minutes;
+- future-only forecast repair with no historical rewrite.
 
-Current authoritative GW4 manager state:
+Role adaptation does not blindly extrapolate one-match positional changes.
 
-- squad: 15/15 proven and unchanged from GW3;
-- free transfers: **3**;
-- ITB: **£0.0m**;
-- acquisition squad cost: **£100.0m**;
-- current liquidation value: **£99.6m** after Tzolis £6.5→£6.4 and Isak £9.0→£9.1 (Isak selling value remains £9.0).
+## 6. C0221 / C0223 xMins and exact-horizon state
 
-Manager state id: **4**.
+The fixed historical start/minutes priors were repaired so current-season evidence can move both upward and downward.
 
-## 9. C0218 optimizer repair
+Current starter-regime logic includes symmetric `STARTER_UP` / `STARTER_DOWN` gates based on repeated starts/non-starts, predicted XI confidence and current evidence.
 
-C0218 remains **In Progress** only because the final T−2h refresh / deadline lock is intentionally pending. Its current implementation is **Verified**.
+De Cuyper was the canonical discovery case: his repeated wide-attacking starts could not previously overcome stale historical priors quickly enough.
 
-Fixed defects:
+C0223 then closed the downstream integration gaps:
 
-- PostgREST row-limit truncation: load the three GW projection runs separately (1,812 rows total).
-- FPL selling-value accounting.
-- position-safe transfer pairs.
-- transfer hit subtraction exactly once.
-- explicit 0FT / 1FT / 2FT / 3FT scenario ladder against ROLL.
-- optimizer runtime/contract version participates in input signature.
-- impossible MAX_4FT serialization removed when only 3 FTs exist.
+- canonical matchup selector is consumed by the projection core;
+- GW6+ may no longer silently reuse GW5 player state;
+- GW4–GW8 have explicit target-GW role/availability state;
+- optimizer is role-aware as Decision-Control only, with **no invented role multiplier**;
+- role risk may challenge near-equal structures but cannot fabricate xPts.
 
-Latest optimizer runtime: **v6**.
-Latest contract: `C0218_FULL_POOL_SCENARIO_V03`.
-Latest optimizer request: **3681**.
-Latest optimizer run: **5**.
+## 7. Current projection horizon
 
-Current scenario objectives after the £99.6m price refresh:
+Current verified production horizon used by the autonomous stack:
 
-- ROLL: **147.097**
-- 1FT: **150.517** (+3.421)
-- 2FT: **154.254** (+7.157)
-- 3FT: **158.459** (+11.363)
+- GW4: **run 1354 — PRE_FINAL**
+- GW5: run 1348
+- GW6: run 1350
+- GW7: run 1352
+- GW8: run 1353
 
-The raw 3FT optimum is not automatically authoritative. Its third move requires Palmer → Schade plus Gabriel over Calafiori and was rejected by red-team because the incremental edge is not robust to Chelsea–Hull fixture/captaincy context, Palmer's penalty role, premium re-entry flexibility and model uncertainty.
+Each current horizon run carries 604 player forecasts and preserves the 11-start / 990-minute team integrity constraints.
 
-## 10. C0219 projection-cadence / optimizer reconciliation
+The engine may use GW4–GW8 for strategic comparison, but it must not fabricate further-GW numerical precision where approved forecast inputs do not exist.
 
-C0219 is a **Critical production reliability repair** discovered during the post-C0218 preflight.
+## 8. C0224 Parity–Draw Regime
 
-Production evidence showed two immutable projection runs had been created on 2026-09-08 for each of GW4/GW5/GW6 even though C0217 intended bounded cadence. C0217's own cadence function was correct; the older C0213 optimizer orchestrator was independently marking projections stale whenever frequently refreshed C0166/player-state timestamps became newer, then directly invoking the raw snapshot generator.
+C0224 is **SHADOW / FORWARD MONITOR ONLY**.
 
-C0219 reconciles the contracts:
+Historical + initial forward evidence suggested that slight home/away parity, especially in lower-event environments, may carry more draw propensity than the existing model fully captures.
 
-- **C0217 is now the sole projection-cadence controller**;
-- the C0213 optimizer orchestrator no longer directly calls the raw FPL snapshot generator;
-- upstream completeness remains fail-closed;
-- optimizer readiness accepts a complete frozen snapshot that is valid under the C0217 cadence;
-- current-GW cadence is one snapshot per 24h plus a final T−2h window snapshot;
-- GW+1/GW+2 complete frozen baselines remain valid until promoted;
-- newer live upstream state is surfaced as `upstream_drifted_since_snapshot` rather than silently forcing storage writes.
+Key finding: the effect was not monotonic; exact dead-even parity did not simply produce the strongest excess draws.
 
-Verification used runs **1334 / 1335 / 1336**, preserved optimizer input signature `ebd72d6b64c38db63c9a0238c415ffc8`, and reused optimizer run **5**. Projection counts were **2/2/2 before and after** the verification orchestration, so no third duplicate was created. Existing accidental duplicates remain immutable evidence and were not deleted or rewritten.
+Promotion gate remains hard:
 
-Migration: `20260908090429_c0219_projection_cadence_optimizer_reconciliation_v01`.
+- at least 60 genuine forward parity fixtures;
+- positive residual in two independent forward blocks;
+- actual calibration/log-loss improvement.
 
-No manager decision changed from C0219.
+C0224 has **zero production probability effect** until that gate passes.
 
-## 11. Current GW4 Manager Plan
+## 9. C0225 rank-aware Differential Opportunity / Leverage
 
-Current active append-only head: **Plan 10**, superseding 9 → 8.
+C0225 is **Completed / Verified**.
 
-Status: `CURRENT_GW4_PLAN_PENDING_FINAL_T_MINUS_2H_REFRESH`.
+Ownership/EO is a downstream Decision-Control input only.
 
-### Transfers
+Permanent semantics:
 
-1. **O'Reilly → Guéhi**
-2. **Mosquera → Calafiori**
+- low ownership never adds xPts;
+- no mandatory differential quota;
+- player must first pass football/minutes/role/haul gates;
+- leverage can break statistical ties, not rescue a clearly worse projection;
+- early season remains EV-first;
+- later-season variance may adapt to OR, remaining GWs and distance from #1.
 
-After the moves:
+The engine explicitly searches for explosive low-owned opportunities, including the explosive-exception pool, without forcing one into the squad.
 
-- retain Palmer;
-- keep **1 FT**;
-- projected bank **£0.2m**;
-- chip: **NONE**;
-- captain: **João Pedro**;
-- vice-captain: **Bruno Fernandes**;
-- risk: **MEDIUM**.
+## 10. C0226–C0234 Autonomous FPL Decision Architecture
 
-### Current XI
+C0226 and child layers C0227–C0234 are **Completed / Verified**.
 
-- Verbruggen
-- Calafiori
-- Guéhi
-- N. Williams
-- Bruno Fernandes
-- Mbeumo
-- Palmer
-- Semenyo
-- Tzolis
-- João Pedro (C)
-- Isak
+### C0227 — uncertainty / sensitivity
 
-Bench order:
+Tracks explicit uncertainty vectors instead of pretending to have calibrated confidence intervals where none exist. Inputs include minutes/start risk, role confidence, sample depth, inherited confidence and regression dependence.
 
-1. Forster (GK)
-2. Dalot
-3. van Ewijk
-4. Kusi-Asare
+Examples from the acceptance work:
 
-Captaincy note: Bruno's raw GW4 model xPts (5.544) vs João Pedro (5.347) is inside normal model error. Fixture/role context currently breaks the tie toward João Pedro at home to Hull; Bruno remains vice.
+- João Pedro: materially cleaner uncertainty profile;
+- Thiago: higher uncertainty because forecast depends more heavily on finishing regression / penalty assumptions;
+- Cherki: high minutes/sample fragility despite explosive upside.
 
-Do not execute this plan as final lock before the scheduled T−2h refresh.
+### C0228 — diverse search + equivalence classes
 
-## 12. C0197 / C0196 post-GW3 research
+The canonical optimizer now explores multiple structural families through distributed invocations rather than one oversized Edge worker.
 
-### C0197
+The engine is required to discover materially different near-optimal structures instead of presenting one heuristic local optimum as globally certain.
 
-80/80 frozen pre-GW3 experiment snapshots were evaluated without retuning. V05 Tactical Clash A was the most interesting small-sample signal, but evidence remains far too sparse for promotion. Monitor only.
+### C0229 — structural/portfolio control
 
-### C0196
+Near-equal squads are compared on structural robustness, marginal £ value, role risk, club-slot opportunity cost, premium access and flexibility rather than meaningless decimal xPts differences.
 
-GW1–GW3 tail calibration currently shows no robust reason to alter the score distribution:
+### C0230 — team regime diagnostic
 
-- 4+ goals: 10 actual vs ~9.95 expected
-- 5+: 5 vs ~5.30
-- 6+: 2 vs ~2.46
-- 7+: 2 vs ~1.02
+Shadow/diagnostic only. Tactical/team regime evidence can challenge a decision but currently has zero numeric model effect unless separately validated.
 
-Headline score selection remains under monitoring after underperforming raw modal in GW3, but no production selector change is justified from one GW.
+### C0231 — forward management / premium access
 
-## 13. CI / repository state
+Evaluates future transfer burden, expensive-premium reacquisition routes, club-slot bottlenecks and fragile price structures.
 
-Relevant recent commits:
+### C0232 — rank-aware leverage across ensemble
 
-- C0217 durability mirror: `78f69b5aec3538afd432cf11514ccba8c6eac239`
-- C0218 v6 optimizer/migration mirror: `d6edc890d554009520908d4cd34e375d0ce66dbc`
-- C0218 conversation handover: `10c4bad3125283234102d9fa509ced83e78bb298`
-- C0219 migration mirror: `d072c3c6681d494b4eb5f0ddf7502292b8ac3ce8`
-- C0219 reasoning note: `a62fc79f20417de55549e0b0e6351e68b015a263`
+Applies C0225 game theory across near-equivalent structural families, never by rewriting player xPts.
 
-Workflow `34203106584` first attempt failed only from transient live Supabase endpoint timeouts/non-2xx responses on historical APIs. It was rerun **unchanged** and attempt 3 completed **SUCCESS**:
+### C0233 — automatic adversarial red-team
 
-- typecheck green;
-- unit tests green;
-- build green;
-- bundle budget green;
-- all E2E/accessibility tests green;
-- artifact verification green;
-- Pages deployment green;
-- live legacy root + `/v2/` verification green.
+Actively tries to defeat the raw optimizer winner under reasonable uncertainty/role/structure assumptions.
 
-C0219 source-mirror CI must be checked independently before C0219 is marked Completed.
+### C0234 — fail-closed final gate
 
-## 14. Tracker / governance
+The autonomous final gate may return:
 
-- C0217: **Completed / Verified**.
-- C0218: **In Progress / Verified implementation**, final T−2h decision refresh pending.
-- C0219: **In Progress / Verified production implementation**, repository/CI closeout pending.
-- global tracker governance must remain green after C0219 registration/closeout.
+- `FINAL_AUTONOMOUS_DECISION`
+- `DECISION_NOT_READY`
+- `NO_MEANINGFUL_EDGE`
 
-## 15. Immediate sequence
+It is prohibited from forcing a plan when uncertainty, equivalence, structural robustness, red-team, ROLL or chip opportunity-cost gates fail.
 
-1. Finish C0219 repository/CI/governance closeout without altering Plan 10.
-2. Do not make additional GW4 moves before the final refresh simply because Plan 10 exists.
-3. At approximately **14:30 Dubai time on 2026-09-12** (T−2h for the 16:30 Dubai GW4 deadline), refresh current injuries, press conferences, predicted XIs, roles/xMins, prices/ownership, GW4–GW6 projections, manager liquidation value/bank/FT state.
-4. Rerun the full-pool optimizer and separate captaincy model.
-5. Apply Noise-Control and Decision-Control against ROLL and Plan 10.
-6. If the robust decision survives, save a new append-only deadline-lock plan superseding Plan 10.
-7. Continue deferred research / security-performance debt afterward according to tracker priority.
+First production C0234 evaluation correctly returned **`DECISION_NOT_READY` / action NONE** rather than rubber-stamping the raw optimizer.
 
-This file is the operational state summary; detailed reasoning and change history remain in the tracker, migration history, canonical architecture documents, and project-management notes.
+The raw Haaland/value family versus Bruno+Saka/no-Haaland family was close enough that adversarial robustness failed; the gate did not pretend the decimal winner was final.
+
+Permanent regression acceptance case:
+
+`240.952 vs 240.841` must be classified as **no meaningful edge / equivalent**, then resolved only by downstream robustness controls.
+
+## 11. Wildcard semantics
+
+A fresh legal 15-man Wildcard comparator now exists independently of the current squad / free-transfer neighborhood.
+
+Current rules encoded in the decision layer include:
+
+- Wildcard = unlimited permanent transfers;
+- banked FTs are preserved;
+- only one chip per GW;
+- first-half Wildcard expires before the GW19 deadline;
+- first-half Wildcard is currently available and unused for this FPL entry.
+
+A raw fresh-squad gain is **not enough** to authorize the chip. The autonomous gate also requires robust structural advantage and credible chip opportunity-cost reasoning.
+
+## 12. GW4 manager state and saved plan
+
+FPL Team ID: `3559923` (`ElDon`).
+
+Standing user confirmation: no transfers since GW3 unless subsequently recorded in authoritative manager state.
+
+The latest saved manager-plan head remains **Plan 10**, but it is **provisional and not authorized for execution** by the current autonomous gate.
+
+Plan 10 previously encoded:
+
+- O'Reilly → Guéhi
+- Mosquera → Calafiori
+- retain Palmer
+- captain João Pedro
+- vice Bruno
+- chip NONE
+
+Do **not** execute Plan 10 simply because it exists. It is historical/provisional decision state pending the final T−2h autonomous refresh.
+
+Current autonomous action: **NONE until final information gate**.
+
+## 13. C0235 PRE-FINAL production cadence
+
+C0235 is **Completed / Verified**.
+
+GW4 run **1354** is the first named `PRE_FINAL` production snapshot.
+
+Semantics:
+
+- each daily PRE_FINAL is a new immutable production run;
+- a pointer/history advances to the newest daily PRE_FINAL;
+- forecasts are never overwritten;
+- daily current-GW generation continues under the C0217 24h cadence until T−2h;
+- T−2h begins a separate final-stage generation/autonomous gate.
+
+Current GW4 schedule:
+
+- first kickoff: **2026-09-12 18:00 Dubai**
+- FPL deadline: **16:30 Dubai**
+- final T−2h refresh: **14:30 Dubai**
+
+The scheduled `GW4 Final Autonomy Gate` automation is set for **2026-09-12 14:30 Asia/Dubai**.
+
+## 14. C0236 chronology-safe website / historical serving
+
+C0236 is **Completed / Verified**.
+
+### Historical FPL
+
+`fpl-api` contract: `fpl_api_v12_chronology_safe`.
+
+Historical/current classification now comes from forecast chronology, not whether a manager-plan row happens to exist.
+
+Verified matrix:
+
+- GW1: `HISTORICAL_FROZEN`, but surviving FPL forecast is not valid pre-deadline model truth → fail closed;
+- GW2: valid historical frozen forecast;
+- GW3: valid historical frozen forecast;
+- GW4: `PRE_FINAL`, 604 players.
+
+Current price/ownership/news is no longer backfilled into old Gameweeks. If historical metadata was never captured, UI says unavailable/not captured.
+
+### Historical fixtures
+
+Only genuinely pre-kickoff tactical evidence is served. Audit found **zero served post-kickoff tactical/role rows** across GW1–GW4.
+
+GW1 really has partial early-model coverage (including only 2/20 tactical team-side profiles), so UI reports partial/unavailable instead of reconstructing history with later models.
+
+### Markets
+
+Correct-score historical serving now uses a scoped cache/index path rather than repeatedly aggregating full raw chronology.
+
+GW1–GW4 `betting-api` regression returns all 10 fixtures per GW with price tracking and zero verified timeout warnings.
+
+### Engine Diagnostics auth
+
+Public browser auth path was repaired after strict CI exposed an invalid embedded public gateway JWT. The UI uses the active public anon credential; no service-role/secret credential is committed.
+
+## 15. Repository / CI state
+
+C0236 strict release and closeout pipelines passed without bypassing gates.
+
+Verified successful pipeline stages include:
+
+- TypeScript typecheck;
+- 21 unit tests;
+- production build;
+- bundle budget;
+- full Playwright E2E/accessibility;
+- Pages artifact verification;
+- legacy rollback integrity;
+- GitHub Pages deployment;
+- live legacy root verification;
+- live `/v2/` verification.
+
+Key C0236 workflows:
+
+- 34329236699 — successful product release after auth repair;
+- 34329863729 — successful closeout HEAD verification;
+- 34343548927 — successful final documentation HEAD verification.
+
+Latest C0236 closeout documentation commit before this state update: `dded5e8407bbd083dfb1f5934395edd277f0d4c1`.
+
+## 16. Tracker / governance
+
+Final verified state before this documentation-only Project State update:
+
+- tracker rows: **161**
+- bad Change IDs: **0**
+- Completed-not-Verified: **0**
+- Completed-without-refs: **0**
+- decision rows without refs: **0**
+- consumption-contract violations: **0**
+- rows requiring consumption contracts: **79**
+- covered contracts: **79/79**
+- current production-effect behavioral proof: **14/14 passing**
+
+C0236 has a registered `PRODUCTION_CONSUMER` contract covering:
+
+`EDGE_FUNCTION:fpl-api + EDGE_FUNCTION:betting-api + VIEW:public.correct_score_price_summary + UI_V2:FplPage/FixturesPage`
+
+No numeric xPts/model-family effect was introduced by C0235/C0236.
+
+## 17. Research layers that remain unpromoted
+
+Do not silently activate these merely because they exist:
+
+- C0197 research families / Tactical Clash evidence
+- C0202 generic player-side/flank xPts scalar
+- A0005
+- W0002
+- C0210 historical decay
+- C0211 uncertainty widening as numeric production effect
+- C0216 MHTR
+- C0224 Parity–Draw production adjustment
+- C0230 team-regime numeric adjustment
+
+They may inform diagnostics/red-team only where their registered contracts permit.
+
+## 18. Immediate sequence
+
+1. Continue daily immutable GW4 PRE_FINAL generation under C0217/C0235 until the final window.
+2. Make no external FPL transfers or chip activation from provisional Plan 10.
+3. At **2026-09-12 14:30 Dubai**, refresh current prices/ownership, manager state/FT/selling values/chips, injuries/suspensions, press conferences, predicted XIs, xMins, tactical roles, penalties/set pieces, congestion and matchup inputs.
+4. Generate the separate final current-GW projection snapshot.
+5. Rerun the canonical optimizer plus C0227→C0234 autonomous stack.
+6. Always compare ROLL/no action and the best legal normal-transfer path.
+7. Evaluate Wildcard only if live chip availability and opportunity-cost gates are green.
+8. If C0234 returns `FINAL_AUTONOMOUS_DECISION`, save a new append-only GW4 manager plan superseding provisional plans, but do not execute external FPL transfers automatically.
+9. If C0234 returns `DECISION_NOT_READY` or `NO_MEANINGFUL_EDGE`, do not force action.
+10. After GW4, continue forward validation, realized-role refresh and deferred research according to tracker priority.
+
+This file is the operational state summary. Detailed reasoning and implementation evidence remain in the tracker, canonical architecture documents, migrations, Edge source mirrors and project-management closeouts.

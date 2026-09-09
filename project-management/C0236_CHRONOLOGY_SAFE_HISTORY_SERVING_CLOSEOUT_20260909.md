@@ -117,7 +117,9 @@ Those contracts were corrected and the stable reviewed visual changes were accep
 
 A subsequent run reached 100 passing browser tests except for Engine Diagnostics, which exposed the public-auth mismatch described above. The auth path was fixed rather than weakening the test.
 
-Final release workflow: **GitHub Actions 34329236699**.
+Primary successful release workflow: **GitHub Actions 34329236699**.
+
+Final closeout HEAD workflow after documentation/source reconciliation: **GitHub Actions 34329863729**, head `f221e61d0e4742e0030706616e7950150dae5f28`, conclusion **success**.
 
 Verified successful stages:
 
@@ -134,14 +136,19 @@ Verified successful stages:
 
 ## Governance / architecture proof
 
-After production closeout:
+Final production rerun after closeout:
 
 - `private.audit_change_tracker_governance_v01()` → `ok=true`
-- bad Change IDs: 0
-- Completed-not-Verified: 0
-- Completed-without-refs: 0
-- consumption-contract violations: 0
-- `private.c0213_behavioral_consumption_status_v01()` → **14/14 production-effect components passing**
+- tracker rows: **161**
+- bad Change IDs: **0**
+- Completed-not-Verified: **0**
+- Completed-without-refs: **0**
+- decision rows without refs: **0**
+- consumption-contract violations: **0**
+- rows requiring consumption contracts: **79**
+- covered consumption contracts: **79/79**
+- `private.run_c0213_behavioral_consumption_tests_v01(4)` → **14/14 production-effect components passing**
+- behavioral proof used current GW4 prediction run **1354**
 
 C0236 consumption contract:
 
@@ -170,3 +177,4 @@ C0236 is **Completed / Verified**. The separate GW4 final T−2h decision refres
 - `ebd1b5d8fbe83f04f29d87e8ba4d6e9e6f7b25d0` — reviewed visual changes
 - `c8c148bab8dc44fd9c41d0b5317a9dd42c3549c9` — public gateway credential repair
 - `c0f2b508623623b1aed0ccc4aadeb17dd757e682` — authenticated diagnostics live-smoke alignment
+- `f221e61d0e4742e0030706616e7950150dae5f28` — final closeout source/documentation state verified by workflow 34329863729

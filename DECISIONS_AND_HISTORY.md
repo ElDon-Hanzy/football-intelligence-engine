@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Decisions & History
 
-_Last updated: 2026-09-08 (Dubai) — through C0219 cadence reconciliation_
+_Last updated: 2026-09-09 (Dubai) — through C0237/C0238 always-live publication closeout_
 
 This file preserves the durable decisions that govern the current engine. Detailed pre-C0213 reasoning and the former long-form ledger remain permanently available in Git history; this live file is intentionally concise so it can remain operationally current.
 
@@ -328,3 +328,39 @@ Permanent decision:
 - This contract repair is reliability-only and does not justify changing a manager plan.
 
 C0219 verification reused projection runs 1334/1335/1336 and optimizer run 5 without changing the optimizer input signature. A repeated orchestration check left GW4/GW5/GW6 projection-run counts at 2/2/2, proving the direct duplicate-writer path was removed. Plan 10 remained unchanged.
+
+## 26. C0237 — “not final” must not mean “publish no plan”
+
+The C0226–C0234 stack originally coupled final authorization with current-plan serving too tightly. C0234 could correctly refuse final authorization, while the serving layer then exposed no newer plan even though the optimizer, structural ensemble, uncertainty, forward-management, rank-control and red-team layers had already produced enough evidence to identify the best current option.
+
+Permanent decision:
+
+- **The active Gameweek always publishes the best current fully evaluated plan whenever every required layer has run.**
+- Publication timing and authorization are separate dimensions: `PRE_FINAL`/`FINAL` is the stage; `PROVISIONAL`/`CONTESTED`/`FINAL` is the status.
+- A negative layer may make a plan `CONTESTED`; it must not make the plan disappear.
+- A skipped required layer blocks publication. Negative results are allowed; skipped mandatory evaluation is not.
+- The mandatory C0237 chain is the canonical full-pool optimizer plus C0227, C0228, C0229, C0230, C0231, C0232, C0233 and C0234.
+- C0230 and other shadow/research evidence may be surfaced publicly as research input, but `numeric_production_effect=false` unless separately promoted under its own chronology-safe gate.
+- `public.fpl_manager_plans` remains the separate final/execution ledger. A live C0237 publication does not become execution authority merely because it is visible.
+- Only a C0234-backed final publication may set `execution_authorized=true`.
+- Current publications are append-only and may be superseded by later fully evaluated evidence without rewriting earlier publications.
+
+The persisted publication invariant is:
+
+`ALL_REQUIRED_LAYERS_EVALUATED_NEGATIVE_RESULTS_ALLOWED_SKIPPED_LAYERS_FORBIDDEN`
+
+The first strict C0237 GW4 publication is `PRE_FINAL / CONTESTED / execution_authorized=false`, proving the engine can expose its best current answer without pretending the final gate is green.
+
+## 27. C0238 — deployment reliability fixes must preserve strict product gates
+
+The C0237 UI release exposed a GitHub-hosted-runner infrastructure failure: Playwright’s `--with-deps` apt refresh was contaminated by a stale Google Chrome repository carried by the Ubuntu image. The first mitigation removed only legacy `.list` files; a later runner image used deb822 `.sources`, so the failure correctly recurred.
+
+Permanent decision:
+
+- Hosted-runner package-source defects may be isolated narrowly when they are unrelated to the application under test.
+- The fix must target the offending source by repository content, not by assuming one filename format.
+- The workflow must fail closed if the offending source is still present.
+- Chromium/Playwright E2E, accessibility, deterministic visual review, artifact verification, Pages deployment and live integrity checks must remain enabled; infrastructure trouble is not permission to bypass them.
+- Intentional UI contract changes require the semantic E2E contract and reviewed visual baselines to change together. Old tests must not force obsolete product semantics, but coverage must not be weakened merely to obtain a green build.
+
+C0238 therefore removes only apt-source entries that actually reference `dl.google.com/linux/chrome`, regardless of `.list`/`.sources` format, then verifies none remain before Playwright installs Chromium. Product HEAD `98956d091d768dee640fb4c869f654ad49a2f24c` subsequently passed the complete strict Pages pipeline in workflow `34387458458`, including live root and `/v2/` integrity.

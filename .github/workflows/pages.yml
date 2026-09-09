@@ -56,10 +56,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Hosted runners may carry an unrelated Google Chrome apt source. A mirror
-          # hash mismatch there must not prevent Playwright from installing its own
-          # Chromium runtime and OS dependencies.
-          sudo rm -f /etc/apt/sources.list.d/google-chrome.list /etc/apt/sources.list.d/google-chrome.list.save
+          # Hosted runners may carry an unrelated Google Chrome apt source in either
+          # legacy .list or modern deb822 .sources format. Remove only files that
+          # actually reference the Chrome repository before Playwright installs its
+          # own Chromium runtime and OS dependencies.
+          mapfile -t chrome_sources < <(grep -RIl 'dl.google.com/linux/chrome' /etc/apt/sources.list.d 2>/dev/null || true)
+          if ((${#chrome_sources[@]})); then
+            printf 'C0238 disabling hosted-runner Chrome apt source: %s\n' "${chrome_sources[@]}"
+            sudo rm -f "${chrome_sources[@]}"
+          fi
+          if [ -f /etc/apt/sources.list ]; then
+            sudo sed -i '\|dl\.google\.com/linux/chrome|d' /etc/apt/sources.list
+          fi
+          if grep -RIl 'dl.google.com/linux/chrome' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null; then
+            echo 'C0238 failed to isolate hosted-runner Chrome apt source'
+            exit 1
+          fi
           npx playwright install --with-deps chromium
 
       - name: E2E and accessibility smoke UI v2

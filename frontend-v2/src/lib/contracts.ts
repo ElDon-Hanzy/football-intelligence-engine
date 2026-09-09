@@ -57,6 +57,7 @@ export const PlayerSchema = z.object({
   chance_of_playing_next_round: z.number().min(0).max(100).nullable().optional(),
   news: z.string().optional(),
   player_metadata_updated_at: z.string().nullable().optional(),
+  player_metadata_source: z.string().nullable().optional(),
   expected_points: z.number().nullable().optional(),
   expected_minutes: z.number().nullable().optional(),
   p_blank: z.number().min(0).max(1).nullable().optional(),
@@ -91,14 +92,40 @@ export const FplFixtureResultSchema = z.object({
   prediction: FixturePredictionSchema.nullable(),
 }).passthrough();
 
+const FplSnapshotStageSchema = z.enum(['PRE_DEADLINE', 'PRE_FINAL', 'FINAL_WINDOW', 'HISTORICAL_FROZEN']);
+
 export const FplApiSchema = z.object({
   ok: z.literal(true),
+  contract_version: z.string().optional(),
   gameweek: z.number().int().min(1).max(38).optional(),
   prediction_run_id: z.number().int().positive().optional(),
   model_version: z.string().optional(),
   current_model_version: z.string().nullable().optional(),
   generated_at: z.string().optional(),
+  deadline_at: z.string().nullable().optional(),
   run_type: z.string().optional(),
+  historical_projection_valid: z.boolean().optional(),
+  historical_unavailable_reason: z.string().nullable().optional(),
+  snapshot_stage: FplSnapshotStageSchema.optional(),
+  prefinal: z.object({
+    prediction_run_id: z.number().int().positive(),
+    captured_at: z.string(),
+    deadline_at: z.string(),
+    cadence_reason: z.string(),
+  }).passthrough().nullable().optional(),
+  metadata_availability: z.object({
+    historical: z.boolean(),
+    price_ownership_source: z.string(),
+    historical_price_players: z.number().int().nonnegative(),
+    current_metadata_not_backfilled_into_history: z.boolean(),
+  }).passthrough().optional(),
+  available_gameweeks: z.array(z.object({
+    gameweek: z.number().int().min(1).max(38),
+    generated_at: z.string().nullable(),
+    run_type: z.string().nullable(),
+    excluded_from_backtest: z.boolean(),
+    historical_projection_valid: z.boolean(),
+  }).passthrough()).optional(),
   decision: FplDecisionSnapshotSchema.nullable().optional(),
   squad: z.array(PlayerSchema).optional().default([]),
   all_predictions: z.array(PlayerSchema).optional().default([]),

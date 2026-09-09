@@ -127,8 +127,9 @@ test('C0174 calibration contract preserves pending validation as missing rather 
 
 test('C0180 diagnostics contract exposes governance and fail-closed audit state without promoting research layers', async ({ request }, testInfo) => {
   desktopOnly(testInfo.project.name);
-  const response = await request.get(analysisEndpoints.engineDiagnostics);
+  const response = await request.get(`${analysisEndpoints.engineDiagnostics}?gw=3`, { headers: publicGatewayHeaders });
   expect(response.ok()).toBe(true);
   const parsed = EngineDiagnosticsSchema.parse(await response.json());
   expect(parsed.ok).toBe(true);
+  expect(parsed.gameweek).toBe(3);
 });

@@ -76,7 +76,7 @@ function currentPlan(gameweek: number) {
     id: gameweek === 3 ? 3 : 4,
     gameweek,
     captured_at: '2026-08-31T22:43:34.107861+00:00',
-    status: 'PROVISIONAL_HOLD_POST_GW2_PENDING_TRANSFER_DEADLINE_AND_PRESSERS',
+    status: 'CONTESTED',
     horizon: '3-5 GW',
     transfers: [],
     captain_player_id: 470,
@@ -87,16 +87,18 @@ function currentPlan(gameweek: number) {
     gw_expected_xi_points: '58.2523',
     expected_gain_current_gw: '0',
     expected_gain_horizon: '0',
-    risk_level: 'MEDIUM',
+    risk_level: 'HIGH',
     rationale: {
       decision: 'HOLD tonight and preserve both free transfers',
       why_hold: [
         'Club press conferences and final predicted lineups are still pending',
         'Noise-Control requires a robust edge over rolling; no move should be forced before those inputs resolve',
       ],
+      publication_status: 'CONTESTED',
+      final_status: 'DECISION_NOT_READY',
       fresh_xi_note: 'The latest run prefers João Pedro in the XI; do not anchor to the prior starting XI.',
     },
-    source: 'post_gw2_noise_control_run1244_v1',
+    source: 'C0237_ALWAYS_LIVE_PLAN_V02',
     supersedes_id: 2,
   };
 }
@@ -108,6 +110,9 @@ function managerPayload(gameweek: number) {
     gameweek,
     available_gameweeks: [2, 3, 4],
     plan: historical ? null : currentPlan(gameweek),
+    saved_plan: historical ? null : { ...currentPlan(gameweek), source: 'post_gw2_noise_control_run1244_v1', status: 'PROVISIONAL_HOLD_POST_GW2_PENDING_TRANSFER_DEADLINE_AND_PRESSERS' },
+    live_plan: historical ? null : { publication_status: 'CONTESTED', execution_authorized: false, plan: currentPlan(gameweek) },
+    research_only: historical ? null : { research_only: true, numeric_production_effect: false },
     manager_state: gameweek === 3 ? {
       id: 1,
       gameweek: 3,
@@ -145,23 +150,27 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('FPL workspace keeps saved manager action primary and current projections explicitly secondary', async ({ page }) => {
+test('FPL workspace keeps the best current fully evaluated plan primary while final authority stays separate', async ({ page }) => {
   await page.goto('/?view=fpl&gw=3');
   await expect(page.getByRole('heading', { level: 1, name: 'FPL decision workspace' })).toBeVisible();
+  await expect(page.getByText('Best current plan · CONTESTED', { exact: true })).toBeVisible();
+  await expect(page.getByText('Live decision publication', { exact: true })).toBeVisible();
+  await expect(page.getByText('Contested · not final', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Shadow-model evidence is public research input only and has zero numeric production effect/)).toBeVisible();
   await expect(page.locator('.fpl-decision-board').getByText('HOLD / ROLL', { exact: true })).toBeVisible();
   await expect(page.locator('.fpl-decision-board').getByText('2 FT', { exact: true })).toBeVisible();
   await expect(page.locator('.fpl-decision-board').getByText('£0.0m', { exact: true })).toBeVisible();
   await expect(page.locator('.fpl-decision-board').getByText('No chip', { exact: true })).toBeVisible();
-  await expect(page.locator('.fpl-decision-board').getByText('Medium', { exact: true })).toBeVisible();
+  await expect(page.locator('.fpl-decision-board').getByText('Contested', { exact: true })).toBeVisible();
   await expect(page.locator('.fpl-decision-board').getByText('B.Fernandes', { exact: true })).toBeVisible();
   await expect(page.locator('.fpl-decision-board').getByText('Mbeumo', { exact: true })).toBeVisible();
   await expect(page.locator('.compact-selection').filter({ hasText: 'XI · 11/11' })).toContainText('João Pedro');
   await expect(page.locator('.compact-selection').filter({ hasText: 'Bench · 4/4' })).toContainText('Dalot');
   await expect(page.locator('.projection-separation').getByText('Run #1256', { exact: true })).toBeVisible();
   await expect(page.getByText(/Latest projection is 21h newer than the saved plan/)).toBeVisible();
-  await expect(page.getByText(/analysis only and is not a saved manager decision/)).toBeVisible();
+  await expect(page.getByText(/input to the live decision publication; final execution authority is separate/)).toBeVisible();
 
-  const captainLens = page.locator('.distribution-card').filter({ hasText: 'Saved captain' });
+  const captainLens = page.locator('.distribution-card').filter({ hasText: 'Current captain' });
   await expect(captainLens).toContainText('6.66');
   await expect(captainLens).toContainText('23%');
   await expect(captainLens).toContainText('5%');
@@ -175,7 +184,7 @@ test('FPL workspace keeps saved manager action primary and current projections e
   await fullPoolSummary.click();
   await expect(page.locator('.projection-leader')).toHaveCount(8);
   await expect(page.locator('.projection-leader').first()).toContainText('Guéhi');
-  await expect(page.getByText('Secondary model view · not transfer recommendations')).toBeVisible();
+  await expect(page.getByText('Secondary model view · not standalone transfer recommendations')).toBeVisible();
 
   const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);

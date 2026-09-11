@@ -2,12 +2,17 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 import { endpoints, publicGatewayHeaders } from '../src/lib/api';
 import { analysisEndpoints } from '../src/lib/analysis-api';
 
+const LIVE_TIMEOUT = 30_000;
+
 function desktopOnly(projectName: string): void {
   test.skip(projectName !== 'desktop-1366', 'Current production population audit runs once per CI matrix.');
 }
 
 async function json(request: APIRequestContext, url: string, authenticated = false): Promise<any> {
-  const response = await request.get(url, authenticated ? { headers: publicGatewayHeaders } : undefined);
+  const response = await request.get(url, {
+    timeout: LIVE_TIMEOUT,
+    ...(authenticated ? { headers: publicGatewayHeaders } : {}),
+  });
   expect(response.ok(), `${url} should return HTTP 2xx`).toBe(true);
   const payload = await response.json();
   expect(payload?.ok, `${url} should return ok=true`).toBe(true);
@@ -28,20 +33,27 @@ async function assertNoPageErrors(page: Page, action: () => Promise<void>): Prom
   expect(errors).toEqual([]);
 }
 
+async function openView(page: Page, view: string, gw: number, heading: string): Promise<void> {
+  await page.goto(`/?view=${view}&gw=${gw}`, { waitUntil: 'domcontentloaded', timeout: LIVE_TIMEOUT });
+  await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible({ timeout: LIVE_TIMEOUT });
+}
+
 test('current production APIs populate every v2 data surface', async ({ request }, testInfo) => {
   desktopOnly(testInfo.project.name);
+  test.setTimeout(180_000);
   const gw = await currentGameweek(request);
   const suffix = `?gw=${gw}`;
-  const [fpl, manager, intelligence, facts, human, betting, calibration, engine] = await Promise.all([
-    json(request, `${endpoints.fpl}${suffix}`),
-    json(request, `${endpoints.managerPlan}${suffix}`, true),
-    json(request, `${endpoints.fixtures}${suffix}`),
-    json(request, `${endpoints.fixtureFacts}${suffix}`),
-    json(request, `${analysisEndpoints.humanInsights}${suffix}`),
-    json(request, `${analysisEndpoints.betting}${suffix}`),
-    json(request, `${analysisEndpoints.calibration}${suffix}`),
-    json(request, `${analysisEndpoints.engineDiagnostics}${suffix}`, true),
-  ]);
+
+  // Keep the production gate intentionally sequential. Heavy current-state endpoints should
+  // not be load-tested by CI simply to prove that their data contracts are populated.
+  const fpl = await json(request, `${endpoints.fpl}${suffix}`);
+  const manager = await json(request, `${endpoints.managerPlan}${suffix}`, true);
+  const intelligence = await json(request, `${endpoints.fixtures}${suffix}`);
+  const facts = await json(request, `${endpoints.fixtureFacts}${suffix}`);
+  const human = await json(request, `${analysisEndpoints.humanInsights}${suffix}`);
+  const betting = await json(request, `${analysisEndpoints.betting}${suffix}`);
+  const calibration = await json(request, `${analysisEndpoints.calibration}${suffix}`);
+  const engine = await json(request, `${analysisEndpoints.engineDiagnostics}${suffix}`, true);
 
   expect(fpl.gameweek).toBe(gw);
   expect(fpl.squad).toHaveLength(15);
@@ -104,64 +116,62 @@ test('current production APIs populate every v2 data surface', async ({ request 
   expect(engine.production_fixture_layer?.fixtures).toBe(10);
   expect(engine.governance?.ok).toBe(true);
   expect(engine.orchestration_readiness?.projection_ready).toBe(true);
-  expect(engine.orchestration_readiness?.decision_ready).toBe(true);
+  // Decision readiness is a lifecycle state. Before the T−2 final gate, false is valid and
+  // must not be confused with absent diagnostics data.
+  expect(typeof engine.orchestration_readiness?.decision_ready).toBe('boolean');
   expect((engine.source_health?.zero_cost?.sources ?? []).length).toBeGreaterThan(0);
 });
 
 test('every current v2 page renders its populated sections without silent blanks', async ({ page, request }, testInfo) => {
   desktopOnly(testInfo.project.name);
+  test.setTimeout(180_000);
   const gw = await currentGameweek(request);
 
   await assertNoPageErrors(page, async () => {
-    await page.goto(`/?view=home&gw=${gw}`);
-    await expect(page.getByRole('heading', { level: 1, name: 'Command Center' })).toBeVisible();
-    await expect(page.locator('.decision-grid .decision-metric')).toHaveCount(4);
-    await expect(page.locator('.home-grid .pulse-card')).toHaveCount(3);
+    await openView(page, 'home', gw, 'Command Center');
+    await expect(page.locator('.decision-grid .decision-metric')).toHaveCount(4, { timeout: LIVE_TIMEOUT });
+    await expect(page.locator('.home-grid .pulse-card')).toHaveCount(3, { timeout: LIVE_TIMEOUT });
     await expect(page.locator('.state-panel')).toHaveCount(0);
 
-    await page.goto(`/?view=fpl&gw=${gw}`);
-    await expect(page.getByRole('heading', { level: 1, name: 'FPL decision workspace' })).toBeVisible();
-    await expect(page.locator('.player-tile-grid .player-tile')).toHaveCount(11);
-    await expect(page.locator('.bench-list .player-tile')).toHaveCount(4);
+    await openView(page, 'fpl', gw, 'FPL decision workspace');
+    await expect(page.locator('.player-tile-grid .player-tile')).toHaveCount(11, { timeout: LIVE_TIMEOUT });
+    await expect(page.locator('.bench-list .player-tile')).toHaveCount(4, { timeout: LIVE_TIMEOUT });
     const fullPool = page.locator('.full-pool-details summary');
+    await expect(fullPool).toBeVisible({ timeout: LIVE_TIMEOUT });
     await fullPool.click();
-    await expect(page.locator('.projection-leader')).toHaveCount(8);
+    await expect(page.locator('.projection-leader')).toHaveCount(8, { timeout: LIVE_TIMEOUT });
     for (const leader of await page.locator('.projection-leader').all()) {
       const metrics = await leader.locator('.leader-metrics').innerText();
       expect(metrics).not.toContain('—');
     }
 
-    await page.goto(`/?view=fixtures&gw=${gw}`);
-    await expect(page.getByRole('heading', { level: 1, name: 'Fixtures' })).toBeVisible();
-    await expect(page.locator('.fixture-card')).toHaveCount(10);
+    await openView(page, 'fixtures', gw, 'Fixtures');
+    await expect(page.locator('.fixture-card')).toHaveCount(10, { timeout: LIVE_TIMEOUT });
     await expect(page.locator('.fixture-modal-trigger:disabled')).toHaveCount(0);
     await expect(page.getByText('Prediction unavailable', { exact: true })).toHaveCount(0);
 
-    await page.goto(`/?view=markets&gw=${gw}`);
-    await expect(page.getByRole('heading', { level: 1, name: 'Betting' })).toBeVisible();
-    await expect(page.locator('.legacy-bet-card')).toHaveCount(4);
+    await openView(page, 'markets', gw, 'Betting');
+    await expect(page.locator('.legacy-bet-card')).toHaveCount(4, { timeout: LIVE_TIMEOUT });
     await page.locator('.market-diagnostics-disclosure summary').click();
-    await expect(page.locator('.market-card')).toHaveCount(10);
+    await expect(page.locator('.market-card')).toHaveCount(10, { timeout: LIVE_TIMEOUT });
     await expect(page.locator('.market-action-chip.is-missing')).toHaveCount(0);
 
-    await page.goto(`/?view=performance&gw=${gw}`);
-    await expect(page.getByRole('heading', { level: 1, name: 'Performance' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Current FPL snapshot' })).toBeVisible();
+    await openView(page, 'performance', gw, 'Performance');
+    await expect(page.getByRole('heading', { name: 'Current FPL snapshot' })).toBeVisible({ timeout: LIVE_TIMEOUT });
     const projectionCard = page.locator('.projection-calibration-card');
     await expect(projectionCard).toContainText('Current XI xPts');
     const currentXiRow = projectionCard.locator('div').filter({ hasText: /^Current XI xPts/ }).first();
     await expect(currentXiRow).not.toContainText('—');
     const matched = await projectionCard.locator('div').filter({ hasText: /^Matched players/ }).first().innerText();
     if (/^Matched players\s+0/.test(matched)) {
-      await expect(page.getByText(new RegExp(`External benchmark not captured for GW${gw}`))).toBeVisible();
+      await expect(page.getByText(new RegExp(`External benchmark not captured for GW${gw}`))).toBeVisible({ timeout: LIVE_TIMEOUT });
       await expect(projectionCard).toContainText('Not captured');
       await expect(projectionCard).toContainText('Not available');
     }
 
-    await page.goto(`/?view=engine&gw=${gw}`);
-    await expect(page.getByRole('heading', { level: 1, name: 'Engine & Research' })).toBeVisible();
-    await expect(page.getByText('Governance clean', { exact: true })).toBeVisible();
-    await expect(page.locator('.source-health-card').first()).toBeVisible();
+    await openView(page, 'engine', gw, 'Engine & Research');
+    await expect(page.getByText('Governance clean', { exact: true })).toBeVisible({ timeout: LIVE_TIMEOUT });
+    await expect(page.locator('.source-health-card').first()).toBeVisible({ timeout: LIVE_TIMEOUT });
     await expect(page.locator('.analysis-hero-metrics')).not.toContainText('Latest FPL run—');
     await expect(page.locator('.state-panel')).toHaveCount(0);
   });

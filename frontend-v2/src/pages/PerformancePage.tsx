@@ -20,6 +20,9 @@ export function PerformancePage({ requestedGameweek }: { requestedGameweek: numb
   const retrospective = data.validation.retrospective.filter((row) => row.evaluated_fixtures > 0);
   const retrospectiveByGw = new Map<number, typeof retrospective>();
   for (const row of retrospective) retrospectiveByGw.set(row.gameweek, [...(retrospectiveByGw.get(row.gameweek) ?? []), row]);
+  const benchmarkMatched = data.summary.matched_players ?? 0;
+  const benchmarkXiMatched = data.summary.benchmark_xi_matched ?? 0;
+  const benchmarkAvailable = benchmarkMatched > 0 && data.summary.benchmark_xi_xpts != null;
 
   return <div className="analysis-page performance-page">
     <header className="page-intro analysis-intro">
@@ -47,8 +50,9 @@ export function PerformancePage({ requestedGameweek }: { requestedGameweek: numb
     </section>
 
     <section className="analysis-section" aria-labelledby="projection-heading">
-      <div className="analysis-section-heading"><div><span className="page-eyebrow">Projection calibration</span><h2 id="projection-heading">Current FPL snapshot</h2></div><p>This compares projections with external benchmarks; it is not realised FPL accuracy.</p></div>
-      <article className="analysis-card projection-calibration-card"><dl className="stacked-metrics"><Metric label="Current XI xPts" value={metric(data.summary.current_xi_xpts, 2)} /><Metric label="Benchmark XI xPts" value={metric(data.summary.benchmark_xi_xpts, 2)} /><Metric label="Matched players" value={String(data.summary.matched_players ?? '—')} /><Metric label="MAE vs benchmark" value={metric(data.summary.mae, 3)} /></dl></article>
+      <div className="analysis-section-heading"><div><span className="page-eyebrow">Projection calibration</span><h2 id="projection-heading">Current FPL snapshot</h2></div><p>This compares projections with external benchmarks when a benchmark snapshot was actually captured. Missing benchmark coverage is never converted to zero.</p></div>
+      {!benchmarkAvailable ? <aside className="analysis-notice" role="note"><strong>External benchmark not captured for GW{data.gameweek}</strong><span>The engine projection is available, but no same-Gameweek benchmark players are stored. Benchmark xPts and MAE therefore remain unavailable rather than being shown as zero.</span></aside> : null}
+      <article className="analysis-card projection-calibration-card"><dl className="stacked-metrics"><Metric label="Current XI xPts" value={metric(data.summary.current_xi_xpts, 2)} /><Metric label="Frozen XI xPts" value={metric(data.summary.frozen_xi_xpts, 2)} /><Metric label="Benchmark XI xPts" value={benchmarkAvailable ? metric(data.summary.benchmark_xi_xpts, 2) : 'Not captured'} /><Metric label="Benchmark XI matched" value={benchmarkAvailable ? String(benchmarkXiMatched) : '0 · unavailable'} /><Metric label="Matched players" value={benchmarkAvailable ? String(benchmarkMatched) : '0 · unavailable'} /><Metric label="MAE vs benchmark" value={benchmarkAvailable ? metric(data.summary.mae, 3) : 'Not available'} /></dl></article>
     </section>
 
     <details className="analysis-details research-details"><summary>Methodology</summary><div><p>Forward validation means the predictions were locked before the results existed. That is why it carries more weight than a retrospective replay. Detailed experimental model comparisons live in Engine & Research so this page can stay focused on real-world performance.</p><p>Frozen FPL run used for this comparison: <strong>{data.frozen_prediction_run_id ?? '—'}</strong>.</p></div></details>

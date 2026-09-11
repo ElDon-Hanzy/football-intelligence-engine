@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FixtureFactsItem, FplFixtureResult, RecentTeamResultSchema } from '../../lib/contracts';
 import type { HighScoreIntelligence } from '../../lib/fixture-intelligence-contracts';
 import type { z } from 'zod';
-import { assessCall } from '../../lib/fixtures';
+import { assessCall, exactScoreConflictsWithCall } from '../../lib/fixtures';
 import { auditExactScore, auditOutcomeCode } from '../../lib/prediction-audit';
 import { PredictionAuditMark } from '../predictions/PredictionAuditMark';
 import { MatchupModal } from './MatchupModal';
@@ -29,6 +29,7 @@ export function FixtureCard({ fixture, facts, highScore, highScorePending = fals
   const prediction = fixture.prediction;
   const assessment = assessCall(prediction?.markets);
   const headlineScore = prediction?.headline_score ?? prediction?.raw_modal_score ?? null;
+  const scoreConflict = exactScoreConflictsWithCall(headlineScore, assessment);
   const scoreActual = fixture.home_score != null && fixture.away_score != null ? `${fixture.home_score}-${fixture.away_score}` : null;
   const callDisplay = assessment.top?.code === 'H' ? `${homeShort} win` : assessment.top?.code === 'A' ? `${awayShort} win` : assessment.top?.code === 'D' ? 'Draw' : 'Unavailable';
   const modalReady = evidenceStatus === 'aligned' && facts != null;
@@ -49,7 +50,9 @@ export function FixtureCard({ fixture, facts, highScore, highScorePending = fals
       <div className="compact-prediction" aria-label="Prediction summary">
         <span className={`compact-call-state is-${assessment.state}`}>{callStateLabel(assessment.state)}</span>
         <strong>{predictionLabel}{directionAudit == null ? null : <PredictionAuditMark correct={directionAudit.correct} label="top 1X2 prediction" />}</strong>
-        <small>Most likely exact score <b>{headlineScore ?? '—'}</b>{scoreAudit == null ? null : <PredictionAuditMark correct={scoreAudit.correct} label="exact-score prediction" />}</small>
+        {scoreConflict
+          ? <small className="score-conflict">Exact-score call withheld · modal <b>{headlineScore}</b> conflicts with the 1X2 {assessment.state}</small>
+          : <small>{assessment.state === 'no-edge' ? 'Modal exact score' : 'Most likely exact score'} <b>{headlineScore ?? '—'}</b>{scoreAudit == null ? null : <PredictionAuditMark correct={scoreAudit.correct} label="exact-score prediction" />}</small>}
         {fixture.finished ? <small className="actual-score">Actual {scoreActual ?? '—'}</small> : null}
       </div>
       <CompactTeam name={away} shortName={awayShort} teamCode={awayTeamCode} recent={facts?.away.recent ?? []} away />

@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-11 (Dubai) — through C0247 architecture audit_
+_Last updated: 2026-09-11 (Dubai) — through C0248 sequential decision-control integration_
 
 ## 1. Mission
 
@@ -16,7 +16,7 @@ Canonical project description: `PROJECT_DESCRIPTION.md`.
 - Historical forecasts/decisions are append-only and never rewritten with hindsight.
 - Completed-match evidence may update future decisions only.
 - Missing data is unknown, never zero.
-- Unvalidated research/shadow evidence has zero numeric production effect.
+- Unvalidated research/shadow evidence has zero numeric player-model production effect.
 - Projection readiness is not decision readiness.
 - Every meaningful FPL action compares with ROLL.
 - Expected minutes, tactical role and fixture quality are structural gates.
@@ -25,7 +25,7 @@ Canonical project description: `PROJECT_DESCRIPTION.md`.
 - Captaincy is optimized separately from the squad.
 - Serious prior challengers persist until explicitly resolved on current state/lineage.
 - Live Supabase/runtime evidence outranks documentation when they disagree.
-- More layers are not automatically better; prefer consolidation when responsibilities overlap.
+- More layers are not automatically better; consolidate overlapping responsibilities.
 
 ## 3. Production sources of truth
 
@@ -33,31 +33,18 @@ Canonical project description: `PROJECT_DESCRIPTION.md`.
 - GitHub: `ElDon-Hanzy/football-intelligence-engine`
 - FPL Team ID: `3559923`
 - Engineering ledger: `public.change_tracker_working`
-- Architecture registry: C0213 machine-readable inventory/dependency/governance surfaces.
+- Architecture registry/governance: C0213 machine-readable surfaces.
 
-Current live governance at C0247 audit:
+The forecast core remains compact: 14 production-effect components, all behaviorally tested. C0242/C0248 are decision-control consumers and do not rewrite player xPts.
 
-- tracker rows before C0247 closeout: 171
-- production-effect components: 14
-- behavioral consumption: 14/14 PASS
-- required capabilities: 19/19, zero contradictions
-- governed implemented rows requiring consumption contracts: 83/83 covered
-- active duplicate cron targets: 0
-- active retired external deployments: 0
-- total registered components: 720
-
-## 4. Canonical production forecast core
-
-The live production-effect stack remains compact and behaviorally tested:
+## 4. Canonical forecast core
 
 `RESULTS / FPL / FOOTBALL SOURCES`
 → canonical player/team/role/fixture state
 → C0159 fixture derivative
 → C0166 production fixture forecast
-→ `private.fpl_adjusted_team_lambda_v01`
-→ `private.fpl_fixture_goal_lambda_v03`
-→ `private.fpl_fixture_assist_lambda_v03`
-→ `private.fpl_current_event_distribution_v01`
+→ player goal/assist/team lambdas
+→ event distribution
 → `private.generate_upcoming_fpl_projection_core_v01`
 → full-pool optimizer.
 
@@ -65,109 +52,163 @@ Realized tactical roles are factual production state. Research/shadow families r
 
 ## 5. Current FPL decision architecture
 
-Current live downstream sequence is approximately:
+Current live sequence:
 
 `FULL-POOL OPTIMIZER`
 → C0227 uncertainty
-→ C0228 diverse structural ensemble/equivalence
+→ C0228 structural ensemble/equivalence
 → C0229 structural robustness
-→ C0230 shadow team-regime diagnostic (zero numeric effect)
+→ C0230 shadow team-regime diagnostic
 → C0231 forward-management approximation
 → C0232 OR/rank utility
 → C0233 adversarial red team
 → C0240 final adversarial optimization
+→ C0242 named-challenger + captaincy consistency
+→ **C0248 sequential FT/chip/price supervisory control**
 → C0234 fail-closed final authorization
 → C0237 live publication
-→ final/execution ledger only if authorized.
+→ final/execution ledger only when authorized.
 
-C0241 enforces exact-horizon decision lineage and repeat-idempotency.
+C0241 enforces exact-horizon lineage and repeat-idempotency.
 
-C0242 is **In Progress** and adds persistent named challengers plus captaincy equivalence. It is not yet fully integrated into C0234/C0237.
+C0242 is **Completed / Verified** and integrated into C0234/C0237.
 
-## 6. C0247 architecture finding
+C0248 is **In Progress / Implemented**. It supervises C0240 but does not yet replace C0240 as the normal-transfer selector.
 
-The forecast/model core is currently healthy. The main weakness is downstream decision architecture.
+## 6. C0248 consolidated planner
 
-The current 5-GW optimizer evaluates a largely static XV across the horizon. C0240 searches immediate transfer counts (current FTs, +1 hit, +2 hits) but does not simulate the weekly state transition in which a new FT arrives each Gameweek and the squad can be re-optimized after new information/prices.
+C0243-C0246 were consolidated into one program rather than four independent layers.
 
-C0231 approximates one-/two-transfer premium access but does not solve the sequential transfer path.
+Current C0248 capabilities:
 
-The optimizer already discounts bench points (default bench weight 0.12), so it does **not** value XI and bench equally. The remaining issue is a fixed generic bench weight inside a static-XV horizon; normal-GW bench value should differ materially from Bench Boost scoring value.
+- explicit state: squad + purchase prices + selling values + bank + FT inventory;
+- +1 FT state transition each new GW, capped at 5;
+- 0/1/2 normal-transfer actions per simulated future GW plus preserved named/legacy roots;
+- exact hit accounting;
+- dynamic XI/captain each GW;
+- expected-autosub bench utility instead of a flat bench percentage;
+- root preservation so ROLL, C0228 baseline, C0240 survivor, named 2FT challenger and Wildcard cannot be silently pruned against each other;
+- first-party official FPL price-predictor capture and timing control;
+- BB/TC/FH current-action evaluation;
+- Wildcard as a true sequential root retaining banked FTs;
+- terminal-state sensitivity so end-of-horizon FT inventory is not valued at zero;
+- C0234/C0237 integration.
 
-Detailed evidence: `project-management/C0247_FULL_ENGINE_DECISION_ARCHITECTURE_AUDIT_20260911.md`.
+Detailed plan/checkpoints:
 
-## 7. Pending architecture requirements — NOT AUTHORIZED FOR IMPLEMENTATION
+- `project-management/C0248_SEQUENTIAL_MULTI_GW_DECISION_PLANNER_PLAN_20260911.md`
+- `project-management/C0248_CHECKPOINT_B_SEQUENTIAL_CORE_20260911.md`
+- `project-management/C0248_CHECKPOINT_D_PRICE_TIMING_20260911.md`
+- `project-management/C0248_CHECKPOINT_E_CHIP_TIMING_20260911.md`
+- `project-management/C0248_CHECKPOINT_F_WILDCARD_TERMINAL_AND_FINAL_GATE_20260911.md`
 
-- C0243 — Price Movement & Transfer Timing Control
-- C0244 — Chip Timing & Opportunity-Cost Optimizer
-- C0245 — Sequential FT Utilization & Ideal-Squad Path Planner
-- C0246 — XI Priority, Bench Leakage & Hit Penalty Recalibration
+## 7. Current GW4 sequential evidence
 
-C0247 recommendation: do **not** implement these as four independent production layers. Consolidate the valid requirements into the minimum multi-GW state-transition decision planner after explicit user authorization.
+Current projection lineage remains GW4 run 1356 with forward runs 1348/1350/1352/1353 until the next permitted cadence refresh.
 
-## 8. Multi-GW target design
+C0248 V04 root-preserved exact-horizon utility:
 
-The future planner should model state explicitly:
+- Wildcard fresh root: **248.519** raw
+- C0240 4FT/-4 normal root: **232.860**
+- C0228 2FT baseline: **227.528**
+- named 2FT De Cuyper + Guéhi: **226.342**
+- ROLL root: **222.330**
 
-`Squad + bank + purchase/selling prices + FT inventory + chip inventory + current information`
-→ legal action (ROLL / transfers / hits / chip)
-→ GW scoring (XI-first, captaincy separate, state-dependent bench value)
-→ price/information update
-→ +1 FT at next Gameweek
-→ re-optimization.
+C0240 remains the best **normal-transfer** root under current assumptions.
 
-It should compare reachable normal-transfer paths with Wildcard, Bench Boost, Triple Captain and Free Hit timing while preserving chip scarcity and future option value.
+The named 2FT De Cuyper + Guéhi path remains important because it was the architecture challenge that exposed static-horizon FT underpricing. C0242 exact fixed-squad evaluation resolves it at 221.104 versus 229.434 (`BEATEN`), while C0248 sequential evaluation narrows the gap materially.
 
-Price predictions affect execution timing/feasibility, not xPts.
+## 8. Wildcard / terminal option value
 
-## 9. Current GW4 decision state
+The raw Wildcard edge over the best normal C0248 root is +15.659 over GW4–GW8.
 
-No external transfer or chip has been executed by the engine.
+That raw comparison is not robust enough to use because:
 
-Current manager state remains 3 FTs, £0.0m ITB and £99.6m liquidation value unless superseded by a newer authoritative manager-state snapshot.
+- Wildcard finishes GW8 with 1 FT;
+- C0240 normal path finishes GW8 with 5 FTs;
+- 11 first-half GWs remain after the exact horizon;
+- the unused Wildcard itself still has option value.
 
-The current C0240 5-GW adversarial survivor is a 4-transfer / -4 structure, but it is **not final authorization** and its strategic superiority is contested by the newly identified sequential-FT/static-XV architecture gap.
+Break-even value per extra terminal FT, ignoring bank and unused-Wildcard option: **3.915 points**.
 
-A serious current challenger is the 2FT path:
+At 4 points per extra terminal FT the Wildcard edge flips slightly negative. Therefore current Wildcard action is `HOLD_NO_ROBUST_EDGE`, not “best raw score = play Wildcard.”
 
-- O'Reilly → De Cuyper
-- Mosquera → Guéhi
-- roll one FT
+## 9. Current chip state
 
-Its exact constrained static-horizon objective is lower than the C0240 survivor, but that comparison does not yet price the extra FT entering GW5, extra liquidity or future re-optimization correctly.
+Entry history confirms no first-half chips have been used.
 
-The older 3FT Guéhi + De Cuyper + Barry challenger is currently infeasible by £0.1m after O'Reilly's price fall; it was not defeated on football merit.
+Current C0248 decision:
 
-Captaincy current formal class: `NO_MEANINGFUL_EDGE` among the leading candidates inside the production error band. A nominal optimizer captain must not be presented as having a meaningful edge.
+- Bench Boost: **HOLD** — GW4 incremental EV 4.846; only two bench slots at 60+ xMins; better exact-window BB values already exist.
+- Triple Captain: **HOLD** — GW4 incremental EV 6.174; GW6 is higher inside the exact horizon.
+- Free Hit: **HOLD_NO_ROBUST_EDGE** — current same-utility gain +2.618; any future FH opportunity worth >2.618 reverses current use.
+- Wildcard: **HOLD_NO_ROBUST_EDGE** — large raw five-GW edge, but terminal FT / retained-chip option value makes it non-robust.
+- Current recommended chip: **NONE**.
 
-## 10. Chip state
+The engine intentionally does not claim to know the optimal GW9–GW19 chip weeks yet. It does not need that knowledge to conclude that no chip is robust enough today.
 
-C0234 currently contains only partial Wildcard logic and hard-codes the season-level chip opportunity model as unavailable when a Wildcard candidate appears.
+## 10. Price timing
 
-There is no complete BB/TC/FH timing optimizer yet. Do not infer that chip availability equals chip desirability.
+Official FPL `bootstrap-static` price-predictor fields are captured append-only in `public.fpl_price_predictor_snapshots`, joined through `players.fpl_player_id`.
 
-## 11. Documentation / source-control state
+Current preserved normal roots show no material next-update affordability/selling-value risk. Policy is `WAIT_FOR_INFORMATION`.
 
-C0247 added:
+Price evidence may accelerate an already-robust football decision; it may not create a transfer.
 
-- `PROJECT_DESCRIPTION.md`
-- `skills/fie/SKILL.md`
-- `project-management/C0247_FULL_ENGINE_DECISION_ARCHITECTURE_AUDIT_20260911.md`
+## 11. Captaincy
 
-GitHub repository metadata currently has no repository-description field set. `PROJECT_DESCRIPTION.md` is the canonical written description until repository metadata / product Project settings are separately updated through their supported UI/API.
+Current C0242 class remains `NO_MEANINGFUL_EDGE` inside the 1.0-point mean-error band.
 
-One active research-only orphan remains: `EDGE_FUNCTION:c0120-historical-correct-score` is present in the live registry but absent from current repository source. It has zero production model effect and should be reconciled separately, not silently deleted.
+Nominal mean leader: Gabriel.
+Haul-tail leader: Saka.
+Bruno, Mbeumo and João Pedro are also inside the equivalence band.
 
-## 12. Immediate sequence
+Do not describe the nominal captain as having a meaningful edge unless the final refreshed evidence proves one.
 
-1. Complete/document C0247 governance closeout.
-2. Complete C0242 integration/regression verification before adding another downstream runtime.
-3. Keep C0243-C0246 design-only until explicit user authorization.
-4. When authorized, first consolidate their requirements into one minimum multi-GW planner rather than blindly implementing four layers.
-5. Preserve the Sep 12 14:30 Dubai T−2 final-information refresh requirement for GW4.
-6. Do not execute external FPL transfers/chips or mutate a final manager plan without final authorization.
+## 12. Current C0234 / C0237 state
 
-## 13. Canonical references
+`fpl-autonomous-gate` v5 has 15 gates.
+
+Current result:
+
+- 14/15 pass;
+- sole blocker: `FINAL_T_MINUS_2H_REFRESH`;
+- current chip action: NONE;
+- C0248 best normal root: C0240 survivor;
+- final status: `DECISION_NOT_READY` until the scheduled refresh.
+
+C0237 publication #14:
+
+- PRE_FINAL;
+- CONTESTED;
+- execution unauthorized;
+- C0240 survivor rendered;
+- C0242 consistency rendered;
+- C0248 sequential control rendered;
+- current chip NONE.
+
+No external transfer or chip has been executed. `public.fpl_manager_plans` remains untouched.
+
+## 13. Final timing
+
+GW4 deadline: 2026-09-12 12:30 UTC / 16:30 Dubai.
+Final T−2h threshold: 2026-09-12 10:30 UTC / 14:30 Dubai.
+
+Do not bypass the canonical projection cadence or final-information refresh.
+
+## 14. Open C0248 work
+
+Keep C0248 `In Progress` rather than claiming false completion. Remaining research/engineering:
+
+1. calibrate terminal FT/flexibility option value without hard-coding a fake universal points-per-FT constant;
+2. extend structural chip-opportunity planning beyond the exact projection horizon while failing closed on uncertain fixtures/DGWs;
+3. validate whether future information value can be represented without look-ahead;
+4. determine whether C0231/C0233/C0240 responsibilities can be simplified after C0248 proves stable;
+5. run the full stack again after the daily and final permitted projection refreshes.
+
+These are not reasons to add more independent production layers.
+
+## 15. Canonical references
 
 - `PROJECT_DESCRIPTION.md`
 - `DECISIONS_AND_HISTORY.md`
@@ -178,3 +219,5 @@ One active research-only orphan remains: `EDGE_FUNCTION:c0120-historical-correct
 - `skills/fie/SKILL.md`
 - `project-management/C0242_DECISION_CONSISTENCY_CORRECTION_20260911.md`
 - `project-management/C0247_FULL_ENGINE_DECISION_ARCHITECTURE_AUDIT_20260911.md`
+- `project-management/C0248_SEQUENTIAL_MULTI_GW_DECISION_PLANNER_PLAN_20260911.md`
+- C0248 checkpoint B/D/E/F documents.

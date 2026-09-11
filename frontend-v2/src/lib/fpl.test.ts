@@ -51,8 +51,10 @@ describe('FPL decision workspace helpers', () => {
     expect(relation.label).toContain('21h newer');
   });
 
-  it('only accepts genuine direct current-fixture distribution semantics', () => {
+  it('accepts the direct current-fixture distribution semantic family while rejecting legacy tails', () => {
     expect(isDirectCurrentDistribution(player(1, 7, 0.2, 80))).toBe(true);
-    expect(isDirectCurrentDistribution({ ...player(2, 7, 0.2, 80), tail_semantics: 'legacy_shifted_tail' })).toBe(false);
+    expect(isDirectCurrentDistribution({ ...player(2, 7, 0.2, 80), tail_semantics: 'direct_current_fixture_event_distribution_plus_explicit_penalty_miss' })).toBe(true);
+    expect(isDirectCurrentDistribution({ ...player(3, 7, 0.2, 80), tail_semantics: 'direct_current_fixture_event_distribution_v2' })).toBe(true);
+    expect(isDirectCurrentDistribution({ ...player(4, 7, 0.2, 80), tail_semantics: 'legacy_shifted_tail' })).toBe(false);
   });
 });

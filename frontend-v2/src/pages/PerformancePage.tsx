@@ -40,7 +40,7 @@ export function PerformancePage({ requestedGameweek }: { requestedGameweek: numb
 
   return <div className="analysis-page performance-page">
     <header className="page-intro analysis-intro">
-      <div><span className="page-eyebrow">{lifecycleLabel}</span><h1>Performance</h1><p>Completed forward evidence only. The active Gameweek is never labelled realised until a frozen sample from that Gameweek has actually been evaluated.</p></div>
+      <div><span className="page-eyebrow">{lifecycleLabel}</span><h1>Performance</h1><p>What happened, how accurate the engine was, and how strong the evidence is. Detailed model experiments stay in Engine & Research rather than cluttering this summary. Only completed forward evidence is labelled as realised performance; the active Gameweek is never treated as completed before its frozen sample is evaluated.</p></div>
       <span className="sync-badge" role="status"><span aria-hidden="true" />{data.active_model}</span>
     </header>
 

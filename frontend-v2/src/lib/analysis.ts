@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { fetchValidated, publicGatewayHeaders } from './api';
 import { analysisEndpoints } from './analysis-api';
-import { BettingApiSchema, CalibrationSummarySchema, EngineDiagnosticsSchema, type BettingFixture } from './analysis-contracts';
+import { BettingApiSchema, CalibrationSummarySchema, EngineDiagnosticsSchema, type BettingFixture, type CalibrationSummary } from './analysis-contracts';
 
 const withGameweek = (endpoint: string, gameweek: number) => gameweek > 0 ? `${endpoint}?gw=${gameweek}` : endpoint;
 
@@ -41,10 +41,27 @@ export function useMarketsData(gameweek: number) {
   });
 }
 
+export function normalizeCalibrationSummary(data: CalibrationSummary): CalibrationSummary {
+  const matchedPlayers = data.summary.matched_players ?? 0;
+  if (matchedPlayers > 0) return data;
+  return {
+    ...data,
+    summary: {
+      ...data.summary,
+      benchmark_xi_xpts: null,
+      benchmark_xi_matched: 0,
+      mae: null,
+      bias: null,
+    },
+  };
+}
+
 export function usePerformanceData(gameweek: number) {
   return useQuery({
     queryKey: ['performance', gameweek],
-    queryFn: ({ signal }) => fetchValidated(withGameweek(analysisEndpoints.calibration, gameweek), CalibrationSummarySchema, signal),
+    queryFn: async ({ signal }) => normalizeCalibrationSummary(
+      await fetchValidated(withGameweek(analysisEndpoints.calibration, gameweek), CalibrationSummarySchema, signal),
+    ),
   });
 }
 

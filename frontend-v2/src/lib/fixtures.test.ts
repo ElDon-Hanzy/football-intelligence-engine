@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FixtureFact, FixtureFactsItem, FplFixtureResult } from './contracts';
-import { assessCall, buildMatchStory, evidenceMatchesPrediction, groupModalFacts, selectCardFacts } from './fixtures';
+import { assessCall, buildMatchStory, evidenceMatchesPrediction, exactScoreConflictsWithCall, exactScoreOutcome, groupModalFacts, selectCardFacts } from './fixtures';
 
 function fact(id: number, family: string, text: string, rank: number, alignment: FixtureFact['alignment'] = 'SUPPORTS'): FixtureFact {
   return {
@@ -20,11 +20,23 @@ function fact(id: number, family: string, text: string, rank: number, alignment:
 }
 
 describe('fixture scan decision semantics', () => {
-  it('uses the registered strong / lean / no-edge presentation bands', () => {
+  it('requires absolute probability as well as separation for strong / lean calls', () => {
     expect(assessCall({ home_win: 0.50, draw: 0.30, away_win: 0.20 }).state).toBe('strong');
     expect(assessCall({ home_win: 0.41, draw: 0.35, away_win: 0.24 }).state).toBe('lean');
     expect(assessCall({ home_win: 0.3819, draw: 0.2433, away_win: 0.3745 }).state).toBe('no-edge');
+    expect(assessCall({ home_win: 0.4336, draw: 0.2482, away_win: 0.3179 }).state).toBe('lean');
+    expect(assessCall({ home_win: 0.46, draw: 0.25, away_win: 0.29 }).state).toBe('lean');
     expect(assessCall(undefined).state).toBe('unavailable');
+  });
+
+  it('detects an exact-score outcome that conflicts with a meaningful 1X2 call without inventing a replacement score', () => {
+    const villa = assessCall({ home_win: 0.4336, draw: 0.2482, away_win: 0.3179 });
+    expect(villa.state).toBe('lean');
+    expect(exactScoreOutcome('1-1')).toBe('D');
+    expect(exactScoreOutcome('2-1')).toBe('H');
+    expect(exactScoreConflictsWithCall('1-1', villa)).toBe(true);
+    expect(exactScoreConflictsWithCall('2-1', villa)).toBe(false);
+    expect(exactScoreOutcome('bad')).toBeNull();
   });
 
   it('limits compact-card evidence to three distinct families and texts', () => {

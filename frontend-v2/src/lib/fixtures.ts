@@ -67,7 +67,9 @@ export function assessCall(markets: MarketSet | null | undefined): CallAssessmen
 
 export function exactScoreOutcome(score: string | null | undefined): OutcomeCode | null {
   if (!score || !/^\d+-\d+$/.test(score)) return null;
-  const [home, away] = score.split('-').map(Number);
+  const parts = score.split('-');
+  const home = Number(parts[0]);
+  const away = Number(parts[1]);
   if (!Number.isFinite(home) || !Number.isFinite(away)) return null;
   if (home > away) return 'H';
   if (away > home) return 'A';

@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-11 (Dubai) — through C0248 Checkpoints I/J_
+_Last updated: 2026-09-11 (Dubai) — through C0248 Checkpoints I/J/K_
 
 ## 1. Mission
 
@@ -96,6 +96,8 @@ Current verified C0248 capabilities:
 - mature C0244 current-chip + first-half structural opportunity control;
 - mature C0245 terminal FT/flexibility + future-information option value;
 - Wildcard as a sequential state transition retaining banked FT count;
+- same-lineage V04 enforcement across BB/TC, Wildcard terminal sensitivity, normal-root price timing and FH current-candidate evidence;
+- dynamic FH evidence with no frozen current-GW edge constant;
 - C0234/C0237 integration as supervisory decision-control.
 
 Current V04 limitations that block production-selector cutover:
@@ -118,6 +120,7 @@ Detailed plan/checkpoints:
 - `project-management/C0248_CHECKPOINT_H_EMPIRICAL_FT_OPTION_CALIBRATION_20260911.md`
 - `project-management/C0248_CHECKPOINT_I_C0244_MATURE_FIRST_HALF_CHIP_CONTROL_20260911.md`
 - `project-management/C0248_CHECKPOINT_J_CUTOVER_READINESS_AND_LEGACY_DISPOSITION_20260911.md`
+- `project-management/C0248_CHECKPOINT_K_SAME_LINEAGE_CHIP_PRICE_FH_REPAIR_20260911.md`
 
 ## 7. Current GW4 manager and prediction lineage
 
@@ -181,7 +184,7 @@ Current C0245 interpretation remains fail-closed / preserve optionality.
 
 C0244 is **Completed / Verified** inside C0248.
 
-Live production now evaluates every GW through GW19 at an explicit evidence tier:
+Live production evaluates every GW through GW19 at an explicit evidence tier:
 
 - GW4-GW8: `EXACT_NUMERICAL`
 - GW9-GW19: `STRUCTURAL_ONLY`
@@ -190,21 +193,23 @@ Team-level fixture counting detects blanks/doubles even when total league match 
 
 A live official FPL fixture refresh on 2026-09-11 verified all 160 GW4-GW19 fixture IDs and Gameweek assignments against production. There were zero Gameweek-assignment mismatches. Twenty-five stale future kickoff times were refreshed. No BGW or DGW is currently confirmed through GW19; this is treated as `none confirmed yet`, not as evidence that none will emerge.
 
+Checkpoint K repaired the late same-lineage caveat from the C0244 closeout. Price timing, BB/TC and FH evidence now all use canonical V04 planner run 4. A catalog scan finds zero remaining C0248 support functions selecting V03.
+
 Current chip control:
 
 - Bench Boost: **HOLD** — GW4 incremental EV 4.846; GW4 ranks 5/5 inside exact GW4-GW8 window.
 - Triple Captain: **HOLD** — GW4 incremental EV 6.174; GW4 ranks 5/5 inside exact GW4-GW8 window.
-- Free Hit: **HOLD_NO_ROBUST_EDGE** — current same-utility gain +2.618; future option value unresolved.
+- Free Hit: **HOLD_NO_ROBUST_EDGE** — V04 legal fresh-squad candidate utility 67.542 versus 61.204 for the best normal sequential root, a dynamic **+6.338 lower-bound candidate edge**. This is not presented as an exhaustive optimal FH result; future FH option value remains unresolved.
 - Wildcard: **HOLD_NO_ROBUST_EDGE** — raw exact-window edge is not robust to terminal FT / retained-chip / information option value.
 - recommended current chip: **NONE**.
 
-Full first-half numerical best-week ranks remain null/fail-closed until decision-grade future player projections and fixture information exist. This is intended mature behavior, not an unfinished C0244 layer.
+The previous hard-coded FH `+2.618` runtime constant has been removed. Full first-half numerical best-week ranks remain null/fail-closed until decision-grade future player projections and fixture information exist.
 
 ## 11. Price timing
 
 Official FPL price-predictor fields are captured append-only in `public.fpl_price_predictor_snapshots` and joined through FPL player identity.
 
-Current preserved normal roots show no material next-update affordability/selling-value risk. Policy remains `WAIT_FOR_INFORMATION` / `WAIT_FOR_T_MINUS_2`.
+Price timing now uses V04 planner run 4 and is explicitly scoped to non-Wildcard normal roots. Current preserved normal roots show no material next-update affordability/selling-value risk. Policy remains `WAIT_FOR_INFORMATION` / `WAIT_FOR_T_MINUS_2`.
 
 Price evidence may accelerate an already-robust football decision; it may not create a transfer.
 
@@ -257,12 +262,14 @@ Do not mark C0248 Completed merely because its supervisory decision-control curr
 
 ## 16. Governance verification
 
-Latest verified state after C0244 maturity and C0248 cutover audit:
+Latest verified state after Checkpoint K:
 
 - C0213 production behavioral consumption tests: 14/14 PASS on GW4 prediction run 1356.
 - change-tracker governance: PASS; 0 violations, 0 completed-not-verified, 0 completed-without-refs.
 - consumption governance: PASS; 87/87 governed implemented rows covered, 0 violations.
 - canonical C0248 decision-control: ready=true; C0244 mature=true; C0245 mature; current chip `NONE`; best normal root `C0240_LEGACY`.
+- BB/TC/price/FH current evidence all report planner run 4.
+- zero runtime functions remain tied to C0248 planner V03.
 - C0248 planner remains `shadow_only=true` and `production_selected=false`.
 - historical forecasts rewritten: false.
 - no transfer/chip execution.
@@ -291,3 +298,4 @@ At T−2 perform the complete final process: fresh ingestion, full-pool optimiza
 - `project-management/C0248_SEQUENTIAL_MULTI_GW_DECISION_PLANNER_PLAN_20260911.md`
 - `project-management/C0248_CHECKPOINT_I_C0244_MATURE_FIRST_HALF_CHIP_CONTROL_20260911.md`
 - `project-management/C0248_CHECKPOINT_J_CUTOVER_READINESS_AND_LEGACY_DISPOSITION_20260911.md`
+- `project-management/C0248_CHECKPOINT_K_SAME_LINEAGE_CHIP_PRICE_FH_REPAIR_20260911.md`

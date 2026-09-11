@@ -30,15 +30,19 @@ Deno.serve(async(req)=>{
     const run=(runs||[]).filter((r:any)=>Number(r.gameweek)===gw).sort((a:any,b:any)=>new Date(b.generated_at).getTime()-new Date(a.generated_at).getTime())[0];
     if(!run)throw new Error(`No frozen snapshot for GW${gw}`);
 
-    const [{data:mv},{data:preds},{data:players},{data:teams},{data:matches},{data:fxPreds},{data:plan}]=await Promise.all([
+    const [{data:mv},{data:preds},{data:players},{data:teams},{data:matches},{data:fxPreds,error:fxe},{data:plan}]=await Promise.all([
       sb.from('model_versions').select('version').eq('id',run.model_version_id).maybeSingle(),
       sb.from('model_predictions').select('player_id,expected_points,expected_minutes,p_start,p_goal,p_assist,p_blank,p_10_plus,p_15_plus,p_20_plus,p_dc,p_bonus').eq('prediction_run_id',run.id),
       sb.from('players').select('id,web_name,position,team_id,now_cost,selected_by_percent,penalties_order,direct_freekicks_order,corners_and_indirect_freekicks_order'),
       sb.from('teams').select('id,name,short_name'),
       sb.from('matches').select('id,gameweek,home_team_id,away_team_id,kickoff_time,home_score,away_score,finished').eq('source','fpl').eq('gameweek',gw).order('kickoff_time'),
-      sb.from('fixture_prediction_snapshots').select('match_id,captured_at,home_lambda,away_lambda,top_scorelines,markets,confidence').eq('gameweek',gw).eq('is_pre_kickoff',true).order('captured_at',{ascending:false}),
+      // C0250: consume the same canonical production selector as fpl-api/betting-api.
+      // Reading raw fixture_prediction_snapshots allowed equal-timestamp C0159/C0166 rows
+      // to be chosen non-deterministically and produced cross-page score disagreements.
+      sb.from('current_production_fixture_prediction_v01').select('id,match_id,captured_at,home_lambda,away_lambda,top_scorelines,markets,confidence,headline_score,headline_score_probability,raw_modal_score,raw_modal_probability,source_snapshot').eq('gameweek',gw),
       sb.from('fpl_manager_plans').select('*').eq('gameweek',gw).order('captured_at',{ascending:false}).limit(1).maybeSingle()
     ]);
+    if(fxe)throw fxe;
 
     const tm=new Map((teams||[]).map((x:any)=>[Number(x.id),x]));
     const pm=new Map((players||[]).map((x:any)=>[Number(x.id),x]));
@@ -67,11 +71,16 @@ Deno.serve(async(req)=>{
     });
     const top_players=[...rows].sort((a:any,b:any)=>(b.expected_points||0)-(a.expected_points||0)).slice(0,10);
 
-    const latestFx=new Map<number,any>();for(const f of fxPreds||[]){if(!latestFx.has(Number(f.match_id)))latestFx.set(Number(f.match_id),f)}
+    const latestFx=new Map<number,any>();for(const f of fxPreds||[]){latestFx.set(Number(f.match_id),f)}
     const fixture_models=(matches||[]).map((m:any)=>{
       const f=latestFx.get(Number(m.id));if(!f)return null;
       const home=tm.get(Number(m.home_team_id)),away=tm.get(Number(m.away_team_id));
-      return {match_id:Number(m.id),home:home?.name||null,away:away?.name||null,kickoff_time:m.kickoff_time,home_lambda:n(f.home_lambda),away_lambda:n(f.away_lambda),top_scorelines:f.top_scorelines||[],markets:f.markets||{},confidence:n(f.confidence)};
+      return {
+        match_id:Number(m.id),home:home?.name||null,away:away?.name||null,kickoff_time:m.kickoff_time,
+        snapshot_id:Number(f.id),source_change_id:f.source_snapshot?.change_id??null,source_generator:f.source_snapshot?.generator??null,
+        captured_at:f.captured_at,home_lambda:n(f.home_lambda),away_lambda:n(f.away_lambda),top_scorelines:f.top_scorelines||[],markets:f.markets||{},confidence:n(f.confidence),
+        headline_score:f.headline_score||null,headline_score_probability:n(f.headline_score_probability),raw_modal_score:f.raw_modal_score||null,raw_modal_probability:n(f.raw_modal_probability)
+      };
     }).filter(Boolean);
 
     const favoriteRows:any[]=[];
@@ -83,21 +92,26 @@ Deno.serve(async(req)=>{
     const top_favorites=favoriteRows.filter(x=>x.prob!=null).sort((a,b)=>b.prob-a.prob).slice(0,3);
     const highest_total=[...fixture_models].sort((a:any,b:any)=>((b.home_lambda||0)+(b.away_lambda||0))-((a.home_lambda||0)+(a.away_lambda||0)))[0]||null;
 
-    const exactOptions=fixture_models.map((f:any)=>{const x=Array.isArray(f.top_scorelines)?f.top_scorelines[0]:null;return x?{type:'Correct score',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:x.score,probability:n(x.prob??x.probability),home_lambda:f.home_lambda,away_lambda:f.away_lambda}:null}).filter(Boolean).sort((a:any,b:any)=>(b.probability||0)-(a.probability||0));
+    const exactOptions=fixture_models.map((f:any)=>{
+      const raw=Array.isArray(f.top_scorelines)?f.top_scorelines[0]:null;
+      const selection=f.headline_score??raw?.score??null;
+      const probability=f.headline_score_probability??n(raw?.prob??raw?.probability);
+      return selection&&probability!=null?{type:'Correct score',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection,probability,home_lambda:f.home_lambda,away_lambda:f.away_lambda,snapshot_id:f.snapshot_id,source_change_id:f.source_change_id}:null;
+    }).filter(Boolean).sort((a:any,b:any)=>(b.probability||0)-(a.probability||0));
     const oneXtwo=fixture_models.flatMap((f:any)=>{
       const mk=f.markets||{};return [
-        {type:'1X2',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:`${f.home} win`,probability:n(mk.home_win),home_lambda:f.home_lambda,away_lambda:f.away_lambda},
-        {type:'1X2',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:'Draw',probability:n(mk.draw),home_lambda:f.home_lambda,away_lambda:f.away_lambda},
-        {type:'1X2',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:`${f.away} win`,probability:n(mk.away_win),home_lambda:f.home_lambda,away_lambda:f.away_lambda}
+        {type:'1X2',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:`${f.home} win`,probability:n(mk.home_win),home_lambda:f.home_lambda,away_lambda:f.away_lambda,snapshot_id:f.snapshot_id,source_change_id:f.source_change_id},
+        {type:'1X2',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:'Draw',probability:n(mk.draw),home_lambda:f.home_lambda,away_lambda:f.away_lambda,snapshot_id:f.snapshot_id,source_change_id:f.source_change_id},
+        {type:'1X2',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:`${f.away} win`,probability:n(mk.away_win),home_lambda:f.home_lambda,away_lambda:f.away_lambda,snapshot_id:f.snapshot_id,source_change_id:f.source_change_id}
       ];
     }).filter((x:any)=>x.probability!=null).sort((a:any,b:any)=>b.probability-a.probability);
     const totals=fixture_models.flatMap((f:any)=>{const mk=f.markets||{};return [
-      {type:'O/U 2.5',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:'Over 2.5',probability:n(mk.over_2_5),home_lambda:f.home_lambda,away_lambda:f.away_lambda},
-      {type:'O/U 2.5',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:'Under 2.5',probability:n(mk.under_2_5),home_lambda:f.home_lambda,away_lambda:f.away_lambda}
+      {type:'O/U 2.5',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:'Over 2.5',probability:n(mk.over_2_5),home_lambda:f.home_lambda,away_lambda:f.away_lambda,snapshot_id:f.snapshot_id,source_change_id:f.source_change_id},
+      {type:'O/U 2.5',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:'Under 2.5',probability:n(mk.under_2_5),home_lambda:f.home_lambda,away_lambda:f.away_lambda,snapshot_id:f.snapshot_id,source_change_id:f.source_change_id}
     ];}).filter((x:any)=>x.probability!=null).sort((a:any,b:any)=>b.probability-a.probability);
     const btts=fixture_models.flatMap((f:any)=>{const mk=f.markets||{};return [
-      {type:'BTTS',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:'BTTS Yes',probability:n(mk.btts_yes),home_lambda:f.home_lambda,away_lambda:f.away_lambda},
-      {type:'BTTS',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:'BTTS No',probability:n(mk.btts_no),home_lambda:f.home_lambda,away_lambda:f.away_lambda}
+      {type:'BTTS',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:'BTTS Yes',probability:n(mk.btts_yes),home_lambda:f.home_lambda,away_lambda:f.away_lambda,snapshot_id:f.snapshot_id,source_change_id:f.source_change_id},
+      {type:'BTTS',match_id:f.match_id,fixture:`${f.home} vs ${f.away}`,selection:'BTTS No',probability:n(mk.btts_no),home_lambda:f.home_lambda,away_lambda:f.away_lambda,snapshot_id:f.snapshot_id,source_change_id:f.source_change_id}
     ];}).filter((x:any)=>x.probability!=null).sort((a:any,b:any)=>b.probability-a.probability);
     const betting_recommendations=[exactOptions[0],oneXtwo[0],totals[0],btts[0]].filter(Boolean);
 

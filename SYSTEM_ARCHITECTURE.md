@@ -1,282 +1,186 @@
 # Football Intelligence Engine — System Architecture
 
-_Last updated: 2026-09-07 — C0213 canonical architecture_
+_Last updated: 2026-09-11 — C0247 architecture audit_
 
 ## 1. Purpose
 
-The Football Intelligence Engine has two linked products:
+The engine has two linked products:
 
-1. **FPL decision intelligence** — maximize future season-long FPL points and rank through projected minutes, player/event distributions, fixture intelligence, full-pool squad optimization, captaincy/bench logic and fail-closed decision readiness.
-2. **Betting / market-mispricing research** — test whether football context creates forecast or market value that survives chronology-safe holdout and genuine forward validation.
+1. **FPL decision intelligence** — maximize future season-long FPL points and rank under uncertainty.
+2. **Football market-mispricing research** — identify context-driven value that survives chronology-safe forward validation.
 
-Historical forecasts are immutable. Completed-match evidence may update only future projections. Missing data is never converted to zero. Research output cannot acquire production effect merely because it exists in the codebase.
+Historical forecasts are immutable. Missing data is not zero. Research code does not acquire production effect merely by existing.
 
-## 2. Sources of truth
-
-Production truth is reconciled in this order:
+## 2. Source-of-truth order
 
 1. live Supabase runtime and `public.change_tracker_working`;
-2. C0213 machine-readable architecture registry and dependency graph;
-3. GitHub implementation artifacts and migrations;
-4. this architecture package and `PROJECT_STATE.md`;
+2. C0213 architecture registry/dependency graph/governance;
+3. current GitHub source and migrations;
+4. canonical documentation;
 5. historical handovers / legacy registries.
 
-The legacy `public.engine_component_versions` and `public.research_experiment_registry` remain historical references and are **not authoritative**.
+## 3. Lifecycle contract
 
-## 3. Component lifecycle contract
+Components are classified as PRODUCTION, SHADOW, RESEARCH, UI_ONLY, INFRASTRUCTURE or RETIRED. Lifecycle is separate from canonical status and from `production_effect_enabled`.
 
-Every architecture component has exactly one lifecycle:
+At the C0247 audit the registry contains 720 components, but only 14 production-effect components. Behavioral proof is 14/14 current PASS.
 
-- `PRODUCTION` — active runtime path or state with genuine production effect;
-- `SHADOW` — runs prospectively but cannot affect production decisions;
-- `RESEARCH` — offline/diagnostic/evaluator work;
-- `UI_ONLY` — presentation without model effect;
-- `INFRASTRUCTURE` — orchestration, storage, API, diagnostics, governance or ingestion plumbing;
-- `RETIRED` — preserved historical component with no live production consumer.
-
-Lifecycle is separate from `canonical_status`, which can be `CANONICAL`, `SUPPORTING`, `DUPLICATE`, `LEGACY_ROLLBACK`, `ORPHANED`, `CANDIDATE` or `REJECTED`.
-
-Primary machine-readable surfaces:
-
-- `private.c0213_component_inventory_v01`
-- `private.c0213_component_dependency_graph_v01`
-- `private.c0213_required_capabilities`
-- `private.c0213_architecture_registry_status_v01()`
-
-## 4. Production FPL architecture
-
-Canonical path:
+## 4. Production forecast path
 
 ```text
-FPL / RESULTS / FOOTBALL SOURCES
+RESULTS / FPL / FOOTBALL SOURCES
         ↓
-INGESTION
+INGESTION + CHRONOLOGY/PROVENANCE
         ↓
-CANONICAL PLAYER + TEAM + ROLE + FIXTURE STATE
+CANONICAL PLAYER / TEAM / ROLE / FIXTURE STATE
         ↓
-FIXTURE PROJECTION (C0159 → C0166)
+C0159 BOUNDED FIXTURE DERIVATIVE
+        ↓
+C0166 PRODUCTION FIXTURE FORECAST
+        ↓
+TEAM LAMBDA ADJUSTMENT
+        ↓
+PLAYER GOAL/ASSIST LAMBDA v03
+        ↓
+EVENT POINT DISTRIBUTION
         ↓
 PLAYER PROJECTION CORE
         ↓
-POINT DISTRIBUTION
-        ↓
-3-GW FULL-POOL OPTIMIZER
-        ↓
-DECISION READINESS / NOISE-CONTROL GATE
-        ↓
-SAVED MANAGER PLAN
-        ↓
-FPL APIs / UI
+FULL-POOL OPTIMIZER
 ```
 
-### 4.1 Canonical ingestion / state
+Key production components include:
 
-- Results: `EDGE_FUNCTION:sync-gw-results`
-- FPL source data/prices: `EDGE_FUNCTION:sync-fpl-data`
-- Player state: `EDGE_FUNCTION:refresh-current-player-state`
-- Realized tactical roles: `EDGE_FUNCTION:ingest-realized-player-roles`
-- Role/tactical fixture state: `EDGE_FUNCTION:refresh-role-tactical-intelligence`
-- Current-season team state: `private.refresh_current_season_team_performance_v01`
-
-Realized roles are factual categorical state. C0212/C0213 deliberately do **not** add a new ad-hoc numeric realized-role coefficient. The current role overlay retains the canonical quantitative base profile and changes tactical categorization only.
-
-### 4.2 Fixture projection
-
-The structural fixture path is layered rather than one opaque model:
-
-```text
-structural forward fixture baseline
-        ↓
-C0147 matchup evidence (SHADOW family)
-        ↓ bounded production derivative
-C0159 production fixture forecast
-        ↓ bounded symmetric evidence
-C0166 production fixture forecast
-        ↓
-public.current_production_fixture_prediction_v01
-```
-
-C0147 itself remains shadow/research. C0159 consumes a bounded derivative; C0166 adds season-aware symmetric evidence capped at `|0.04|` log-lambda per team. The current fixture selector must surface C0166 rows for decision-grade use.
-
-### 4.3 Player projection and distribution
-
-Canonical production components:
-
+- `private.refresh_current_season_team_performance_v01`
 - `private.fpl_adjusted_team_lambda_v01`
-- `private.fpl_fixture_goal_lambda_v02`
-- `private.fpl_fixture_assist_lambda_v02`
+- `private.fpl_fixture_goal_lambda_v03`
+- `private.fpl_fixture_assist_lambda_v03`
 - `private.fpl_current_event_distribution_v01`
 - `private.generate_upcoming_fpl_projection_core_v01`
-- wrapper/orchestrator: `private.generate_upcoming_fpl_snapshot_v01`
+- `private.refresh_c0159_production_fixture_forecasts_v01`
+- `private.refresh_c0166_production_fixture_forecasts_v01`
+- `public.current_realized_player_roles`
+- `public.current_player_role_profiles`
+- `public.current_production_fixture_prediction_v01`
+- `fpl-full-pool-optimizer`.
 
-The projection core writes append-only `gameweek_prediction_runs`, `model_predictions` and eligible automated decision snapshots. The outer wrapper enforces C0204 projection-coverage reconciliation before allowing generation.
+Realized roles are factual categorical state. Research/shadow families remain zero numeric production effect unless promoted through their explicit gate.
 
-### 4.4 Two decision systems — intentionally separate
+## 5. Current downstream FPL decision stack
 
-There are two distinct selection layers:
-
-1. **Automated current-15 selector** inside `generate_upcoming_fpl_projection_core_v01`.
-2. **Full-pool optimizer + manager decision process** using `fpl-full-pool-optimizer`, Noise-Control and `public.fpl_manager_plans`.
-
-The full-pool optimizer is canonical but **read-only**:
-
-- top ~300 players by expected minutes;
-- separate explosive-exception bucket;
-- position-specific candidate pools;
-- legal 2/5/5/3 squad, max three players per club, ≤ £100m;
-- 3–5 GW weighted horizon;
-- bench leakage and transfer-cost accounting;
-- model-error/no-meaningful-edge classification.
-
-It cannot authorize or save a manager decision. `public.fpl_manager_plans` is authoritative only after decision readiness is green.
-
-## 5. Decision readiness is separate from projection readiness
-
-A successful projection refresh does **not** imply a valid FPL decision.
-
-C0213 P2 formalized the lineage:
-
-1. RESULTS
-2. FPL_CURRENT_DATA
-3. REALIZED_ROLES
-4. PLAYER_STATE
-5. TEAM_STATE
-6. TACTICAL_FIXTURE_STATE
-7. FIXTURE_PROJECTION
-8. PLAYER_PROJECTION
-9. POINT_DISTRIBUTION
-10. MANAGER_STATE
-11. FULL_POOL_OPTIMIZER
-12. DECISION_READINESS
-13. AUTOMATED_CURRENT15_DECISION
-14. SAVED_MANAGER_PLAN
-
-Canonical status surface:
-
-- `private.c0213_p2_current_lineage_v03(gw)`
-- `private.c0213_decision_readiness_v01(gw)`
-- `private.c0213_p2_optimizer_status_v01(gw, horizon)`
-
-Fail-closed guards block automated decision snapshots and future manager-plan inserts when required evidence is not ready. Numerical projections may continue to refresh.
-
-## 6. Prediction-level effect provenance
-
-C0213 P4 adds `private.c0213_prediction_effect_provenance_v01`.
-
-For each saved FPL prediction it exposes:
-
-- baseline prediction ID and baseline xPts;
-- net xPts delta from baseline;
-- team and opponent lambdas;
-- player goal and assist lambdas;
-- DC and bonus probabilities;
-- event-distribution version;
-- current fixture generator;
-- parent C0159 snapshot;
-- signed C0166 home/away adjustments;
-- explicit missing-data and realized-role numeric-effect semantics.
-
-Coverage audit:
-
-`private.c0213_prediction_effect_provenance_status_v01(gw)`
-
-At C0213 closure, GW4 run 1325 has 604/604 baseline, lambda and event-distribution lineage rows; 514/604 differ numerically from their historical baseline.
-
-## 7. Behavioral consumption proof
-
-Static dependencies are not enough. Every component marked `production_effect_enabled=true` must have a current behavioral PASS in `private.c0213_behavioral_consumption_tests`.
-
-Tests are one of:
-
-- `NUMERIC_PERTURBATION`
-- `STATE_SELECTION`
-- `OUTPUT_LINEAGE`
-- `RUNTIME_PROBE`
-
-PASS evidence is bound to the current component definition hash. A function/view/runtime change invalidates prior proof automatically until the audit is rerun.
-
-Canonical controls:
-
-- `private.c0213_component_definition_hash_v01(component_key)`
-- `private.run_c0213_behavioral_consumption_tests_v01(gw)`
-- `private.c0213_behavioral_consumption_status_v01()`
-
-`system_consolidation_ok` is fail-closed against this behavioral gate.
-
-## 8. Research architecture
-
-Research follows a separate path:
+The current live decision path is larger than the forecast core:
 
 ```text
-SOURCE
+FULL-POOL OPTIMIZER
   ↓
-FEATURE / MODEL
+C0227 uncertainty/sensitivity
   ↓
-SHADOW OUTPUT
+C0228 diverse ensemble / equivalence
   ↓
-EVALUATOR / ABLATION
+C0229 structural robustness
   ↓
-PROMOTION OR REJECTION GATE
+C0230 shadow team-regime diagnostic (zero numeric effect)
+  ↓
+C0231 forward-management approximation
+  ↓
+C0232 OR/rank utility
+  ↓
+C0233 adversarial red team
+  ↓
+C0240 final adversarial optimization
+  ↓
+C0234 fail-closed final authorization
+  ↓
+C0237 live publication
 ```
 
-Research is never promoted by code presence or one good outcome. Implemented model-effect work must have one explicit consumption pathway in `private.c0213_change_consumption_contracts`:
+Cross-cutting controls:
 
-- production consumer;
-- research evaluator/promotion gate;
-- research infrastructure;
-- blocked external source;
-- program umbrella;
-- reconciled legacy evidence.
+- C0241 exact-horizon lineage/repeat-idempotency.
+- C0242 named-challenger persistence and captaincy equivalence — implemented but not yet fully integrated into C0234/C0237.
 
-`private.c0213_tracker_consumption_governance_v01()` and the global tracker audit fail if governed implemented model-effect work has no contract.
+C0247 concludes that this decision stack is now the main over-engineering risk.
 
-## 9. APIs and UI
+## 6. Current optimizer semantics and limitation
 
-Canonical boundaries include:
+The canonical full-pool optimizer:
 
-- `fpl-api` — projections / historical frozen automated snapshots;
-- `fpl-manager-plan-api` — manager plan/state boundary;
-- fixture intelligence/facts APIs — fixture projection/evidence surfaces;
-- `engine-diagnostics-api` — readiness/governance diagnostics;
-- `frontend-v2` — preferred UI.
+- evaluates the legal full player pool using top-xMins plus explosive exceptions;
+- supports a 1–5 GW weighted horizon;
+- uses current selling prices, manager state and transfer-cost accounting;
+- selects the best XI separately each GW;
+- uses tail-aware captain selection;
+- discounts bench output with a configurable bench weight (default 0.12);
+- classifies edges against a model-error margin.
 
-Legacy UI remains rollback-only until the separate controlled-cutover item C0176 is explicitly completed.
+However, it evaluates a candidate XV largely as a static squad across the horizon. It does **not** yet model the weekly transition in which +1 FT arrives, prices/information change and the manager can re-optimize again next Gameweek.
 
-## 10. Scheduling
+C0240 tests immediate current-FT / +1-hit / +2-hit paths, not sequential multi-GW transfer trajectories.
 
-The live production schedule is documented in `WEEKLY_DATA_PIPELINE.md`. Important cadence classes include:
+## 7. Target decision architecture after C0247
 
-- results: every 15 minutes;
-- player/source state: hourly or 4-hourly;
-- C0166 fixture cycle: four times per hour;
-- upcoming FPL projection wrapper: every five minutes;
-- realized roles: hourly;
-- full-pool optimizer orchestration: four times per hour;
-- lineage capture: hourly;
-- research near-close/evaluators on their registered independent schedules.
+Do not add C0243-C0246 as four independent production layers.
 
-## 11. Security / integrity principles
+The intended consolidation target is one **Multi-GW State-Transition Decision Planner**:
 
-- No secrets in GitHub or public clients.
-- Internal privileged DB functions live in private schema with explicit ACLs and fixed search paths.
-- Exposed public tables use RLS/explicit grants where applicable.
-- Historical predictions and registered forward cohorts are append-only.
-- Missing data is not zero.
-- Target-fixture actuals may not enter pre-kickoff state.
-- Post-kickoff evidence can update future decisions only.
-- `system_consolidation_ok=true` requires no missing/contradictory required capability, no active duplicate cron target, no active retired external deployment, 100% current behavioral proof and green tracker-consumption governance.
+```text
+STATE(t)
+  squad + bank + purchase/selling prices + FT inventory + chip inventory + information
+        ↓
+ACTIONS(t)
+  roll / legal FT sequence / hit / WC / BB / TC / FH
+        ↓
+SCORING(t)
+  XI-first expected points + separate captaincy + state-dependent bench value
+        ↓
+TRANSITION
+  price/information update + one new FT + preserved chip state
+        ↓
+STATE(t+1)
+```
 
-## 12. Current architecture state at C0213 closure
+The planner must compare reachable transfer trajectories against Wildcard/reset paths and preserve uncertainty/no-meaningful-edge semantics.
 
-- registry integrity: green
-- system consolidation: green
-- components: 632
-- production-effect components: 14
-- current behavioral PASS: 14/14
-- required capabilities: 19, zero missing/contradictions
-- active duplicate cron targets: zero
-- active retired external deployments: zero
-- implemented governed tracker rows requiring consumption contracts: 61/61 covered
-- GW4 prediction-effect provenance: 604/604
+Price movement affects feasibility/execution timing, not xPts.
 
-This document defines the canonical architecture; detailed model lifecycle is in `MODEL_REGISTRY.md`, scheduling in `WEEKLY_DATA_PIPELINE.md`, and C0213 proof/results in `MODEL_CONSUMPTION_AUDIT.md`.
+## 8. Final gate design principle
+
+One final authorization boundary should remain fail-closed. It should consume unique diagnostics rather than duplicate optimization internally.
+
+More gates are not automatically safer. Overlapping decision authorities can create contradiction and make failure diagnosis harder.
+
+C0242 named-challenger resolution should be integrated into this boundary before additional downstream production runtime is introduced.
+
+## 9. Research architecture
+
+Research remains separate:
+
+```text
+SOURCE → FEATURE/MODEL → SHADOW OUTPUT → EVALUATOR/ABLATION → PROMOTION OR REJECTION
+```
+
+Negative evidence is preserved. Promotion requires the registered forward-validation contract. C0230, C0224 and other unpromoted families remain non-numeric.
+
+## 10. Governance and integrity
+
+Current audit state:
+
+- required capabilities: 19/19
+- behavioral production proof: 14/14 PASS
+- tracker consumption contracts: 83/83
+- active duplicate cron targets: 0
+- active retired external deployments: 0
+- architecture registry integrity: green
+
+One active research-only orphan, `EDGE_FUNCTION:c0120-historical-correct-score`, exists live but is not represented in current GitHub source. It should be reconciled separately.
+
+## 11. Canonical references
+
+- `PROJECT_DESCRIPTION.md`
+- `PROJECT_STATE.md`
+- `MODEL_REGISTRY.md`
+- `WEEKLY_DATA_PIPELINE.md`
+- `DECISIONS_AND_HISTORY.md`
+- `MODEL_CONSUMPTION_AUDIT.md`
+- `skills/fie/SKILL.md`
+- `project-management/C0247_FULL_ENGINE_DECISION_ARCHITECTURE_AUDIT_20260911.md`

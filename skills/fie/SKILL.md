@@ -31,12 +31,12 @@ Before meaningful FPL implementation or recommendation:
 - Always compare ROLL.
 - Hits require robust incremental value after timing, FT inventory and future flexibility.
 - Sequential transfer planning must account for +1 FT on each new Gameweek, bank, selling values, prices and future information.
-- Bench value is state dependent: normal GW = autosub/resilience/option value; Bench Boost GW = full scoring value.
-- Chip timing must compare current use against future remaining windows and chip scarcity.
-- Price prediction affects execution timing/feasibility, not player xPts.
+- Bench value is state dependent: normal GW = expected autosub/resilience/option value; Bench Boost GW = full scoring value.
+- Chip timing must compare current use against future option value and chip scarcity.
+- Price prediction affects execution timing/feasibility, not player xPts, and cannot create a football transfer by itself.
 - Keep serious prior challengers in the decision set until explicitly resolved on current lineage.
 - Options within model error are `NO_MEANINGFUL_EDGE`.
-- Research/shadow output cannot acquire numeric production effect without its promotion contract.
+- Research/shadow output cannot acquire numeric player-model production effect without its promotion contract.
 
 ## Anti-over-engineering gate
 
@@ -55,9 +55,30 @@ More gates are not automatically safer. Overlapping authorities can produce cont
 
 ## Current architecture directive
 
-C0243-C0246 are pending requirements, not implementation authorization. Per C0247, prefer one consolidated multi-GW state-transition decision planner over four new independent production layers.
+C0243-C0246 were consolidated into **C0248 — Sequential Multi-GW Decision Planner**. Do not revive them as four independent production layers unless new evidence proves that separation is necessary.
 
-C0242 must be completed/integrated before additional downstream decision-control runtime is introduced.
+C0248 is currently **In Progress / Implemented** as decision control. Its live responsibilities are:
+
+- preserved-root sequential FT planning across the exact horizon;
+- FT accrual/carry and hit accounting;
+- XI-first scoring with expected-autosub bench value;
+- named-challenger preservation;
+- first-party FPL price timing;
+- current BB/TC/FH/WC robustness checks;
+- Wildcard terminal-state sensitivity;
+- supervision of C0240 inside C0234/C0237.
+
+C0248 does **not** currently replace C0240 as the normal-transfer selector. It fails closed if the sequential analysis materially overturns that path. The current GW4 lineage still has C0240 as the best normal root.
+
+Do not use raw Wildcard horizon edge without terminal FT / retained-chip option-value sensitivity. Do not require the globally optimal future chip week to be known before concluding robustly that `NO CHIP` is correct today.
+
+## GW4 current-control state
+
+Current PRE_FINAL control has all gates green except the standing `FINAL_T_MINUS_2H_REFRESH` gate. No external transfer or chip is authorized before the scheduled final refresh.
+
+Current chip action is `NONE`; future best chip timing remains open.
+
+Captaincy remains a separate equivalence problem. If candidates are inside the mean-error band, do not describe the nominal optimizer captain as having a meaningful edge.
 
 ## Communication
 

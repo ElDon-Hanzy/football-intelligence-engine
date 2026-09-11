@@ -257,10 +257,13 @@ Do not mark C0248 Completed merely because its supervisory decision-control curr
 
 ## 16. Governance verification
 
-Latest verified state after C0244 maturity work:
+Latest verified state after C0244 maturity and C0248 cutover audit:
 
 - C0213 production behavioral consumption tests: 14/14 PASS on GW4 prediction run 1356.
-- change-tracker governance: zero violations before C0244 closeout update; rerun required after final documentation/contract updates in the same checkpoint chain.
+- change-tracker governance: PASS; 0 violations, 0 completed-not-verified, 0 completed-without-refs.
+- consumption governance: PASS; 87/87 governed implemented rows covered, 0 violations.
+- canonical C0248 decision-control: ready=true; C0244 mature=true; C0245 mature; current chip `NONE`; best normal root `C0240_LEGACY`.
+- C0248 planner remains `shadow_only=true` and `production_selected=false`.
 - historical forecasts rewritten: false.
 - no transfer/chip execution.
 

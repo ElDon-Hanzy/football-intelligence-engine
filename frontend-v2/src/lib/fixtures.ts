@@ -54,8 +54,30 @@ export function assessCall(markets: MarketSet | null | undefined): CallAssessmen
   const second = outcomes[1] ?? null;
   if (!top || !second) return { state: 'unavailable', top: null, second: null, margin: null };
   const margin = top.probability - second.probability;
-  const state: CallState = margin >= 0.08 ? 'strong' : margin >= 0.04 ? 'lean' : 'no-edge';
+  // C0250: separation alone is not enough to call an outcome strong. A 43% favorite
+  // can lead the next outcome by >8pp while still losing/drawing more often than winning.
+  // Require both absolute probability and separation so UI language respects Noise-Control.
+  const state: CallState = top.probability >= 0.50 && margin >= 0.08
+    ? 'strong'
+    : top.probability >= 0.40 && margin >= 0.04
+      ? 'lean'
+      : 'no-edge';
   return { state, top, second, margin };
+}
+
+export function exactScoreOutcome(score: string | null | undefined): OutcomeCode | null {
+  if (!score || !/^\d+-\d+$/.test(score)) return null;
+  const [home, away] = score.split('-').map(Number);
+  if (!Number.isFinite(home) || !Number.isFinite(away)) return null;
+  if (home > away) return 'H';
+  if (away > home) return 'A';
+  return 'D';
+}
+
+export function exactScoreConflictsWithCall(score: string | null | undefined, assessment: CallAssessment): boolean {
+  if ((assessment.state !== 'strong' && assessment.state !== 'lean') || !assessment.top) return false;
+  const outcome = exactScoreOutcome(score);
+  return outcome != null && outcome !== assessment.top.code;
 }
 
 export function outcomeLabel(code: OutcomeCode, home: string, away: string): string {

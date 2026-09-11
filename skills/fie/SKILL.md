@@ -75,6 +75,23 @@ C0248 is currently **In Progress / Implemented** as mandatory decision control. 
 - Wildcard terminal-state sensitivity;
 - supervision of C0240 inside C0234/C0237.
 
+### Same-lineage invariant
+
+All current C0248 chip/price evidence used together in a decision must come from the same canonical planner run.
+
+Current runtime enforces this across:
+
+- BB/TC normal-root timing;
+- Wildcard terminal sensitivity;
+- normal-root price timing;
+- Free Hit current candidate evidence.
+
+If planner run IDs disagree, current chip control must fail closed with `C0248_CURRENT_CHIP_LINEAGE_MISMATCH` rather than combine generations.
+
+Do not reintroduce support functions pinned to an older planner version after the canonical planner advances.
+
+Free Hit must not use a frozen edge constant. Current FH evidence is recomputed from current V04 lineage. The V04 Wildcard root first-GW squad can be reused as a **legal FH candidate lower bound**, but it must not be described as the exhaustive optimal one-GW FH squad unless an explicit one-GW search proves that.
+
 C0248 does **not** currently replace C0240 as the normal-transfer selector. The live V04 planner remains `shadow_only=true` and `production_selected=false`.
 
 Do not mark C0248 complete or cut it over while any of these material blockers remain:
@@ -95,6 +112,8 @@ Do not use raw Wildcard horizon edge without terminal FT / retained-chip / infor
 Current chip action is `NONE` and current execution guidance is `WAIT_FOR_T_MINUS_2` unless verified material price or injury evidence creates a robust reason to act earlier.
 
 C0244 currently shows GW4 BB and TC each 5th of 5 inside the exact GW4-GW8 numerical window. GW9-GW19 are structural-only until decision-grade numerical evidence exists.
+
+Current FH evidence is dynamically bound to V04 planner run 4: legal fresh-squad candidate utility 67.542 versus 61.204 for the best normal sequential root, a +6.338 lower-bound candidate edge. It remains `HOLD_NO_ROBUST_EDGE` because current optimality and future FH opportunity cost are unresolved.
 
 Captaincy remains a separate equivalence problem. If candidates are inside the mean-error band, do not describe the nominal optimizer captain as having a meaningful edge.
 

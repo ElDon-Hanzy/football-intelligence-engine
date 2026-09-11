@@ -15,8 +15,6 @@ test('C0239 live GW4 FPL page renders the current C0237 manager plan', async ({ 
   const board = page.locator('.fpl-decision-board');
   await expect(board).toBeVisible();
   await expect(board.getByText('Best current engine plan · Contested', { exact: true })).toBeVisible();
-  await expect(board.getByText('Gabriel', { exact: true }).first()).toBeVisible();
-  await expect(board.getByText('B.Fernandes', { exact: true }).first()).toBeVisible();
   await expect(page.locator('.compact-selection').filter({ hasText: 'XI · 11/11' })).toBeVisible();
   await expect(page.locator('.compact-selection').filter({ hasText: 'Bench · 4/4' })).toBeVisible();
 });

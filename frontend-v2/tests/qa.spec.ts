@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { endpoints } from '../src/lib/api';
 import { analysisEndpoints } from '../src/lib/analysis-api';
 import { BettingApiSchema } from '../src/lib/analysis-contracts';
@@ -6,6 +6,24 @@ import { FplApiSchema } from '../src/lib/contracts';
 
 function desktopOnly(projectName: string): void {
   test.skip(projectName !== 'desktop-1366', 'Live current/historical parity runs once per CI matrix.');
+}
+
+const LIVE_TIMEOUT = 30_000;
+const LIVE_ATTEMPTS = 3;
+
+async function liveResponse(request: APIRequestContext, url: string) {
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= LIVE_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await request.get(url, { timeout: LIVE_TIMEOUT });
+      if (response.ok()) return response;
+      lastError = new Error(`HTTP ${response.status()} from ${url}`);
+    } catch (error) {
+      lastError = error;
+    }
+    if (attempt < LIVE_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 1_500 * attempt));
+  }
+  throw lastError instanceof Error ? lastError : new Error(`Live request failed for ${url}`);
 }
 
 const outagePatterns = [
@@ -131,7 +149,7 @@ for (const loadingCase of loadingCases) {
     await expect(loading).toHaveAttribute('aria-busy', 'true');
     await expect.poll(() => releases.length).toBe(loadingCase.patterns.length);
     for (const release of releases) release();
-    await expect(page.getByRole('heading', { name: loadingCase.errorHeading })).toBeVisible();
+    await expect(page.getByRole('heading', { name: loadingCase.errorHeading })).toBeVisible({ timeout: 15_000 });
   });
 }
 
@@ -188,13 +206,11 @@ test('shell preserves touch targets, safe-area rules and overflow resilience on 
 
 test('current and historical shared prediction contracts stay canonically aligned', async ({ request }, testInfo) => {
   desktopOnly(testInfo.project.name);
+  test.setTimeout(180_000);
   for (const gw of [2, 3]) {
-    const [fplResponse, bettingResponse] = await Promise.all([
-      request.get(`${endpoints.fpl}?gw=${gw}`),
-      request.get(`${analysisEndpoints.betting}?gw=${gw}`),
-    ]);
-    expect(fplResponse.ok()).toBe(true);
-    expect(bettingResponse.ok()).toBe(true);
+    // Sequential, retried reads verify parity without turning CI into a concurrency/load test.
+    const fplResponse = await liveResponse(request, `${endpoints.fpl}?gw=${gw}`);
+    const bettingResponse = await liveResponse(request, `${analysisEndpoints.betting}?gw=${gw}`);
     const fpl = FplApiSchema.parse(await fplResponse.json());
     const betting = BettingApiSchema.parse(await bettingResponse.json());
     const fplByMatch = new Map(fpl.fixture_results.map((fixture) => [fixture.match_id, fixture]));

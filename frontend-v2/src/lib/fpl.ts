@@ -96,7 +96,8 @@ export function decisionReasons(plan: ManagerPlan | null | undefined): string[] 
 }
 
 export function isDirectCurrentDistribution(player: Player | undefined): boolean {
-  return player?.tail_semantics === 'direct_current_fixture_event_distribution';
+  const semantics = player?.tail_semantics;
+  return typeof semantics === 'string' && semantics.startsWith('direct_current_fixture_event_distribution');
 }
 
 export function formatBank(bankTenths: number | null | undefined): string {

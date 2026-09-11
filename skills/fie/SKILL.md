@@ -33,6 +33,7 @@ Before meaningful FPL implementation or recommendation:
 - Sequential transfer planning must account for +1 FT on each new Gameweek, bank, selling values, prices and future information.
 - Bench value is state dependent: normal GW = expected autosub/resilience/option value; Bench Boost GW = full scoring value.
 - Chip timing must compare current use against future option value and chip scarcity.
+- Future chip opportunity may use structural BGW/DGW/fixture evidence without fabricating player-level numerical precision beyond the decision-grade projection horizon.
 - Price prediction affects execution timing/feasibility, not player xPts, and cannot create a football transfer by itself.
 - Keep serious prior challengers in the decision set until explicitly resolved on current lineage.
 - Options within model error are `NO_MEANINGFUL_EDGE`.
@@ -55,30 +56,49 @@ More gates are not automatically safer. Overlapping authorities can produce cont
 
 ## Current architecture directive
 
-C0243-C0246 were consolidated into **C0248 — Sequential Multi-GW Decision Planner**. Do not revive them as four independent production layers unless new evidence proves that separation is necessary.
+C0243-C0246 were consolidated into **C0248 — Sequential Multi-GW Decision Planner**. Do not revive them as independent production stacks unless new evidence proves separation is necessary.
 
-C0248 is currently **In Progress / Implemented** as decision control. Its live responsibilities are:
+C0244 and C0245 are mature sub-controls of C0248:
+
+- **C0244 Completed / Verified** — first-half chip opportunity control through GW19, exact numerical evidence where available and structural-only fail-closed evidence where it is not.
+- **C0245 Completed / Verified** — FT/flexibility/future-information option value, recalibrated rather than hard-coded as a universal points-per-FT constant.
+
+C0248 is currently **In Progress / Implemented** as mandatory decision control. Its live responsibilities include:
 
 - preserved-root sequential FT planning across the exact horizon;
 - FT accrual/carry and hit accounting;
 - XI-first scoring with expected-autosub bench value;
 - named-challenger preservation;
 - first-party FPL price timing;
-- current BB/TC/FH/WC robustness checks;
+- mature current-chip/first-half structural opportunity control;
+- mature terminal FT/flexibility/information option control;
 - Wildcard terminal-state sensitivity;
 - supervision of C0240 inside C0234/C0237.
 
-C0248 does **not** currently replace C0240 as the normal-transfer selector. It fails closed if the sequential analysis materially overturns that path. The current GW4 lineage still has C0240 as the best normal root.
+C0248 does **not** currently replace C0240 as the normal-transfer selector. The live V04 planner remains `shadow_only=true` and `production_selected=false`.
 
-Do not use raw Wildcard horizon edge without terminal FT / retained-chip option-value sensitivity. Do not require the globally optimal future chip week to be known before concluding robustly that `NO CHIP` is correct today.
+Do not mark C0248 complete or cut it over while any of these material blockers remain:
+
+- autosub formation legality is approximate;
+- generated future normal actions are capped at 2 transfers/GW;
+- BB/TC/FH are not explicit planner actions;
+- the Wildcard fresh root is externally seeded rather than canonically generated inside C0248;
+- price/affordability scenarios remain supervisory rather than path-state scenarios;
+- C0234 still constructs normal-transfer action authority from the C0240 survivor.
+
+No C0231/C0233/C0240 runtime may be retired before verified C0248 selector cutover because C0234/C0240 still consume their lineage. After cutover, retire/simplify only after unique responsibilities are proven replaced.
+
+Do not use raw Wildcard horizon edge without terminal FT / retained-chip / information-option sensitivity. Do not require a fabricated globally optimal future chip week before concluding robustly that `NO CHIP` is correct today.
 
 ## GW4 current-control state
 
-Current PRE_FINAL control has all gates green except the standing `FINAL_T_MINUS_2H_REFRESH` gate. No external transfer or chip is authorized before the scheduled final refresh.
+Current chip action is `NONE` and current execution guidance is `WAIT_FOR_T_MINUS_2` unless verified material price or injury evidence creates a robust reason to act earlier.
 
-Current chip action is `NONE`; future best chip timing remains open.
+C0244 currently shows GW4 BB and TC each 5th of 5 inside the exact GW4-GW8 numerical window. GW9-GW19 are structural-only until decision-grade numerical evidence exists.
 
 Captaincy remains a separate equivalence problem. If candidates are inside the mean-error band, do not describe the nominal optimizer captain as having a meaningful edge.
+
+At T−2, rerun the complete final process: fresh data ingestion, full-pool optimization, all 15 players, xMins/roles, captaincy distributions, Defensive Contributions, chips, sequential transfer paths, ROLL, named challengers, price/timing, uncertainty sensitivity, red-team and Noise-Control Gate.
 
 ## Communication
 

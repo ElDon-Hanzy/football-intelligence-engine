@@ -3,20 +3,27 @@ import { endpoints, publicGatewayHeaders } from '../src/lib/api';
 import { analysisEndpoints } from '../src/lib/analysis-api';
 
 const LIVE_TIMEOUT = 30_000;
+const LIVE_ATTEMPTS = 3;
 
 function desktopOnly(projectName: string): void {
   test.skip(projectName !== 'desktop-1366', 'Current production population audit runs once per CI matrix.');
 }
 
 async function json(request: APIRequestContext, url: string, authenticated = false): Promise<any> {
-  const response = await request.get(url, {
-    timeout: LIVE_TIMEOUT,
-    ...(authenticated ? { headers: publicGatewayHeaders } : {}),
-  });
-  expect(response.ok(), `${url} should return HTTP 2xx`).toBe(true);
-  const payload = await response.json();
-  expect(payload?.ok, `${url} should return ok=true`).toBe(true);
-  return payload;
+  let lastStatus = 0;
+  for (let attempt = 1; attempt <= LIVE_ATTEMPTS; attempt += 1) {
+    const response = await request.get(url, {
+      timeout: LIVE_TIMEOUT,
+      ...(authenticated ? { headers: publicGatewayHeaders } : {}),
+    });
+    lastStatus = response.status();
+    if (response.ok()) {
+      const payload = await response.json();
+      if (payload?.ok === true) return payload;
+    }
+    if (attempt < LIVE_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 1_500 * attempt));
+  }
+  expect(false, `${url} should return HTTP 2xx and ok=true within ${LIVE_ATTEMPTS} attempts; last status ${lastStatus}`).toBe(true);
 }
 
 async function currentGameweek(request: APIRequestContext): Promise<number> {
@@ -34,13 +41,21 @@ async function assertNoPageErrors(page: Page, action: () => Promise<void>): Prom
 }
 
 async function openView(page: Page, view: string, gw: number, heading: string): Promise<void> {
-  await page.goto(`/?view=${view}&gw=${gw}`, { waitUntil: 'domcontentloaded', timeout: LIVE_TIMEOUT });
-  await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible({ timeout: LIVE_TIMEOUT });
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    await page.goto(`/?view=${view}&gw=${gw}`, { waitUntil: 'domcontentloaded', timeout: LIVE_TIMEOUT });
+    try {
+      await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible({ timeout: LIVE_TIMEOUT });
+      return;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await page.waitForTimeout(1_500);
+    }
+  }
 }
 
 test('current production APIs populate every v2 data surface', async ({ request }, testInfo) => {
   desktopOnly(testInfo.project.name);
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
   const gw = await currentGameweek(request);
   const suffix = `?gw=${gw}`;
 
@@ -96,14 +111,30 @@ test('current production APIs populate every v2 data surface', async ({ request 
 
   expect(human.gameweek).toBe(gw);
   expect(human.betting_recommendations).toHaveLength(4);
+  expect(human.fixture_models).toHaveLength(10);
 
   expect(betting.gameweek).toBe(gw);
   expect(betting.fixtures).toHaveLength(10);
   expect(betting.odds_status).toBe('connected');
+  const fplByMatch = new Map(fpl.fixture_results.map((fixture: any) => [Number(fixture.match_id), fixture]));
+  const humanByMatch = new Map((human.fixture_models ?? []).map((fixture: any) => [Number(fixture.match_id), fixture]));
   for (const fixture of betting.fixtures) {
     expect(fixture.prediction?.markets, `markets for match ${fixture.match_id}`).toBeTruthy();
     expect(fixture.bookmaker_odds.length, `bookmaker odds for match ${fixture.match_id}`).toBeGreaterThan(0);
+    const canonical: any = fplByMatch.get(Number(fixture.match_id));
+    expect(canonical, `canonical FPL fixture ${fixture.match_id}`).toBeTruthy();
+    expect(fixture.prediction?.snapshot_id, `betting snapshot ${fixture.match_id}`).toBe(canonical.prediction?.snapshot_id);
+    expect(fixture.prediction?.headline_score, `betting headline ${fixture.match_id}`).toBe(canonical.prediction?.headline_score);
+    const humanFixture: any = humanByMatch.get(Number(fixture.match_id));
+    expect(humanFixture, `human-insights fixture ${fixture.match_id}`).toBeTruthy();
+    expect(humanFixture.snapshot_id, `human-insights snapshot ${fixture.match_id}`).toBe(canonical.prediction?.snapshot_id);
+    expect(humanFixture.headline_score, `human-insights headline ${fixture.match_id}`).toBe(canonical.prediction?.headline_score);
   }
+  const correctScore = human.betting_recommendations.find((call: any) => call.type === 'Correct score');
+  expect(correctScore).toBeTruthy();
+  const exactCanonical: any = fplByMatch.get(Number(correctScore.match_id));
+  expect(correctScore.selection).toBe(exactCanonical?.prediction?.headline_score);
+  expect(correctScore.snapshot_id).toBe(exactCanonical?.prediction?.snapshot_id);
 
   expect(calibration.gameweek).toBe(gw);
   expect(Number.isFinite(Number(calibration.summary?.current_xi_xpts))).toBe(true);
@@ -116,15 +147,13 @@ test('current production APIs populate every v2 data surface', async ({ request 
   expect(engine.production_fixture_layer?.fixtures).toBe(10);
   expect(engine.governance?.ok).toBe(true);
   expect(engine.orchestration_readiness?.projection_ready).toBe(true);
-  // Decision readiness is a lifecycle state. Before the T−2 final gate, false is valid and
-  // must not be confused with absent diagnostics data.
   expect(typeof engine.orchestration_readiness?.decision_ready).toBe('boolean');
   expect((engine.source_health?.zero_cost?.sources ?? []).length).toBeGreaterThan(0);
 });
 
 test('every current v2 page renders its populated sections without silent blanks', async ({ page, request }, testInfo) => {
   desktopOnly(testInfo.project.name);
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
   const gw = await currentGameweek(request);
 
   await assertNoPageErrors(page, async () => {
@@ -152,7 +181,7 @@ test('every current v2 page renders its populated sections without silent blanks
 
     await openView(page, 'markets', gw, 'Betting');
     await expect(page.locator('.legacy-bet-card')).toHaveCount(4, { timeout: LIVE_TIMEOUT });
-    await page.locator('.market-diagnostics-disclosure summary').click();
+    await page.locator('.market-diagnostics-disclosure > summary').click();
     await expect(page.locator('.market-card')).toHaveCount(10, { timeout: LIVE_TIMEOUT });
     await expect(page.locator('.market-action-chip.is-missing')).toHaveCount(0);
 

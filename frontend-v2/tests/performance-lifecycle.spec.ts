@@ -49,7 +49,7 @@ test('Performance selects the newest fully evaluated forward Gameweek and never 
 
   const hero = page.locator('.analysis-hero');
   await expect(hero.getByRole('heading', { name: 'GW3 · 10 fixtures' })).toBeVisible();
-  await expect(hero.getByText('30%', { exact: true })).toBeVisible();
+  await expect(hero.getByText('30%', { exact: true })).toHaveCount(2);
   await expect(hero.getByText('0.685', { exact: true })).toBeVisible();
   await expect(hero.getByText('0.686', { exact: true })).toBeVisible();
   await expect(hero.getByText(/GW3 test/i)).toHaveCount(0);

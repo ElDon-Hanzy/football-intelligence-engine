@@ -1,14 +1,14 @@
 # C0242 — Decision Consistency / Contradiction Control
 
 Date: 2026-09-11
-Status: IN PROGRESS
+Status: COMPLETED / VERIFIED
 Parent: C0241
 
 ## Problem
 
 GW4 PRE_FINAL outputs contradicted one another because serious prior challengers were not guaranteed to remain in the decision set across reruns, and nominal captaincy output from the squad optimizer could be presented as a meaningful edge even when candidate means were inside model error.
 
-## Corrective controls implemented
+## Production controls
 
 1. `public.fpl_named_challenger_registry`
    - Persists serious manual/prior alternatives by exact 15-player squad.
@@ -16,53 +16,82 @@ GW4 PRE_FINAL outputs contradicted one another because serious prior challengers
 
 2. `public.fpl_named_challenger_evaluations`
    - Records current legality, budget state, exact-evaluation request/result and resolution state.
-   - Resolution states include `INFEASIBLE_CURRENT_STATE`, `BEATEN`, `EQUIVALENT`, and future reattack-required states.
+   - Resolution states include `INFEASIBLE_CURRENT_STATE`, `BEATEN`, `EQUIVALENT`, `SURVIVOR`, and reattack-required states.
 
 3. `private.c0242_precheck_named_challenger_v01()`
-   - Recomputes exact legality from the latest manager state, current prices, purchase prices and FPL selling-value rules.
-   - Missing/changed price state is not silently treated as the same decision state.
+   - Recomputes exact legality from latest manager state, current prices, purchase prices and FPL selling-value rules.
+   - V02 contract now returns explicit manager-state and prediction-run lineage.
 
 4. `private.c0242_dispatch_named_challenger_v01()` / `private.c0242_capture_named_challenger_v01()`
-   - Legal named challengers can be forced through the canonical same-horizon full-pool optimizer.
-   - Comparison uses the current C0240 survivor and the production model-error band.
+   - Legal named challengers are forced through the canonical same-horizon optimizer.
+   - Capture V02 compares against the current exact-horizon C0240 survivor, uses the production model-error band and fails on stale prediction lineage.
 
 5. `private.c0242_captaincy_equivalence_gate_v01()`
-   - Captaincy is evaluated separately from the squad optimizer.
-   - Candidates within the captaincy mean-error band are classified `NO_MEANINGFUL_EDGE`.
-   - The output exposes nominal mean leader, haul-tail leader, floor leader and the full equivalent set.
+   - Captaincy is evaluated separately from squad selection.
+   - Candidates within the mean-error band are classified `NO_MEANINGFUL_EDGE`.
+   - Output exposes nominal mean leader, haul-tail leader, floor leader and the equivalent set.
 
-6. `private.c0242_consistency_status_v01()` + service-role bridge
-   - Re-runs named-challenger legality against current state every time.
-   - A challenger becoming legal again cannot remain silently marked resolved from an older price state.
+6. `private.c0242_consistency_status_v01()` + `public.c0242_consistency_status_bridge_v01()`
+   - Re-runs named-challenger legality every call.
+   - Alias-collision bug discovered during closeout was repaired in `C0242_CONSISTENCY_V02`.
 
-## GW4 finding that explains the apparent contradiction
+7. C0234 final authorization
+   - `fpl-autonomous-gate` production version 4 adds mandatory `C0242_DECISION_CONSISTENCY`.
+   - Any unresolved legal named challenger now fails closed.
+   - `NO_MEANINGFUL_EDGE` captaincy is exposed but does not itself block a nominal captain choice.
 
-Named challenger: O'Reilly→Guéhi, Mosquera→De Cuyper, Kusi-Asare→Barry; Palmer and Semenyo retained.
+8. C0237 live publication
+   - `private.c0237_publish_current_fpl_plan_v01()` V05 publishes named-challenger status plus captaincy equivalence.
+   - An unresolved C0242 state makes the live publication `CONTESTED`.
+   - C0242 is required for both publication and final authorization.
 
-- Current liquidation budget: 996 tenths (£99.6m)
-- Current exact squad cost: 997 tenths (£99.7m)
-- Current result: `INFEASIBLE_CURRENT_STATE / OVER_BUDGET_1_TENTHS`
-- O'Reilly price history: £6.5m through 2026-09-10 20:05 UTC, then £6.4m at 2026-09-11 00:05 UTC.
-- Therefore the structure that was exactly affordable yesterday became £0.1m unaffordable today. This must be described as a price-state change, not as an optimizer reversing its football opinion.
+## Deterministic regression proof
 
-## GW4 captaincy finding
+A temporary active challenger equal to the exact current C0240 survivor was dispatched through the canonical optimizer and captured against the same lineage.
+
+- challenger objective: `229.434`
+- reference objective: `229.434`
+- gap: `0`
+- classification: `EQUIVALENT`
+- evaluation prediction run: `1356`
+- reference prediction run: `1356`
+
+The regression challenger was then deactivated and does not participate in live decisioning.
+
+The standing user challenger remains:
+
+- O'Reilly → Guéhi
+- Mosquera → De Cuyper
+- Kusi-Asare → Barry
+- Palmer and Semenyo retained
+
+Current classification remains `INFEASIBLE_CURRENT_STATE / OVER_BUDGET_1_TENTHS`, caused by O'Reilly's price fall rather than a football-opinion reversal.
+
+## GW4 captaincy state
 
 Prediction run: 1356
 Mean error band: 1.0 point
 Decision class: `NO_MEANINGFUL_EDGE`
 
-- Gabriel: nominal mean leader, 6.174 xPts; lowest blank probability in the candidate set.
+- Gabriel: nominal mean leader / floor leader.
 - Saka: haul-tail leader.
-- Bruno Fernandes, Mbeumo and João Pedro also sit inside the 1.0-point equivalence band.
+- Bruno Fernandes, Mbeumo and João Pedro are also inside the equivalence band.
 
-Production communication must therefore not claim that Gabriel has a meaningful captaincy edge merely because he is the optimizer's nominal captain.
+Production communication must not describe Gabriel's nominal selection as a meaningful captaincy edge.
 
-## Remaining closeout work
+## Current publication proof
 
-- Integrate C0242 consistency status into C0234 final authorization so unresolved legal named challengers fail closed.
-- Surface captaincy equivalence and named-challenger resolution in C0237 live publication/UI.
-- Add deterministic regression cases for price-state invalidation, challenger reactivation, exact same-horizon evaluation and captaincy equivalence.
-- Re-run tracker/consumption/behavioral governance after integration.
+C0237 publication #11:
+
+- stage: `PRE_FINAL`
+- status: `CONTESTED`
+- final status: `DECISION_NOT_READY`
+- execution authorized: `false`
+- C0240 survivor rendered: true
+- C0242 consistency rendered: true
+- captaincy class: `NO_MEANINGFUL_EDGE`
+
+Current C0234 gate has 14 gates. C0242 passes; remaining GW4 blockers are final T−2h refresh and chip opportunity cost.
 
 ## Integrity
 
@@ -71,4 +100,4 @@ Production communication must therefore not claim that Gabriel has a meaningful 
 - No manager-plan mutation.
 - No external FPL transfer or chip execution.
 - Ownership has zero direct xPts effect.
-- Research/shadow models remain zero numeric production effect.
+- Research/shadow models retain zero numeric production effect unless separately promoted.

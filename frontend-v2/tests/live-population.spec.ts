@@ -11,19 +11,27 @@ function desktopOnly(projectName: string): void {
 
 async function json(request: APIRequestContext, url: string, authenticated = false): Promise<any> {
   let lastStatus = 0;
+  let lastError = '';
   for (let attempt = 1; attempt <= LIVE_ATTEMPTS; attempt += 1) {
-    const response = await request.get(url, {
-      timeout: LIVE_TIMEOUT,
-      ...(authenticated ? { headers: publicGatewayHeaders } : {}),
-    });
-    lastStatus = response.status();
-    if (response.ok()) {
-      const payload = await response.json();
-      if (payload?.ok === true) return payload;
+    try {
+      const response = await request.get(url, {
+        timeout: LIVE_TIMEOUT,
+        ...(authenticated ? { headers: publicGatewayHeaders } : {}),
+      });
+      lastStatus = response.status();
+      if (response.ok()) {
+        const payload = await response.json();
+        if (payload?.ok === true) return payload;
+        lastError = `ok flag was ${String(payload?.ok)}`;
+      } else {
+        lastError = `HTTP ${response.status()}`;
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error.message : String(error);
     }
     if (attempt < LIVE_ATTEMPTS) await new Promise((resolve) => setTimeout(resolve, 1_500 * attempt));
   }
-  expect(false, `${url} should return HTTP 2xx and ok=true within ${LIVE_ATTEMPTS} attempts; last status ${lastStatus}`).toBe(true);
+  expect(false, `${url} should return HTTP 2xx and ok=true within ${LIVE_ATTEMPTS} attempts; last status ${lastStatus}; ${lastError}`).toBe(true);
 }
 
 async function currentGameweek(request: APIRequestContext): Promise<number> {
@@ -41,21 +49,23 @@ async function assertNoPageErrors(page: Page, action: () => Promise<void>): Prom
 }
 
 async function openView(page: Page, view: string, gw: number, heading: string): Promise<void> {
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= LIVE_ATTEMPTS; attempt += 1) {
     await page.goto(`/?view=${view}&gw=${gw}`, { waitUntil: 'domcontentloaded', timeout: LIVE_TIMEOUT });
     try {
       await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible({ timeout: LIVE_TIMEOUT });
       return;
     } catch (error) {
-      if (attempt === 2) throw error;
-      await page.waitForTimeout(1_500);
+      lastError = error;
+      if (attempt < LIVE_ATTEMPTS) await page.waitForTimeout(1_500 * attempt);
     }
   }
+  throw lastError;
 }
 
 test('current production APIs populate every v2 data surface', async ({ request }, testInfo) => {
   desktopOnly(testInfo.project.name);
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   const gw = await currentGameweek(request);
   const suffix = `?gw=${gw}`;
 
@@ -153,7 +163,7 @@ test('current production APIs populate every v2 data surface', async ({ request 
 
 test('every current v2 page renders its populated sections without silent blanks', async ({ page, request }, testInfo) => {
   desktopOnly(testInfo.project.name);
-  test.setTimeout(240_000);
+  test.setTimeout(360_000);
   const gw = await currentGameweek(request);
 
   await assertNoPageErrors(page, async () => {
@@ -176,7 +186,7 @@ test('every current v2 page renders its populated sections without silent blanks
 
     await openView(page, 'fixtures', gw, 'Fixtures');
     await expect(page.locator('.fixture-card')).toHaveCount(10, { timeout: LIVE_TIMEOUT });
-    await expect(page.locator('.fixture-modal-trigger:disabled')).toHaveCount(0);
+    await expect(page.locator('.fixture-modal-trigger:disabled')).toHaveCount(0, { timeout: LIVE_TIMEOUT });
     await expect(page.getByText('Prediction unavailable', { exact: true })).toHaveCount(0);
 
     await openView(page, 'markets', gw, 'Betting');

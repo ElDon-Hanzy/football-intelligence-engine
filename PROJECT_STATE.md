@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-11 (Dubai) — through C0248 sequential decision-control integration_
+_Last updated: 2026-09-11 (Dubai) — through C0248 Checkpoints I/J_
 
 ## 1. Mission
 
@@ -73,26 +73,39 @@ C0241 enforces exact-horizon lineage and repeat-idempotency.
 
 C0242 is **Completed / Verified** and integrated into C0234/C0237.
 
-C0248 is **In Progress / Implemented**. It supervises C0240 but does not yet replace C0240 as the normal-transfer selector.
+C0244 is **Completed / Verified** as the mature first-half chip opportunity sub-control inside C0248.
+
+C0245 is **Completed / Verified** as the mature FT/flexibility/future-information option-value sub-control inside C0248.
+
+C0248 remains **In Progress / Implemented**. Its decision-control is mandatory and green for GW4, but its V04 planner remains shadow-only and does not yet replace C0240 as the normal-transfer selector.
 
 ## 6. C0248 consolidated planner
 
-C0243-C0246 were consolidated into one program rather than four independent layers.
+C0243-C0246 were consolidated into one program rather than independent production layers.
 
-Current C0248 capabilities:
+Current verified C0248 capabilities:
 
 - explicit state: squad + purchase prices + selling values + bank + FT inventory;
 - +1 FT state transition each new GW, capped at 5;
-- 0/1/2 normal-transfer actions per simulated future GW plus preserved named/legacy roots;
-- exact hit accounting;
-- dynamic XI/captain each GW;
-- expected-autosub bench utility instead of a flat bench percentage;
-- root preservation so ROLL, C0228 baseline, C0240 survivor, named 2FT challenger and Wildcard cannot be silently pruned against each other;
+- ROLL / 1FT / 2FT generated future normal actions plus preserved larger named/legacy roots;
+- exact hit accounting for represented transfer actions;
+- dynamic XI/captain selection each GW;
+- expected-autosub bench utility v1 instead of a flat bench percentage;
+- root preservation for ROLL, C0228 baseline, C0240 survivor, named challenger and Wildcard;
 - first-party official FPL price-predictor capture and timing control;
-- BB/TC/FH current-action evaluation;
-- Wildcard as a true sequential root retaining banked FTs;
-- terminal-state sensitivity so end-of-horizon FT inventory is not valued at zero;
-- C0234/C0237 integration.
+- mature C0244 current-chip + first-half structural opportunity control;
+- mature C0245 terminal FT/flexibility + future-information option value;
+- Wildcard as a sequential state transition retaining banked FT count;
+- C0234/C0237 integration as supervisory decision-control.
+
+Current V04 limitations that block production-selector cutover:
+
+- BB/TC/FH are not planner state/action transitions (`bb_tc_fh_actions=false`);
+- normal autosub formation legality is explicitly approximate;
+- generated future normal actions are capped at 2 transfers per GW;
+- Wildcard fresh root is seeded from an external ensemble candidate rather than independently optimized by the canonical sequential planner;
+- planner search assumes static current prices while price/affordability uncertainty remains supervisory;
+- C0234 still constructs an authorized normal action from the C0240 survivor, not a selected C0248 path.
 
 Detailed plan/checkpoints:
 
@@ -101,10 +114,33 @@ Detailed plan/checkpoints:
 - `project-management/C0248_CHECKPOINT_D_PRICE_TIMING_20260911.md`
 - `project-management/C0248_CHECKPOINT_E_CHIP_TIMING_20260911.md`
 - `project-management/C0248_CHECKPOINT_F_WILDCARD_TERMINAL_AND_FINAL_GATE_20260911.md`
+- `project-management/C0248_CHECKPOINT_G_C0244_C0245_FUTURE_OPTION_GUARDS_20260911.md`
+- `project-management/C0248_CHECKPOINT_H_EMPIRICAL_FT_OPTION_CALIBRATION_20260911.md`
+- `project-management/C0248_CHECKPOINT_I_C0244_MATURE_FIRST_HALF_CHIP_CONTROL_20260911.md`
+- `project-management/C0248_CHECKPOINT_J_CUTOVER_READINESS_AND_LEGACY_DISPOSITION_20260911.md`
 
-## 7. Current GW4 sequential evidence
+## 7. Current GW4 manager and prediction lineage
 
-Current projection lineage remains GW4 run 1356 with forward runs 1348/1350/1352/1353 until the next permitted cadence refresh.
+Current manager state remains the user-confirmed GW4 state:
+
+- FPL entry: `3559923`
+- free transfers: 3
+- bank: £0.0m
+- acquisition squad cost: £100.0m
+- latest stored liquidation value snapshot: £99.6m
+- no GW4 transfer has been executed by the engine.
+
+Current projection lineage:
+
+- GW4: run 1356
+- GW5: run 1348
+- GW6: run 1350
+- GW7: run 1352
+- GW8: run 1353
+
+All are frozen prospective pre-deadline snapshots and do not use actual target-GW results.
+
+## 8. Current GW4 sequential evidence
 
 C0248 V04 root-preserved exact-horizon utility:
 
@@ -116,99 +152,128 @@ C0248 V04 root-preserved exact-horizon utility:
 
 C0240 remains the best **normal-transfer** root under current assumptions.
 
-The named 2FT De Cuyper + Guéhi path remains important because it was the architecture challenge that exposed static-horizon FT underpricing. C0242 exact fixed-squad evaluation resolves it at 221.104 versus 229.434 (`BEATEN`), while C0248 sequential evaluation narrows the gap materially.
+The raw ordering is not execution authority. C0248 remains shadow/read-only and C0234 remains fail-closed until the final information refresh and all mandatory gates pass.
 
-## 8. Wildcard / terminal option value
+## 9. C0245 mature option value
 
-The raw Wildcard edge over the best normal C0248 root is +15.659 over GW4–GW8.
+C0245 is no longer open engineering work.
 
-That raw comparison is not robust enough to use because:
+Current empirical decision-time FT-option calibration:
 
-- Wildcard finishes GW8 with 1 FT;
+- median gross marginal transfer value: 2.587 weighted points
+- P25: 2.140
+- P75: 4.134
+
+The calibration is sensitivity evidence, not a universal production scalar.
+
+Current Wildcard exact-window raw edge over best normal C0248 root: +15.659.
+
+Terminal state:
+
+- Wildcard root finishes GW8 with 1 FT;
 - C0240 normal path finishes GW8 with 5 FTs;
-- 11 first-half GWs remain after the exact horizon;
-- the unused Wildcard itself still has option value.
+- FT-only break-even value per extra terminal FT: 3.915 points;
+- unused Wildcard and future information retain positive unresolved option value.
 
-Break-even value per extra terminal FT, ignoring bank and unused-Wildcard option: **3.915 points**.
+Current C0245 interpretation remains fail-closed / preserve optionality.
 
-At 4 points per extra terminal FT the Wildcard edge flips slightly negative. Therefore current Wildcard action is `HOLD_NO_ROBUST_EDGE`, not “best raw score = play Wildcard.”
+## 10. C0244 mature chip opportunity control
 
-## 9. Current chip state
+C0244 is **Completed / Verified** inside C0248.
 
-Entry history confirms no first-half chips have been used.
+Live production now evaluates every GW through GW19 at an explicit evidence tier:
 
-Current C0248 decision:
+- GW4-GW8: `EXACT_NUMERICAL`
+- GW9-GW19: `STRUCTURAL_ONLY`
 
-- Bench Boost: **HOLD** — GW4 incremental EV 4.846; only two bench slots at 60+ xMins; better exact-window BB values already exist.
-- Triple Captain: **HOLD** — GW4 incremental EV 6.174; GW6 is higher inside the exact horizon.
-- Free Hit: **HOLD_NO_ROBUST_EDGE** — current same-utility gain +2.618; any future FH opportunity worth >2.618 reverses current use.
-- Wildcard: **HOLD_NO_ROBUST_EDGE** — large raw five-GW edge, but terminal FT / retained-chip option value makes it non-robust.
-- Current recommended chip: **NONE**.
+Team-level fixture counting detects blanks/doubles even when total league match count remains 10.
 
-The engine intentionally does not claim to know the optimal GW9–GW19 chip weeks yet. It does not need that knowledge to conclude that no chip is robust enough today.
+A live official FPL fixture refresh on 2026-09-11 verified all 160 GW4-GW19 fixture IDs and Gameweek assignments against production. There were zero Gameweek-assignment mismatches. Twenty-five stale future kickoff times were refreshed. No BGW or DGW is currently confirmed through GW19; this is treated as `none confirmed yet`, not as evidence that none will emerge.
 
-## 10. Price timing
+Current chip control:
 
-Official FPL `bootstrap-static` price-predictor fields are captured append-only in `public.fpl_price_predictor_snapshots`, joined through `players.fpl_player_id`.
+- Bench Boost: **HOLD** — GW4 incremental EV 4.846; GW4 ranks 5/5 inside exact GW4-GW8 window.
+- Triple Captain: **HOLD** — GW4 incremental EV 6.174; GW4 ranks 5/5 inside exact GW4-GW8 window.
+- Free Hit: **HOLD_NO_ROBUST_EDGE** — current same-utility gain +2.618; future option value unresolved.
+- Wildcard: **HOLD_NO_ROBUST_EDGE** — raw exact-window edge is not robust to terminal FT / retained-chip / information option value.
+- recommended current chip: **NONE**.
 
-Current preserved normal roots show no material next-update affordability/selling-value risk. Policy is `WAIT_FOR_INFORMATION`.
+Full first-half numerical best-week ranks remain null/fail-closed until decision-grade future player projections and fixture information exist. This is intended mature behavior, not an unfinished C0244 layer.
+
+## 11. Price timing
+
+Official FPL price-predictor fields are captured append-only in `public.fpl_price_predictor_snapshots` and joined through FPL player identity.
+
+Current preserved normal roots show no material next-update affordability/selling-value risk. Policy remains `WAIT_FOR_INFORMATION` / `WAIT_FOR_T_MINUS_2`.
 
 Price evidence may accelerate an already-robust football decision; it may not create a transfer.
 
-## 11. Captaincy
+## 12. Captaincy
 
-Current C0242 class remains `NO_MEANINGFUL_EDGE` inside the 1.0-point mean-error band.
+Current C0242 class remains `NO_MEANINGFUL_EDGE` inside the model-error band.
 
-Nominal mean leader: Gabriel.
-Haul-tail leader: Saka.
-Bruno, Mbeumo and João Pedro are also inside the equivalence band.
+Do not describe a nominal captain as having a meaningful edge unless refreshed evidence survives uncertainty/tail sensitivity and the Noise-Control Gate.
 
-Do not describe the nominal captain as having a meaningful edge unless the final refreshed evidence proves one.
+## 13. Current C0234 / C0237 state
 
-## 12. Current C0234 / C0237 state
+C0234 v5 still requires the legacy C0231/C0233/C0240 lineage plus C0242 and C0248 readiness.
 
-`fpl-autonomous-gate` v5 has 15 gates.
+C0248 is currently a mandatory supervisory gate, not final selected-path authority.
 
-Current result:
+The C0234 source still uses the C0240 survivor when constructing a normal-transfer action after all gates pass. This is a direct reason C0248 cannot be declared cut over yet.
 
-- 14/15 pass;
-- sole blocker: `FINAL_T_MINUS_2H_REFRESH`;
-- current chip action: NONE;
-- C0248 best normal root: C0240 survivor;
-- final status: `DECISION_NOT_READY` until the scheduled refresh.
+C0237 remains the always-live publication surface. No external transfer or chip has been executed. `public.fpl_manager_plans` remains untouched.
 
-C0237 publication #14:
+## 14. Legacy disposition
 
-- PRE_FINAL;
-- CONTESTED;
-- execution unauthorized;
-- C0240 survivor rendered;
-- C0242 consistency rendered;
-- C0248 sequential control rendered;
-- current chip NONE.
+No legacy downstream component can be physically retired today without breaking a verified production dependency.
 
-No external transfer or chip has been executed. `public.fpl_manager_plans` remains untouched.
+- C0231: KEEP — still mandatory in C0234 and C0240 lineage.
+- C0233: KEEP — still mandatory in C0234 and C0240 lineage.
+- C0240: KEEP — active normal survivor, mandatory adversarial stability layer, C0248 comparison root and C0245 calibration evidence source.
+- C0242: KEEP — unique named-challenger/captaincy consistency gate.
+- C0234: KEEP — final fail-closed authorization boundary.
+- C0237: KEEP — serving/publication boundary.
 
-## 13. Final timing
+After verified C0248 production-selector cutover, C0231 is the clearest retirement candidate; C0233 may be collapsed into the canonical adversarial/Noise-Control path; C0240 should first be downgraded to shadow/supporting benchmark before any eventual retirement.
+
+## 15. C0248 cutover status
+
+**CUTOVER BLOCKED.**
+
+Required hardening before C0248 can become the canonical selected-path authority:
+
+1. exact/conservative legal autosub simulation;
+2. generated paid-transfer action support beyond two transfers when justified;
+3. explicit WC/FH/BB/TC planner actions with correct state transitions;
+4. canonical Wildcard fresh-squad candidate generation;
+5. bounded path-level affordability/price scenarios without price xPts effects;
+6. deterministic regression and Noise-Control comparison versus C0240/named challengers;
+7. C0234 normal-action authority changed from C0240 survivor to selected C0248 path;
+8. C0237 publication changed to canonical selected C0248 path after cutover;
+9. C0213 consumption/governance and behavioral tests rerun green.
+
+Do not mark C0248 Completed merely because its supervisory decision-control currently evaluates green.
+
+## 16. Governance verification
+
+Latest verified state after C0244 maturity work:
+
+- C0213 production behavioral consumption tests: 14/14 PASS on GW4 prediction run 1356.
+- change-tracker governance: zero violations before C0244 closeout update; rerun required after final documentation/contract updates in the same checkpoint chain.
+- historical forecasts rewritten: false.
+- no transfer/chip execution.
+
+## 17. Final timing
 
 GW4 deadline: 2026-09-12 12:30 UTC / 16:30 Dubai.
 Final T−2h threshold: 2026-09-12 10:30 UTC / 14:30 Dubai.
 
-Do not bypass the canonical projection cadence or final-information refresh.
+Current execution guidance: `WAIT_FOR_T_MINUS_2` unless a verified material price or injury event creates a robust reason to act earlier.
 
-## 14. Open C0248 work
+At T−2 perform the complete final process: fresh ingestion, full-pool optimization, all 15 players, xMins/roles, captaincy distributions, Defensive Contributions, chips, sequential transfer paths, ROLL, named challengers, price/timing, uncertainty sensitivity, red-team and Noise-Control Gate.
 
-Keep C0248 `In Progress` rather than claiming false completion. Remaining research/engineering:
-
-1. calibrate terminal FT/flexibility option value without hard-coding a fake universal points-per-FT constant;
-2. extend structural chip-opportunity planning beyond the exact projection horizon while failing closed on uncertain fixtures/DGWs;
-3. validate whether future information value can be represented without look-ahead;
-4. determine whether C0231/C0233/C0240 responsibilities can be simplified after C0248 proves stable;
-5. run the full stack again after the daily and final permitted projection refreshes.
-
-These are not reasons to add more independent production layers.
-
-## 15. Canonical references
+## 18. Canonical references
 
 - `PROJECT_DESCRIPTION.md`
 - `DECISIONS_AND_HISTORY.md`
@@ -218,6 +283,8 @@ These are not reasons to add more independent production layers.
 - `MODEL_CONSUMPTION_AUDIT.md`
 - `skills/fie/SKILL.md`
 - `project-management/C0242_DECISION_CONSISTENCY_CORRECTION_20260911.md`
+- `project-management/C0245_MATURE_OPTION_VALUE_CLOSEOUT_20260911.md`
 - `project-management/C0247_FULL_ENGINE_DECISION_ARCHITECTURE_AUDIT_20260911.md`
 - `project-management/C0248_SEQUENTIAL_MULTI_GW_DECISION_PLANNER_PLAN_20260911.md`
-- C0248 checkpoint B/D/E/F documents.
+- `project-management/C0248_CHECKPOINT_I_C0244_MATURE_FIRST_HALF_CHIP_CONTROL_20260911.md`
+- `project-management/C0248_CHECKPOINT_J_CUTOVER_READINESS_AND_LEGACY_DISPOSITION_20260911.md`

@@ -4,19 +4,32 @@ on:
   push:
     branches:
       - c0255-v3-product-semantic-architecture
+      - c0257-v3-live-actuals-match-intelligence
     paths:
       - 'frontend-v2/**'
       - 'frontend-v3/**'
+      - 'supabase/functions/fpl-v3-workspace-api/**'
+      - 'supabase/functions/fpl-v3-actual-live-api/**'
+      - 'supabase/functions/sync-fpl-actual-decision/**'
+      - 'supabase/migrations/*c0257*'
       - 'runtime-manifests/fpl-api.production.json'
       - 'runtime-manifests/fpl-v3-workspace-api.production.json'
+      - 'runtime-manifests/fpl-v3-actual-live-api.production.json'
+      - 'runtime-manifests/sync-fpl-actual-decision.production.json'
       - '.github/workflows/c0255-v3-contract.yml'
       - '.github/workflows/pages.yml'
   pull_request:
     paths:
       - 'frontend-v2/**'
       - 'frontend-v3/**'
+      - 'supabase/functions/fpl-v3-workspace-api/**'
+      - 'supabase/functions/fpl-v3-actual-live-api/**'
+      - 'supabase/functions/sync-fpl-actual-decision/**'
+      - 'supabase/migrations/*c0257*'
       - 'runtime-manifests/fpl-api.production.json'
       - 'runtime-manifests/fpl-v3-workspace-api.production.json'
+      - 'runtime-manifests/fpl-v3-actual-live-api.production.json'
+      - 'runtime-manifests/sync-fpl-actual-decision.production.json'
       - '.github/workflows/c0255-v3-contract.yml'
       - '.github/workflows/pages.yml'
 

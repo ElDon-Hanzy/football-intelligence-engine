@@ -9,6 +9,8 @@ const requireDeployAllowed = process.env.C0255_REQUIRE_DEPLOY_ALLOWED !== '0';
 const manifestFiles = [
   'runtime-manifests/fpl-api.production.json',
   'runtime-manifests/fpl-v3-workspace-api.production.json',
+  'runtime-manifests/fpl-v3-actual-live-api.production.json',
+  'runtime-manifests/sync-fpl-actual-decision.production.json',
 ];
 
 const failures = [];
@@ -32,11 +34,11 @@ for (const relativeManifestPath of manifestFiles) {
 }
 
 if (failures.length) {
-  console.error('C0255 serving parity gate: BLOCKED');
+  console.error('V3 serving parity gate: BLOCKED');
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
 
 console.log(
-  `C0255 serving parity gate: PASS (${requireDeployAllowed ? 'deployment authorization required' : 'source/runtime parity only'})`,
+  `V3 serving parity gate: PASS (${requireDeployAllowed ? 'deployment authorization required' : 'source/runtime parity only'})`,
 );

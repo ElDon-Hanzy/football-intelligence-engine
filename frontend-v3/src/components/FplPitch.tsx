@@ -11,21 +11,24 @@ export type PitchPlayer = {
   expectedMinutes: number | null;
   p10: number | null;
   actualPoints: number | null;
-  actualStatus: 'FINAL' | 'PENDING' | null;
+  actualStatus: 'FINAL' | 'LIVE' | 'PARTIAL' | 'PENDING' | null;
   captain: boolean;
   vice: boolean;
 };
 
 export type PitchMetricMode = 'projection' | 'realized';
+export type PlayerSelect = ((player: PitchPlayer) => void) | undefined;
 
 const positionOrder = ['GKP', 'DEF', 'MID', 'FWD'] as const;
 
 export function FplPitch({
   players,
   metricMode,
+  onPlayerSelect,
 }: {
   players: PitchPlayer[];
   metricMode: PitchMetricMode;
+  onPlayerSelect?: PlayerSelect;
 }) {
   const rows = positionOrder.map((position) => ({
     position,
@@ -52,7 +55,7 @@ export function FplPitch({
             data-count={row.players.length}
           >
             {row.players.map((player) => (
-              <PlayerCard key={player.id} player={player} metricMode={metricMode} />
+              <PlayerCard key={player.id} player={player} metricMode={metricMode} onPlayerSelect={onPlayerSelect} />
             ))}
           </div>
         ))}
@@ -64,9 +67,11 @@ export function FplPitch({
 export function BenchStrip({
   players,
   metricMode,
+  onPlayerSelect,
 }: {
   players: PitchPlayer[];
   metricMode: PitchMetricMode;
+  onPlayerSelect?: PlayerSelect;
 }) {
   return (
     <section className="v3-bench-strip" aria-labelledby="bench-heading">
@@ -81,7 +86,7 @@ export function BenchStrip({
         {players.map((player, index) => (
           <div className="v3-bench-slot" key={player.id}>
             <span className="v3-bench-order">{index + 1}</span>
-            <PlayerCard player={player} metricMode={metricMode} compact />
+            <PlayerCard player={player} metricMode={metricMode} compact onPlayerSelect={onPlayerSelect} />
           </div>
         ))}
       </div>
@@ -93,15 +98,17 @@ export function SquadList({
   starters,
   bench,
   metricMode,
+  onPlayerSelect,
 }: {
   starters: PitchPlayer[];
   bench: PitchPlayer[];
   metricMode: PitchMetricMode;
+  onPlayerSelect?: PlayerSelect;
 }) {
   return (
     <div className="v3-squad-list">
-      <ListGroup title="Starting XI" players={starters} metricMode={metricMode} />
-      <ListGroup title="Bench" players={bench} metricMode={metricMode} />
+      <ListGroup title="Starting XI" players={starters} metricMode={metricMode} onPlayerSelect={onPlayerSelect} />
+      <ListGroup title="Bench" players={bench} metricMode={metricMode} onPlayerSelect={onPlayerSelect} />
     </div>
   );
 }
@@ -110,10 +117,12 @@ function ListGroup({
   title,
   players,
   metricMode,
+  onPlayerSelect,
 }: {
   title: string;
   players: PitchPlayer[];
   metricMode: PitchMetricMode;
+  onPlayerSelect?: PlayerSelect;
 }) {
   return (
     <section className="v3-list-group">
@@ -123,7 +132,14 @@ function ListGroup({
       </div>
       <div className="v3-list-rows">
         {players.map((player) => (
-          <div className="v3-list-player" key={player.id}>
+          <button
+            className="v3-list-player v3-list-player--interactive"
+            key={player.id}
+            type="button"
+            onClick={() => onPlayerSelect?.(player)}
+            disabled={!onPlayerSelect}
+            aria-label={onPlayerSelect ? `Open ${player.name} intelligence` : undefined}
+          >
             <Shirt player={player} />
             <div className="v3-list-player-main">
               <strong>{player.name}</strong>
@@ -134,7 +150,7 @@ function ListGroup({
               <strong>{metricPrimary(player, metricMode)}</strong>
               <span>{metricSecondary(player, metricMode)}</span>
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </section>
@@ -145,16 +161,16 @@ function PlayerCard({
   player,
   metricMode,
   compact = false,
+  onPlayerSelect,
 }: {
   player: PitchPlayer;
   metricMode: PitchMetricMode;
   compact?: boolean;
+  onPlayerSelect?: PlayerSelect;
 }) {
-  return (
-    <article
-      className={`v3-player-card${compact ? ' is-compact' : ''}`}
-      aria-label={`${player.name}, ${player.position}, ${player.fixtureLabel}`}
-    >
+  const className = `v3-player-card${compact ? ' is-compact' : ''}${onPlayerSelect ? ' is-interactive' : ''}`;
+  const children = (
+    <>
       <div className="v3-player-visual">
         <Shirt player={player} />
         <CaptainMarkers player={player} />
@@ -167,6 +183,25 @@ function PlayerCard({
         <strong>{metricPrimary(player, metricMode)}</strong>
         <span>{metricSecondary(player, metricMode)}</span>
       </div>
+    </>
+  );
+
+  if (onPlayerSelect) {
+    return (
+      <button
+        type="button"
+        className={className}
+        aria-label={`Open ${player.name} intelligence, ${player.position}, ${player.fixtureLabel}`}
+        onClick={() => onPlayerSelect(player)}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  return (
+    <article className={className} aria-label={`${player.name}, ${player.position}, ${player.fixtureLabel}`}>
+      {children}
     </article>
   );
 }
@@ -191,7 +226,9 @@ function CaptainMarkers({ player }: { player: PitchPlayer }) {
 function metricPrimary(player: PitchPlayer, metricMode: PitchMetricMode): string {
   if (metricMode === 'realized') {
     if (player.actualStatus === 'FINAL' && player.actualPoints != null) return `${player.actualPoints} pts`;
-    if (player.fixturePhase === 'LIVE') return 'LIVE';
+    if (player.actualStatus === 'LIVE' && player.actualPoints != null) return `${player.actualPoints} pts`;
+    if (player.actualStatus === 'PARTIAL' && player.actualPoints != null) return `${player.actualPoints} pts`;
+    if (player.actualStatus === 'LIVE' || player.fixturePhase === 'LIVE') return 'LIVE';
     return 'Pending';
   }
   return player.expectedPoints == null ? '— xPts' : `${player.expectedPoints.toFixed(1)} xPts`;
@@ -199,7 +236,10 @@ function metricPrimary(player: PitchPlayer, metricMode: PitchMetricMode): string
 
 function metricSecondary(player: PitchPlayer, metricMode: PitchMetricMode): string {
   if (metricMode === 'realized') {
-    return player.expectedPoints == null ? 'Frozen projection unavailable' : `Frozen ${player.expectedPoints.toFixed(1)} xPts`;
+    if (player.actualStatus === 'FINAL') return 'Final FPL points';
+    if (player.actualStatus === 'LIVE') return 'Live · provisional';
+    if (player.actualStatus === 'PARTIAL') return 'Partial · provisional';
+    return 'Fixture not played';
   }
 
   const minutes = player.expectedMinutes == null ? 'xMin —' : `${Math.round(player.expectedMinutes)} xMin`;

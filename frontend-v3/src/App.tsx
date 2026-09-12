@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { FplWorkspace } from './components/FplWorkspace';
+import { FplLiveWorkspace } from './components/FplLiveWorkspace';
 import { HistoryPage } from './components/HistoryPage';
-import { HomePage, InsightsPage, MatchesPage, type ProductView } from './components/ProductPages';
+import { MatchesIntelligencePage } from './components/MatchesIntelligencePage';
+import { HomePage, InsightsPage, type ProductView } from './components/ProductPages';
 
 const navItems: Array<{ label: string; view: ProductView }> = [
   { label: 'Home', view: 'home' },
@@ -41,8 +42,8 @@ export function App() {
 
   let content;
   if (active === 'home') content = <HomePage onNavigate={navigate} />;
-  else if (active === 'fpl') content = <FplWorkspace />;
-  else if (active === 'matches') content = <MatchesPage />;
+  else if (active === 'fpl') content = <FplLiveWorkspace />;
+  else if (active === 'matches') content = <MatchesIntelligencePage />;
   else if (active === 'insights') content = <InsightsPage />;
   else content = <HistoryPage />;
 

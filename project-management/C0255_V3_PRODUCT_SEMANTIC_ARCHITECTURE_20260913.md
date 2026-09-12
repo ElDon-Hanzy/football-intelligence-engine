@@ -59,6 +59,8 @@ The repository `supabase/functions/fpl-api/index.ts` does not contain the full d
 
 Permanent C0255 rule: never resolve source/runtime drift by deploying an older repository copy over a newer correct runtime. Capture/reconcile the runtime first, then require parity before later public V3 deployment.
 
+A machine-readable manifest now records the production version/hash and repository blob. `frontend-v3/scripts/verify-serving-parity.mjs` fails closed while parity is `DRIFT_DETECTED`; public V3 deployment remains prohibited until this gate is green.
+
 ## V3 read model
 
 V3 will consume a purpose-built workspace contract rather than reinterpret V2 API semantics in React.
@@ -188,6 +190,8 @@ Design principles:
 
 Working navigation: `Home | FPL | Matches | Insights | History`.
 
+The canonical V3 design foundation is documented in `frontend-v3/DESIGN_SYSTEM.md` and implemented in `frontend-v3/src/styles/tokens.css` plus `base.css`/`shell.css`.
+
 ## C0255 implementation checkpoints
 
 ### A — Semantic contract and reproducibility guard
@@ -198,15 +202,16 @@ Working navigation: `Home | FPL | Matches | Insights | History`.
 - [x] confirm pre-transfer manager state cannot represent recommended post-transfer state;
 - [x] confirm active lifecycle has finished/live/future fixtures;
 - [x] confirm repository/runtime drift;
-- [ ] commit typed V3 state contract and regression tests;
+- [x] commit typed V3 state contract and regression tests;
 - [ ] restore exact `fpl-api` runtime/source parity or establish a deterministic generated-source capture gate;
-- [ ] add V3 serving-contract parity checks.
+- [x] add V3 serving-contract parity checks (currently intentionally BLOCKED while drift exists).
 
 ### B — V3 application shell/design system
 
-- [ ] create isolated `frontend-v3/` application;
-- [ ] establish tokens, typography, navigation, surfaces, spacing and responsive primitives;
-- [ ] no dependency on V2 CSS/components.
+- [x] scaffold isolated `frontend-v3/` application source;
+- [x] establish tokens, typography, navigation, surfaces, spacing and responsive primitives;
+- [x] no dependency on V2 CSS/components;
+- [ ] generate/commit the V3 dependency lock and run full typecheck/build in an install-capable CI/runtime;
 
 ### C — FPL workspace
 
@@ -221,13 +226,27 @@ Working navigation: `Home | FPL | Matches | Insights | History`.
 Before public V3 serving:
 
 - [ ] data-integrity tests green;
-- [ ] semantic regression tests green;
+- [x] semantic regression contract 6/6 green locally;
 - [ ] responsive mobile/tablet/desktop QA green;
 - [ ] E2E green;
 - [ ] repository/runtime source parity green;
 - [ ] V2 unchanged and still live;
 - [ ] live `/v3/` serving verified;
-- [ ] historical forecasts rewritten = false.
+- [x] historical forecasts rewritten = false at C0255 start; must be rechecked before deploy.
+
+## Checkpoint log — 2026-09-13
+
+- C0255 branch created from `main`.
+- C0255 registered in `public.change_tracker_working` as Critical / In Progress / Implementation.
+- tracker governance audit remains PASS: 179 rows, 0 bad IDs, 0 completed-not-verified, 0 completed-without-refs, 0 consumption violations.
+- typed semantic contract committed at `frontend-v3/src/domain/fplState.ts`.
+- six regression cases pass locally using Node TypeScript stripping.
+- branch CI definition added for the semantic contract; no run was visible immediately after workflow creation.
+- runtime drift manifest and fail-closed public-deploy parity gate committed.
+- V3 visual design foundation and initial responsive consumer shell committed.
+- no V2 source was changed.
+- no Supabase model/forecast data was changed.
+- no edge function was deployed or downgraded.
 
 ## Regression requirements inherited from V2 defects
 

@@ -1,0 +1,36 @@
+{
+  "function": "fpl-v3-workspace-api",
+  "supabase_project": "knooiwezzsxcwhtjtdap",
+  "observed_at": "2026-09-13T01:38:00+04:00",
+  "production": {
+    "version": 2,
+    "bundle_sha256": "989e097caf66980805157b0da38e31da1bcf507cfd1d9533984311bf56f04d6f",
+    "contract_version": "fpl_v3_workspace_v02_player_evidence",
+    "verify_jwt": true
+  },
+  "repository": {
+    "branch": "c0255-v3-product-semantic-architecture",
+    "path": "supabase/functions/fpl-v3-workspace-api/index.ts",
+    "git_blob_sha": "eaa117e50e7825fc36b9f67d681dfe2f12fec904",
+    "source_commit": "6ca37d5b2f7e3041bd0e5e17502bb3ad9d066fc3"
+  },
+  "live_contract_verification": {
+    "request_id": 5714,
+    "github_actions_run_id": 34720478702,
+    "http_status": 200,
+    "actual_status": "NOT_VERIFIED",
+    "authorization_label": "FINAL_FROZEN_NOT_AUTHORIZED",
+    "player_evidence_count": 15,
+    "fixture_phases": {
+      "future": 3,
+      "live": 0,
+      "finished": 7
+    },
+    "historical_forecasts_rewritten": false
+  },
+  "parity_status": "GREEN",
+  "private_contract_verified": true,
+  "public_client_live_smoke_verified": true,
+  "public_v3_deploy_allowed": true,
+  "reason": "Workspace source/runtime parity is green. The shipped public-client authentication path, semantic/browser/accessibility gates, deterministic build, data-integrity audit and V2-preserving Pages artifact rehearsal are green."
+}

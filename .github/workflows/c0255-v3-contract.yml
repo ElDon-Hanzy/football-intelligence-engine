@@ -1,0 +1,181 @@
+name: C0255 V3 contract and build
+
+on:
+  push:
+    branches:
+      - c0255-v3-product-semantic-architecture
+    paths:
+      - 'frontend-v2/**'
+      - 'frontend-v3/**'
+      - 'runtime-manifests/fpl-api.production.json'
+      - 'runtime-manifests/fpl-v3-workspace-api.production.json'
+      - '.github/workflows/c0255-v3-contract.yml'
+      - '.github/workflows/pages.yml'
+  pull_request:
+    paths:
+      - 'frontend-v2/**'
+      - 'frontend-v3/**'
+      - 'runtime-manifests/fpl-api.production.json'
+      - 'runtime-manifests/fpl-v3-workspace-api.production.json'
+      - '.github/workflows/c0255-v3-contract.yml'
+      - '.github/workflows/pages.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  semantic-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: frontend-v3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run V3 semantic regression contract
+        run: npm run test:contract
+
+  app-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend-v3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend-v3/package-lock.json
+      - name: Install V3 dependencies deterministically
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify serving parity and deployment authorization
+        run: npm run gate:serving-parity
+      - name: Typecheck V3
+        run: npm run typecheck
+      - name: Build V3
+        run: npm run build
+
+  live-api-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: frontend-v3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Exercise live V3 workspace using shipped public-client auth
+        run: node scripts/smoke-live-workspace.mjs
+
+  browser-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend-v3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend-v3/package-lock.json
+      - name: Install V3 dependencies deterministically
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build V3
+        run: npm run build
+      - name: Run responsive semantic E2E and accessibility QA
+        run: npm run test:e2e
+      - name: Upload browser QA report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: c0255-v3-playwright-report
+          path: frontend-v3/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
+
+  pages-artifact-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            frontend-v2/package-lock.json
+            frontend-v3/package-lock.json
+      - name: Prove V2 source is unchanged from main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main --depth=1
+          if ! git diff --quiet origin/main...HEAD -- frontend-v2; then
+            echo 'C0255 Pages QA failure: V2 source changed on the V3 architecture branch'
+            git diff --stat origin/main...HEAD -- frontend-v2
+            exit 1
+          fi
+      - name: Install V2 dependencies
+        working-directory: frontend-v2
+        run: npm ci --no-audit --no-fund
+      - name: Install V3 dependencies
+        working-directory: frontend-v3
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build V2 fallback
+        working-directory: frontend-v2
+        run: npm run build
+      - name: Build V3
+        working-directory: frontend-v3
+        run: npm run build
+      - name: Assemble and verify Pages artifact without deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site
+          rsync -a ./ _site/ \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude 'frontend-v2/' \
+            --exclude 'frontend-v3/' \
+            --exclude '_site/' \
+            --exclude 'node_modules/'
+          mkdir -p _site/v2 _site/v3
+          cp -R frontend-v2/dist/. _site/v2/
+          cp -R frontend-v3/dist/. _site/v3/
+
+          cmp -s index.html _site/index.html || {
+            echo 'C0255 Pages QA failure: legacy root changed during assembly'
+            exit 1
+          }
+          cmp -s frontend-v2/dist/index.html _site/v2/index.html || {
+            echo 'C0255 Pages QA failure: V2 fallback changed during assembly'
+            exit 1
+          }
+          cmp -s frontend-v3/dist/index.html _site/v3/index.html || {
+            echo 'C0255 Pages QA failure: V3 changed during assembly'
+            exit 1
+          }
+          test ! -e _site/frontend-v2
+          test ! -e _site/frontend-v3
+          for app in v2 v3; do
+            js_asset="$(grep -oE '\./assets/[^\"]+\.js' "_site/$app/index.html" | head -n 1)"
+            test -n "$js_asset"
+            test -s "_site/$app/${js_asset#./}"
+          done
+
+          npm --prefix frontend-v2 run artifact:verify
+          echo 'C0255 branch Pages artifact QA: PASS'

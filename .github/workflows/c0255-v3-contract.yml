@@ -1,17 +1,17 @@
-name: C0255 V3 semantic contract
+name: C0255 V3 contract and build
 
 on:
   push:
     branches:
       - c0255-v3-product-semantic-architecture
     paths:
-      - 'frontend-v3/src/domain/**'
-      - 'frontend-v3/package.json'
+      - 'frontend-v3/**'
+      - 'runtime-manifests/fpl-v3-workspace-api.production.json'
       - '.github/workflows/c0255-v3-contract.yml'
   pull_request:
     paths:
-      - 'frontend-v3/src/domain/**'
-      - 'frontend-v3/package.json'
+      - 'frontend-v3/**'
+      - 'runtime-manifests/fpl-v3-workspace-api.production.json'
       - '.github/workflows/c0255-v3-contract.yml'
 
 permissions:
@@ -31,3 +31,21 @@ jobs:
           node-version: '24'
       - name: Run V3 semantic regression contract
         run: npm run test:contract
+
+  app-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend-v3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install V3 dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Typecheck V3
+        run: npm run typecheck
+      - name: Build V3
+        run: npm run build

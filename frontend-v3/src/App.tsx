@@ -14,7 +14,7 @@ const validViews = new Set<ProductView>(navItems.map((item) => item.view));
 
 function viewFromLocation(): ProductView {
   const raw = window.location.hash.replace(/^#/, '').trim().toLowerCase();
-  return validViews.has(raw as ProductView) ? raw as ProductView : 'home';
+  return validViews.has(raw as ProductView) ? raw as ProductView : 'fpl';
 }
 
 export function App() {

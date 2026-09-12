@@ -1,33 +1,35 @@
 {
   "function": "sync-fpl-actual-decision",
   "supabase_project": "knooiwezzsxcwhtjtdap",
-  "observed_at": "2026-09-13T03:02:00+04:00",
+  "observed_at": "2026-09-13T03:51:34+04:00",
   "production": {
-    "version": 1,
-    "bundle_sha256": "0191fd6818f788c21d75cdfb9eedd656544a6a8889a4a73c7ff6186580697d22",
+    "version": 2,
+    "bundle_sha256": "c36db5e653235c48b01119720503b1dce63bb8a9f51f232d6724f4c4d7e979c9",
     "verify_jwt": false,
     "custom_auth": "FOOTBALL_ENGINE_ADMIN_TOKEN"
   },
   "repository": {
-    "branch": "c0257-v3-live-actuals-match-intelligence",
+    "branch": "c0258-v3-dense-intelligence-freeze",
     "path": "supabase/functions/sync-fpl-actual-decision/index.ts",
-    "git_blob_sha": "7a2fe20a8ab9965013cca8b70f8ce2e36d293919",
-    "source_commit": "c87544492b79a66c1f4c34541052ad282e51e510"
+    "git_blob_sha": "a145c054d5524c70a84c737e90ba507ea29bda39",
+    "source_commit": "0346ceba5f99f52275f62cfcc56b9e9a3f2d2eca"
   },
   "runtime_verification": {
-    "first_request_id": 5734,
-    "first_http_status": 200,
-    "first_status": "PERSISTED",
+    "request_id": 5752,
+    "http_status": 200,
+    "status": "FROZEN_DB_SNAPSHOT",
     "gameweek": 4,
     "actual_decision_id": 2,
     "starting_xi_count": 11,
     "bench_count": 4,
     "captain_player_id": 470,
     "vice_player_id": 170,
-    "second_request_id": 5735,
-    "second_http_status": 200,
-    "second_status": "UNCHANGED",
+    "persisted": false,
+    "no_fpl_request_was_made": true,
+    "row_count_before": 1,
+    "row_count_after": 1,
     "duplicate_rows_created": false,
+    "frozen_source": "public_fpl_api_locked_picks_c0257",
     "cron_job": "football_intelligence_fpl_actual_decision_sync",
     "cron_schedule": "2,17,32,47 * * * *",
     "entry_id": 3559923
@@ -35,5 +37,5 @@
   "parity_status": "GREEN",
   "private_contract_verified": true,
   "public_v3_deploy_allowed": true,
-  "reason": "Post-lock FPL picks sync is source/runtime aligned, admin-token protected, idempotent and scheduled every 15 minutes. It persists only locked FPL picks and never infers actual state from the engine recommendation."
+  "reason": "C0258 makes the first complete post-deadline 15-man actual snapshot immutable. A scheduler proof returned the existing GW4 database decision before any external FPL request and created no new row. V3 refreshes remain database/API reads only and never invoke the optimizer or the actual-sync function."
 }

@@ -81,9 +81,12 @@ function WorkspaceContent({
 }) {
   const recommendation = workspace.recommendation;
   const actualVerified = workspace.actual.verification_status === 'VERIFIED';
+  const actualReason = workspace.actual.verification_status === 'NOT_VERIFIED'
+    ? workspace.actual.reason
+    : null;
 
   const resolved = useMemo(() => {
-    if (stateMode === 'actual' && actualVerified) {
+    if (stateMode === 'actual' && workspace.actual.verification_status === 'VERIFIED') {
       return {
         starters: resolvePitchPlayers(
           workspace.actual.starting_xi,
@@ -115,7 +118,7 @@ function WorkspaceContent({
         recommendation.vice_player_id,
       ),
     };
-  }, [actualVerified, recommendation, stateMode, workspace]);
+  }, [recommendation, stateMode, workspace]);
 
   const metricMode: PitchMetricMode = stateMode === 'live' ? 'realized' : 'projection';
   const stateTitle = stateMode === 'recommendation'
@@ -128,7 +131,7 @@ function WorkspaceContent({
     : stateMode === 'actual'
       ? actualVerified
         ? 'Verified submitted selection. It remains separate from the engine recommendation.'
-        : workspace.actual.reason
+        : actualReason ?? 'Actual submitted team not verified'
       : actualVerified
         ? 'Live and finished outcomes compared with the verified submitted selection.'
         : 'Live and finished outcomes overlaid on the frozen engine recommendation. This is not presented as the submitted team.';
@@ -204,7 +207,7 @@ function WorkspaceContent({
         </div>
 
         {stateMode === 'actual' && !actualVerified ? (
-          <ActualUnverified reason={workspace.actual.reason} />
+          <ActualUnverified reason={actualReason ?? 'Actual submitted team not verified'} />
         ) : resolved.starters.length === 0 ? (
           <div className="v3-empty-state">
             <strong>No complete selection is available for this state.</strong>

@@ -48,7 +48,7 @@ async function assertNoPageErrors(page: Page, action: () => Promise<void>): Prom
   expect(errors).toEqual([]);
 }
 
-async function openView(page: Page, view: string, gw: number, heading: string): Promise<void> {
+async function openView(page: Page, view: string, gw: number, heading: string | RegExp): Promise<void> {
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= LIVE_ATTEMPTS; attempt += 1) {
     await page.goto(`/?view=${view}&gw=${gw}`, { waitUntil: 'domcontentloaded', timeout: LIVE_TIMEOUT });
@@ -84,11 +84,17 @@ test('current production APIs populate every v2 data surface', async ({ request 
   expect(fpl.squad).toHaveLength(15);
   expect(fpl.fixture_results).toHaveLength(10);
   expect(fpl.all_predictions.length).toBeGreaterThanOrEqual(500);
+  const historicalMetadataUnavailable = fpl.snapshot_stage === 'HISTORICAL_FROZEN'
+    && fpl.metadata_availability?.price_ownership_source === 'UNAVAILABLE_HISTORICALLY';
   for (const player of fpl.all_predictions) {
     expect(player.expected_points, `${player.name} expected_points`).not.toBeNull();
     expect(player.expected_minutes, `${player.name} expected_minutes`).not.toBeNull();
-    expect(player.price, `${player.name} price`).not.toBeNull();
-    expect(player.ownership_percent, `${player.name} ownership`).not.toBeNull();
+    if (!historicalMetadataUnavailable) {
+      expect(player.price, `${player.name} price`).not.toBeNull();
+      expect(player.ownership_percent, `${player.name} ownership`).not.toBeNull();
+    } else {
+      expect(player.player_metadata_source, `${player.name} historical metadata source`).toBe('UNAVAILABLE_HISTORICALLY');
+    }
     expect(player.p_10_plus, `${player.name} p10`).not.toBeNull();
     expect(player.q90, `${player.name} q90`).not.toBeNull();
     expect(player.q95, `${player.name} q95`).not.toBeNull();
@@ -96,12 +102,16 @@ test('current production APIs populate every v2 data surface', async ({ request 
   }
 
   expect(manager.gameweek).toBe(gw);
-  expect(manager.plan).toBeTruthy();
-  expect(manager.manager_state).toBeTruthy();
-  expect(manager.plan.starting_xi).toHaveLength(11);
-  expect(manager.plan.bench_order).toHaveLength(4);
-  expect(manager.plan.captain_player_id).toBeTruthy();
-  expect(manager.plan.vice_player_id).toBeTruthy();
+  if (fpl.snapshot_stage === 'HISTORICAL_FROZEN') {
+    expect(fpl.decision).toBeTruthy();
+  } else {
+    expect(manager.plan).toBeTruthy();
+    expect(manager.manager_state).toBeTruthy();
+    expect(manager.plan.starting_xi).toHaveLength(11);
+    expect(manager.plan.bench_order).toHaveLength(4);
+    expect(manager.plan.captain_player_id).toBeTruthy();
+    expect(manager.plan.vice_player_id).toBeTruthy();
+  }
 
   expect(intelligence.gameweek).toBe(gw);
   expect(intelligence.fixtures).toHaveLength(10);
@@ -172,7 +182,7 @@ test('every current v2 page renders its populated sections without silent blanks
     await expect(page.locator('.home-grid .pulse-card')).toHaveCount(3, { timeout: LIVE_TIMEOUT });
     await expect(page.locator('.state-panel')).toHaveCount(0);
 
-    await openView(page, 'fpl', gw, 'FPL decision workspace');
+    await openView(page, 'fpl', gw, /^(FPL decision workspace|FPL decision history)$/);
     await expect(page.locator('.player-tile-grid .player-tile')).toHaveCount(11, { timeout: LIVE_TIMEOUT });
     await expect(page.locator('.bench-list .player-tile')).toHaveCount(4, { timeout: LIVE_TIMEOUT });
     const fullPool = page.locator('.full-pool-details summary');

@@ -73,6 +73,10 @@ jobs:
         working-directory: frontend-v3
         run: npm run gate:serving-parity
 
+      - name: Exercise live V3 workspace using shipped public-client auth
+        working-directory: frontend-v3
+        run: node scripts/smoke-live-workspace.mjs
+
       - name: Install Chromium for UI E2E
         working-directory: frontend-v2
         shell: bash
@@ -223,7 +227,11 @@ jobs:
           }
 
           for app in v2 v3; do
-            eval "APP_URL=\${${app^^}_URL}"
+            if [ "$app" = 'v2' ]; then
+              APP_URL="$V2_URL"
+            else
+              APP_URL="$V3_URL"
+            fi
             index_file="/tmp/pages-$app.html"
             js_asset="$(grep -oE '\./assets/[^\"]+\.js' "$index_file" | head -n 1)"
             test -n "$js_asset" || {

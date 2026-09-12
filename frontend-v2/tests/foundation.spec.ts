@@ -117,3 +117,34 @@ test('navigation opens the completed FPL workspace and gameweek controls update 
   await page.getByLabel('Gameweek').selectOption('3');
   await expect(page).toHaveURL(/gw=3/);
 });
+
+test('C0253 reuses Home/FPL API responses across navigation and a hard reload', async ({ page }) => {
+  await page.unroute('**/fpl-api**');
+  await page.unroute('**/fpl-manager-plan-api**');
+  let fplCalls = 0;
+  let managerPlanCalls = 0;
+  await page.route('**/fpl-api**', async (route) => {
+    fplCalls += 1;
+    await route.fulfill({ json: fplPayload });
+  });
+  await page.route('**/fpl-manager-plan-api**', async (route) => {
+    managerPlanCalls += 1;
+    await route.fulfill({ json: managerPlanPayload });
+  });
+
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: 'Command Center' })).toBeVisible();
+  expect(fplCalls).toBe(1);
+  expect(managerPlanCalls).toBe(1);
+
+  await page.locator('nav:visible').getByRole('button', { name: 'FPL' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'FPL decision workspace' })).toBeVisible();
+  expect(fplCalls).toBe(1);
+  expect(managerPlanCalls).toBe(1);
+
+  await page.waitForTimeout(400);
+  await page.reload();
+  await expect(page.getByRole('heading', { level: 1, name: 'FPL decision workspace' })).toBeVisible();
+  expect(fplCalls).toBe(1);
+  expect(managerPlanCalls).toBe(1);
+});

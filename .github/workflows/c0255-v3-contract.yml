@@ -15,7 +15,7 @@ on:
       - '.github/workflows/c0255-v3-contract.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   semantic-contract:
@@ -45,17 +45,25 @@ jobs:
           node-version: '24'
       - name: Install V3 dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Capture generated V3 lockfile on architecture branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/c0255-v3-product-semantic-architecture'
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add frontend-v3/package-lock.json
+          if git diff --cached --quiet; then
+            echo 'V3 package-lock.json already deterministic'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'C0255-E commit deterministic V3 package lock'
+          git push origin HEAD:c0255-v3-product-semantic-architecture
       - name: Typecheck V3
         run: npm run typecheck
       - name: Build V3
         run: npm run build
-      - name: Export generated V3 lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: c0255-v3-package-lock
-          path: frontend-v3/package-lock.json
-          if-no-files-found: error
-          retention-days: 1
 
   browser-qa:
     runs-on: ubuntu-latest

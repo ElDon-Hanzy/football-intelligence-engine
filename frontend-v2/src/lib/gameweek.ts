@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { endpoints, fetchValidated, publicGatewayHeaders } from './api';
+import { apiQueryKeys } from './queryKeys';
 
 export const GameweekStatusSchema = z.object({
   ok: z.literal(true),
@@ -29,7 +30,7 @@ export const GameweekStatusSchema = z.object({
 
 export function useLiveGameweek(enabled: boolean) {
   return useQuery({
-    queryKey: ['live-gameweek'],
+    queryKey: apiQueryKeys.gameweekStatus,
     queryFn: ({ signal }) => fetchValidated(endpoints.gameweekStatus, GameweekStatusSchema, signal, publicGatewayHeaders),
     enabled,
     staleTime: 5 * 60 * 1000,
@@ -38,7 +39,7 @@ export function useLiveGameweek(enabled: boolean) {
 
 export function useGameweekStatus() {
   return useQuery({
-    queryKey: ['live-gameweek'],
+    queryKey: apiQueryKeys.gameweekStatus,
     queryFn: ({ signal }) => fetchValidated(endpoints.gameweekStatus, GameweekStatusSchema, signal, publicGatewayHeaders),
     staleTime: 5 * 60 * 1000,
   });

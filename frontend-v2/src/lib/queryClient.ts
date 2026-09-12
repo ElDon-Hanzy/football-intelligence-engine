@@ -1,7 +1,7 @@
 import { QueryClient, dehydrate, hydrate, type DehydratedState } from '@tanstack/react-query';
 
 const CACHE_KEY = 'fie-v2-api-cache';
-const CACHE_BUSTER = 'c0253-v1';
+const CACHE_BUSTER = 'c0254-v1';
 const CACHE_MAX_AGE_MS = 15 * 60_000;
 const MAX_PERSISTED_QUERIES = 8;
 

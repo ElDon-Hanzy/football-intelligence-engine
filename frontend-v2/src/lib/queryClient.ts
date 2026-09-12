@@ -28,11 +28,11 @@ type PersistedApiCache = {
 
 function restorePersistedCache(): void {
   try {
-    const raw = window.sessionStorage.getItem(CACHE_KEY);
+    const raw = window.localStorage.getItem(CACHE_KEY);
     if (!raw) return;
     const parsed = JSON.parse(raw) as PersistedApiCache;
     if (parsed.buster !== CACHE_BUSTER || !Number.isFinite(parsed.savedAt) || Date.now() - parsed.savedAt > CACHE_MAX_AGE_MS) {
-      window.sessionStorage.removeItem(CACHE_KEY);
+      window.localStorage.removeItem(CACHE_KEY);
       return;
     }
     hydrate(queryClient, parsed.state);
@@ -53,8 +53,8 @@ function persistApiCache(): void {
       .sort((a, b) => (b.state.dataUpdatedAt ?? 0) - (a.state.dataUpdatedAt ?? 0))
       .slice(0, MAX_PERSISTED_QUERIES);
 
-    // Keep the freshest successful responses if the browser gives this tab a small
-    // sessionStorage quota. This prevents a large historical FPL payload from breaking
+    // Keep the freshest successful responses if the browser gives this site a small
+    // storage quota. This prevents a large historical FPL payload from breaking
     // persistence for the current Gameweek.
     while (true) {
       const payload: PersistedApiCache = {
@@ -63,7 +63,7 @@ function persistApiCache(): void {
         state: { ...state, queries },
       };
       try {
-        window.sessionStorage.setItem(CACHE_KEY, JSON.stringify(payload));
+        window.localStorage.setItem(CACHE_KEY, JSON.stringify(payload));
         return;
       } catch {
         if (queries.length === 0) return;

@@ -26,6 +26,15 @@ type PersistedApiCache = {
   state: DehydratedState;
 };
 
+function cachePriority(queryKey: readonly unknown[]): number {
+  const family = queryKey[1];
+  if (family === 'fpl') return 100;
+  if (family === 'manager-plan') return 90;
+  if (family === 'gameweek-status') return 80;
+  if (family === 'fixture-facts' || family === 'fixture-intelligence') return 50;
+  return 20;
+}
+
 function restorePersistedCache(): void {
   try {
     const raw = window.localStorage.getItem(CACHE_KEY);
@@ -50,12 +59,13 @@ function persistApiCache(): void {
         && query.queryKey[0] === 'api',
     });
     let queries = [...state.queries]
-      .sort((a, b) => (b.state.dataUpdatedAt ?? 0) - (a.state.dataUpdatedAt ?? 0))
+      .sort((a, b) => cachePriority(b.queryKey) - cachePriority(a.queryKey)
+        || (b.state.dataUpdatedAt ?? 0) - (a.state.dataUpdatedAt ?? 0))
       .slice(0, MAX_PERSISTED_QUERIES);
 
-    // Keep the freshest successful responses if the browser gives this site a small
-    // storage quota. This prevents a large historical FPL payload from breaking
-    // persistence for the current Gameweek.
+    // Keep the highest-value successful responses if the browser gives this site a small
+    // storage quota. FPL, manager-plan and live-GW snapshots survive before secondary
+    // analysis pages, so a large optional payload cannot evict the command-center cache.
     while (true) {
       const payload: PersistedApiCache = {
         buster: CACHE_BUSTER,

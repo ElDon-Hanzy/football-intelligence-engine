@@ -1,7 +1,7 @@
 {
   "function": "fpl-api",
   "supabase_project": "knooiwezzsxcwhtjtdap",
-  "observed_at": "2026-09-13T01:20:00+04:00",
+  "observed_at": "2026-09-13T01:38:00+04:00",
   "production": {
     "version": 18,
     "bundle_sha256": "3f02d4e011a635e8cc2fa5edd9fbad5c1c0c95d6c087bcdda472ff309ac5b347",
@@ -16,6 +16,6 @@
   },
   "parity_status": "GREEN",
   "runtime_redeployed": false,
-  "public_v3_deploy_allowed": false,
-  "reason": "Repository source was reconciled to the unchanged deployed fpl-api v18 runtime. Public V3 remains blocked only by remaining V3 frontend QA/reproducible-install/live-serving gates."
+  "public_v3_deploy_allowed": true,
+  "reason": "Repository source is reconciled to the unchanged deployed fpl-api v18 runtime. Deterministic V3 build/browser QA, live public-client workspace smoke, data-integrity audit and V2-preserving Pages artifact rehearsal are green."
 }

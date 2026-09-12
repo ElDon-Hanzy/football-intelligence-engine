@@ -81,7 +81,8 @@ async function mockProductApis(page: Page) {
 }
 
 async function nav(page: Page, view: 'home' | 'fpl' | 'matches' | 'insights' | 'history') {
-  await page.locator(`a[href="#${view}"]:visible`).click();
+  const label = view === 'fpl' ? 'FPL' : `${view.charAt(0).toUpperCase()}${view.slice(1)}`;
+  await page.getByRole('link', { name: label, exact: true }).click();
 }
 
 async function assertNoOverflow(page: Page) {

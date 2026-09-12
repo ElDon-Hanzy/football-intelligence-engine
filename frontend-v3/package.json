@@ -7,6 +7,7 @@
     "node": ">=22.6"
   },
   "scripts": {
-    "test:contract": "node --experimental-strip-types --test src/domain/*.test.ts"
+    "test:contract": "node --experimental-strip-types --test src/domain/*.test.ts",
+    "gate:serving-parity": "node scripts/verify-serving-parity.mjs"
   }
 }

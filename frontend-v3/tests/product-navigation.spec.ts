@@ -104,7 +104,7 @@ test('all five V3 navigation destinations render real product surfaces', async (
 
   await nav(page, 'matches');
   await expect(page.getByRole('heading', { name: 'Every fixture in its real state.' })).toBeVisible();
-  await expect(page.locator('.v3-match-card')).toHaveCount(10);
+  await expect(page.locator('.v3-match-card')).toHaveCount(gw4WorkspaceFixture.realized.fixtures.length);
 
   await nav(page, 'insights');
   await expect(page.getByRole('heading', { name: 'Decision intelligence without pretending noise is certainty.' })).toBeVisible();

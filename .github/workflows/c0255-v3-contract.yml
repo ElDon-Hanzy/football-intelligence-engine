@@ -1,0 +1,33 @@
+name: C0255 V3 semantic contract
+
+on:
+  push:
+    branches:
+      - c0255-v3-product-semantic-architecture
+    paths:
+      - 'frontend-v3/src/domain/**'
+      - 'frontend-v3/package.json'
+      - '.github/workflows/c0255-v3-contract.yml'
+  pull_request:
+    paths:
+      - 'frontend-v3/src/domain/**'
+      - 'frontend-v3/package.json'
+      - '.github/workflows/c0255-v3-contract.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  semantic-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: frontend-v3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run V3 semantic regression contract
+        run: npm run test:contract

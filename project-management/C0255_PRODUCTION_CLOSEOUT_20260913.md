@@ -116,6 +116,33 @@ The production workflow verified:
 - frontend source-tree exclusion;
 - live post-deploy root, `/v2/`, `/v3/` and JavaScript-asset verification.
 
+## Governance closeout
+
+C0255 was transitioned in `public.change_tracker_working` to:
+
+- `status=Completed`;
+- `delivery_stage=Verified`.
+
+Because C0213 governance requires an explicit consumption pathway for every implemented governed item, C0255 also has:
+
+- pathway: `PRODUCTION_CONSUMER`;
+- contract: `C0255_V3_PRODUCT_SERVING_CONSUMPTION_V01`;
+- consumer/evaluator path: V3 FPL UI + `fpl-v3-workspace-api:v2` + Pages workflow + V3 Playwright + production `/v3/`;
+- `numeric_model_effect=false`;
+- V2 fallback preserved;
+- historical forecasts rewritten false.
+
+Final `private.audit_change_tracker_governance_v01()` result:
+
+- `ok=true`;
+- bad change IDs: 0;
+- completed-not-verified: 0;
+- completed-without-refs: 0;
+- decision rows without refs: 0;
+- consumption governance: PASS;
+- covered governed rows: 94/94;
+- consumption-contract violations: 0.
+
 ## Integrity / non-effects
 
 C0255 made **no football-model behavior change**.
@@ -131,4 +158,4 @@ It did not:
 
 ## Final decision
 
-C0255 acceptance criteria are satisfied. `/v3/` is production live and V2 remains operational as fallback. C0255 may be marked **Completed / Verified** after tracker governance confirms zero violations.
+C0255 acceptance criteria are satisfied. `/v3/` is production live, V2 remains operational as fallback, the tracker is **Completed / Verified**, and global tracker/consumption governance is green with zero violations.

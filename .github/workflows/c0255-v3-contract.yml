@@ -53,9 +53,7 @@ jobs:
           cache-dependency-path: frontend-v3/package-lock.json
       - name: Install V3 dependencies deterministically
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Verify serving source/runtime manifest parity
-        env:
-          C0255_REQUIRE_DEPLOY_ALLOWED: '0'
+      - name: Verify serving parity and deployment authorization
         run: npm run gate:serving-parity
       - name: Typecheck V3
         run: npm run typecheck

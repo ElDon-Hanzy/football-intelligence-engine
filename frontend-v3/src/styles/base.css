@@ -59,8 +59,16 @@ button {
   padding: clamp(1rem, 3vw, 2rem);
 }
 
-.v3-page > * {
+.v3-page > *,
+.v3-fpl-workspace,
+.v3-fpl-workspace > *,
+.v3-fpl-controls,
+.v3-squad-stage,
+.v3-recommendation-grid,
+.v3-fixture-section,
+.v3-fixture-rail {
   min-width: 0;
+  max-width: 100%;
 }
 
 .v3-surface {

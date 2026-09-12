@@ -17,7 +17,7 @@ export type PitchPlayer = {
 };
 
 export type PitchMetricMode = 'projection' | 'realized';
-export type PlayerSelect = (player: PitchPlayer) => void;
+export type PlayerSelect = ((player: PitchPlayer) => void) | undefined;
 
 const positionOrder = ['GKP', 'DEF', 'MID', 'FWD'] as const;
 

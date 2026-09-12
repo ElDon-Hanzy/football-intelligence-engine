@@ -8,6 +8,12 @@ type LoadState = {
   reload: () => void;
 };
 
+type HistoricalCall = {
+  code: 'H' | 'D' | 'A';
+  label: string;
+  probability: number;
+};
+
 function useHistorical(gameweek: number): LoadState {
   const [data, setData] = useState<HistoricalFplPayload | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +67,10 @@ export function HistoryPage() {
   const xi = data.decision?.starting_xi ?? [];
   const bench = data.decision?.bench ?? [];
   const captain = [...xi, ...bench].find((player) => player.id === data.decision?.captain_player_id) ?? null;
-  const xiProjected = xi.reduce((sum, player) => sum + numeric(player.xPts), 0);
+  const xiProjectionValues = xi.map((player) => nullableNumber(player.xPts));
+  const xiProjectionCaptured = xiProjectionValues.filter((value): value is number => value != null);
+  const xiProjectionComplete = xi.length > 0 && xiProjectionCaptured.length === xi.length;
+  const xiProjected = xiProjectionComplete ? xiProjectionCaptured.reduce((sum, value) => sum + value, 0) : null;
   const calls = evaluateFixtureCalls(data.fixture_results ?? []);
   const fixtureFinished = (data.fixture_results ?? []).filter((fixture) => fixture.finished).length;
   const recommendation = asRecord(data.decision?.recommendations);
@@ -88,7 +97,7 @@ export function HistoryPage() {
 
       <section className="v3-history-summary">
         <article className="v3-surface"><span>Frozen run</span><strong>#{data.prediction_run_id ?? '—'}</strong><small>{data.generated_at ? formatTimestamp(data.generated_at) : 'Capture time unavailable'}</small></article>
-        <article className="v3-surface"><span>XI projected</span><strong>{xi.length ? xiProjected.toFixed(1) : '—'}</strong><small>{formation ? `${formation} · ` : ''}frozen xPts</small></article>
+        <article className="v3-surface"><span>XI projected</span><strong>{xiProjected == null ? '—' : xiProjected.toFixed(1)}</strong><small>{xiProjectionComplete ? `${formation ? `${formation} · ` : ''}frozen xPts` : `${xiProjectionCaptured.length}/${xi.length} player xPts captured`}</small></article>
         <article className="v3-surface"><span>Captain</span><strong>{captain?.name ?? '—'}</strong><small>{captain?.p10 == null ? 'Tail unavailable' : `${Math.round(captain.p10 * 100)}% P10+`}</small></article>
         <article className="v3-surface"><span>1X2 calls</span><strong>{calls.assessed ? `${calls.correct}/${calls.assessed}` : '—'}</strong><small>{fixtureFinished}/{data.fixture_results?.length ?? 0} fixtures finished</small></article>
       </section>
@@ -121,11 +130,12 @@ export function HistoryPage() {
 }
 
 function HistoricalPlayerRow({ player, captain }: { player: HistoricalPlayer; captain: boolean }) {
+  const xPts = nullableNumber(player.xPts);
   return (
     <div className="v3-history-row">
       <strong>{player.name}{captain ? ' (C)' : ''}</strong>
       <span>{player.team ?? player.position ?? '—'}</span>
-      <span>{player.xPts == null ? '—' : `${player.xPts.toFixed(1)} xPts`}</span>
+      <span>{xPts == null ? '—' : `${xPts.toFixed(1)} xPts`}</span>
     </div>
   );
 }
@@ -164,14 +174,15 @@ function evaluateFixtureCalls(fixtures: HistoricalFixture[]) {
   return { assessed, correct };
 }
 
-function fixtureCall(fixture: HistoricalFixture): { code: 'H' | 'D' | 'A'; label: string; probability: number } | null {
+function fixtureCall(fixture: HistoricalFixture): HistoricalCall | null {
   const markets = fixture.prediction?.markets;
   if (!markets) return null;
-  const rows = [
-    { code: 'H' as const, label: fixture.home_team ?? 'Home', probability: numeric(markets.home_win) },
-    { code: 'D' as const, label: 'Draw', probability: numeric(markets.draw) },
-    { code: 'A' as const, label: fixture.away_team ?? 'Away', probability: numeric(markets.away_win) },
-  ].filter((row) => row.probability >= 0);
+  const candidates: Array<{ code: HistoricalCall['code']; label: string; probability: number | null }> = [
+    { code: 'H', label: fixture.home_team ?? 'Home', probability: nullableProbability(markets.home_win) },
+    { code: 'D', label: 'Draw', probability: nullableProbability(markets.draw) },
+    { code: 'A', label: fixture.away_team ?? 'Away', probability: nullableProbability(markets.away_win) },
+  ];
+  const rows = candidates.filter((row): row is HistoricalCall => row.probability != null);
   rows.sort((a, b) => b.probability - a.probability);
   return rows[0] ?? null;
 }
@@ -183,9 +194,15 @@ function actualOutcome(fixture: HistoricalFixture): 'H' | 'D' | 'A' | null {
   return 'D';
 }
 
-function numeric(value: unknown): number {
+function nullableNumber(value: unknown): number | null {
+  if (value == null || value === '') return null;
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function nullableProbability(value: unknown): number | null {
+  const parsed = nullableNumber(value);
+  return parsed != null && parsed >= 0 && parsed <= 1 ? parsed : null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

@@ -158,24 +158,123 @@ Deno.serve(async (req: Request) => {
       ...actualSquadIds,
     ])];
 
-    const [playersResult, teamsResult] = await Promise.all([
+    const [playersResult, teamsResult, projectionResult, actualsResult] = await Promise.all([
       playerIds.length
         ? sb.from('players').select('id,web_name,position,team_id').in('id', playerIds)
         : Promise.resolve({ data: [], error: null }),
       sb.from('teams').select('id,name,short_name'),
+      predictionRunId && playerIds.length
+        ? sb.from('fpl_public_projection_payload_v01')
+            .select('player_id,expected_points,expected_minutes,p_blank,p_5_plus,p_10_plus,p_15_plus,p_20_plus,p_start,p_goal,p_assist,p_clean_sheet,p_dc,p_bonus,confidence,q90,q95,distribution_version,tail_semantics')
+            .eq('prediction_run_id', predictionRunId)
+            .in('player_id', playerIds)
+        : Promise.resolve({ data: [], error: null }),
+      resultRun?.id && playerIds.length
+        ? sb.from('player_gameweek_actuals')
+            .select('player_id,fixture_ids,minutes,total_points,goals,assists,bonus,bps,defensive_contribution,xg,xa,xgi,xgc,clean_sheets')
+            .eq('result_run_id', resultRun.id)
+            .in('player_id', playerIds)
+        : Promise.resolve({ data: [], error: null }),
     ]);
     if (playersResult.error) throw playersResult.error;
     if (teamsResult.error) throw teamsResult.error;
+    if (projectionResult.error) throw projectionResult.error;
+    if (actualsResult.error) throw actualsResult.error;
 
     const teamById = new Map((teamsResult.data || []).map((team: any) => [Number(team.id), team]));
-    const players = (playersResult.data || []).map((player: any) => ({
-      player_id: Number(player.id),
-      name: player.web_name,
-      position: player.position,
-      team_id: Number(player.team_id),
-      team: teamById.get(Number(player.team_id))?.name ?? null,
-      team_short: teamById.get(Number(player.team_id))?.short_name ?? null,
-    }));
+    const projectionByPlayer = new Map((projectionResult.data || []).map((row: any) => [Number(row.player_id), row]));
+    const snapshotFinishedIds = new Set(
+      Array.isArray(resultRun?.metadata?.finished_fixture_ids)
+        ? resultRun.metadata.finished_fixture_ids.map(Number).filter(Number.isFinite)
+        : matches.filter((match) => match.finished === true).map((match) => Number(match.fpl_fixture_id)).filter(Number.isFinite),
+    );
+
+    const playerActuals = (actualsResult.data || []).map((row: any) => {
+      const fixtureIds = Array.isArray(row.fixture_ids) ? row.fixture_ids.map(Number).filter(Number.isFinite) : [];
+      const finalized = fixtureIds.length > 0 && fixtureIds.every((id: number) => snapshotFinishedIds.has(id));
+      return {
+        player_id: Number(row.player_id),
+        fixture_ids: fixtureIds,
+        status: finalized ? 'FINAL' : 'PENDING',
+        minutes: finalized ? asNumber(row.minutes) : null,
+        total_points: finalized ? asNumber(row.total_points) : null,
+        goals: finalized ? asNumber(row.goals) : null,
+        assists: finalized ? asNumber(row.assists) : null,
+        bonus: finalized ? asNumber(row.bonus) : null,
+        bps: finalized ? asNumber(row.bps) : null,
+        defensive_contribution: finalized ? asNumber(row.defensive_contribution) : null,
+        xg: finalized ? asNumber(row.xg) : null,
+        xa: finalized ? asNumber(row.xa) : null,
+        xgi: finalized ? asNumber(row.xgi) : null,
+        xgc: finalized ? asNumber(row.xgc) : null,
+        clean_sheets: finalized ? asNumber(row.clean_sheets) : null,
+      };
+    });
+
+    const players = (playersResult.data || []).map((player: any) => {
+      const teamId = Number(player.team_id);
+      const fixtureContexts = matches
+        .filter((match) => Number(match.home_team_id) === teamId || Number(match.away_team_id) === teamId)
+        .map((match) => {
+          const home = Number(match.home_team_id) === teamId;
+          const opponentId = home ? Number(match.away_team_id) : Number(match.home_team_id);
+          return {
+            match_id: Number(match.id),
+            fpl_fixture_id: asNumber(match.fpl_fixture_id),
+            venue: home ? 'H' : 'A',
+            opponent_team_id: opponentId,
+            opponent: teamById.get(opponentId)?.name ?? null,
+            opponent_short: teamById.get(opponentId)?.short_name ?? null,
+            kickoff_at: match.kickoff_time,
+            phase: fixturePhase(nowMs, match.kickoff_time, Boolean(match.finished)),
+            finished: Boolean(match.finished),
+          };
+        });
+
+      return {
+        player_id: Number(player.id),
+        name: player.web_name,
+        position: player.position,
+        team_id: teamId,
+        team: teamById.get(teamId)?.name ?? null,
+        team_short: teamById.get(teamId)?.short_name ?? null,
+        fixtures: fixtureContexts,
+      };
+    });
+
+    const playerEvidence = playerIds.map((playerId) => {
+      const row = projectionByPlayer.get(Number(playerId)) as any;
+      if (!row) {
+        return {
+          player_id: Number(playerId),
+          status: 'NOT_CAPTURED',
+          captured_at: predictionRun?.generated_at ?? null,
+        };
+      }
+      return {
+        player_id: Number(playerId),
+        status: 'CAPTURED',
+        captured_at: predictionRun?.generated_at ?? null,
+        expected_points: asNumber(row.expected_points),
+        expected_minutes: asNumber(row.expected_minutes),
+        p_blank: asNumber(row.p_blank),
+        p_5_plus: asNumber(row.p_5_plus),
+        p_10_plus: asNumber(row.p_10_plus),
+        p_15_plus: asNumber(row.p_15_plus),
+        p_20_plus: asNumber(row.p_20_plus),
+        p_start: asNumber(row.p_start),
+        p_goal: asNumber(row.p_goal),
+        p_assist: asNumber(row.p_assist),
+        p_clean_sheet: asNumber(row.p_clean_sheet),
+        p_dc: asNumber(row.p_dc),
+        p_bonus: asNumber(row.p_bonus),
+        confidence: asNumber(row.confidence),
+        q90: asNumber(row.q90),
+        q95: asNumber(row.q95),
+        distribution_version: row.distribution_version ?? null,
+        tail_semantics: row.tail_semantics ?? null,
+      };
+    });
 
     const actual = actualDecision
       ? {
@@ -248,7 +347,7 @@ Deno.serve(async (req: Request) => {
 
     return new Response(JSON.stringify({
       ok: true,
-      contract_version: 'fpl_v3_workspace_v01',
+      contract_version: 'fpl_v3_workspace_v02_player_evidence',
       gameweek,
       lifecycle: gameweekLifecycle,
       generated_at: new Date(nowMs).toISOString(),
@@ -263,6 +362,7 @@ Deno.serve(async (req: Request) => {
             frozen: Boolean(predictionRun.frozen),
             excluded_from_backtest: Boolean(predictionRun.excluded_from_backtest),
             model_version_id: asNumber(predictionRun.model_version_id),
+            player_evidence: playerEvidence,
             price_ownership_evidence: priceEvidenceResult.data
               ? { status: 'CAPTURED', captured_at: (priceEvidenceResult.data as any).captured_at, source: 'fpl_prices' }
               : { status: 'NOT_CAPTURED', captured_at: null, source: null },
@@ -273,6 +373,7 @@ Deno.serve(async (req: Request) => {
         observed_at: resultRun?.observed_at ?? null,
         is_final: resultRun?.is_final === true,
         fixtures,
+        player_actuals: playerActuals,
       },
       players,
       semantics: {
@@ -281,6 +382,8 @@ Deno.serve(async (req: Request) => {
         actual_manager_economy_is_not_inferred: true,
         recommendation_economy_is_same_path_post_action_only: true,
         decision_time_evidence_is_timestamp_scoped: true,
+        player_projection_evidence_is_frozen_to_prediction_run: true,
+        realized_player_values_require_finished_fixture_evidence: true,
         fixture_phase_is_explicit: true,
         historical_forecasts_rewritten: Boolean(live?.historical_forecasts_rewritten),
       },

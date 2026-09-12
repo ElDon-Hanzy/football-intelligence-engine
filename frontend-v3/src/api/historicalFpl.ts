@@ -1,6 +1,4 @@
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
-
-// Supabase's legacy anon JWT is a public browser credential used only for read-only UI endpoints.
 const PUBLIC_SUPABASE_ANON_JWT =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub29pd2V6enN4Y3dodGp0ZGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzY0MjQsImV4cCI6MjEwMjkxMjQyNH0.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
 
@@ -24,11 +22,12 @@ export type HistoricalFixture = {
   home_score?: number | null;
   away_score?: number | null;
   prediction?: {
-    markets?: {
-      home_win?: number;
-      draw?: number;
-      away_win?: number;
-    };
+    markets?: { home_win?: number; draw?: number; away_win?: number };
+    headline_score?: string | null;
+    headline_score_probability?: number | null;
+    raw_modal_score?: string | null;
+    raw_modal_probability?: number | null;
+    top_scorelines?: Array<{ score?: string; prob?: number }>;
   } | null;
 };
 
@@ -40,17 +39,8 @@ export type HistoricalFplPayload = {
   generated_at?: string;
   historical_projection_valid?: boolean;
   snapshot_stage?: string;
-  metadata_availability?: {
-    historical?: boolean;
-    current_metadata_not_backfilled_into_history?: boolean;
-  };
-  available_gameweeks?: Array<{
-    gameweek: number;
-    generated_at?: string | null;
-    run_type?: string | null;
-    excluded_from_backtest?: boolean;
-    historical_projection_valid?: boolean;
-  }>;
+  metadata_availability?: { historical?: boolean; current_metadata_not_backfilled_into_history?: boolean };
+  available_gameweeks?: Array<{ gameweek: number; generated_at?: string | null; run_type?: string | null; excluded_from_backtest?: boolean; historical_projection_valid?: boolean }>;
   decision?: {
     captain_player_id?: number | null;
     vice_player_id?: number | null;
@@ -64,11 +54,7 @@ export type HistoricalFplPayload = {
 export async function fetchHistoricalFpl(gameweek = 0, signal?: AbortSignal): Promise<HistoricalFplPayload> {
   const url = gameweek > 0 ? `${API_ROOT}/fpl-api?gw=${gameweek}` : `${API_ROOT}/fpl-api`;
   const response = await fetch(url, {
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${PUBLIC_SUPABASE_ANON_JWT}`,
-      apikey: PUBLIC_SUPABASE_ANON_JWT,
-    },
+    headers: { Accept: 'application/json', Authorization: `Bearer ${PUBLIC_SUPABASE_ANON_JWT}`, apikey: PUBLIC_SUPABASE_ANON_JWT },
     cache: 'no-store',
     ...(signal ? { signal } : {}),
   });

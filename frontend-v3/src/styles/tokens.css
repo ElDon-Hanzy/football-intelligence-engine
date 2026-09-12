@@ -1,0 +1,64 @@
+:root {
+  color-scheme: light;
+
+  --v3-color-bg: #f4f3ec;
+  --v3-color-surface: #ffffff;
+  --v3-color-surface-soft: #f8f8f4;
+  --v3-color-ink: #14201a;
+  --v3-color-text: #24332b;
+  --v3-color-muted: #66736b;
+  --v3-color-line: #dde2dd;
+  --v3-color-line-strong: #c8d0ca;
+
+  --v3-color-pitch: #0b6b46;
+  --v3-color-pitch-deep: #075338;
+  --v3-color-pitch-soft: #e8f3ed;
+  --v3-color-intelligence: #2b63e5;
+  --v3-color-intelligence-soft: #edf2ff;
+  --v3-color-energy: #b8ee56;
+  --v3-color-warning: #b8741a;
+  --v3-color-warning-soft: #fff5e5;
+  --v3-color-negative: #b83e3e;
+  --v3-color-negative-soft: #fff0f0;
+  --v3-color-positive: #12704a;
+
+  --v3-font-display: 'Manrope', 'Avenir Next', 'Segoe UI', sans-serif;
+  --v3-font-ui: 'Inter', 'SF Pro Text', 'Segoe UI', sans-serif;
+
+  --v3-text-xs: 0.75rem;
+  --v3-text-sm: 0.875rem;
+  --v3-text-md: 1rem;
+  --v3-text-lg: 1.125rem;
+  --v3-text-xl: 1.5rem;
+  --v3-text-2xl: 2rem;
+  --v3-text-display: clamp(2rem, 5vw, 4rem);
+
+  --v3-space-1: 0.25rem;
+  --v3-space-2: 0.5rem;
+  --v3-space-3: 0.75rem;
+  --v3-space-4: 1rem;
+  --v3-space-5: 1.25rem;
+  --v3-space-6: 1.5rem;
+  --v3-space-8: 2rem;
+  --v3-space-10: 2.5rem;
+  --v3-space-12: 3rem;
+  --v3-space-16: 4rem;
+
+  --v3-radius-sm: 0.625rem;
+  --v3-radius-md: 1rem;
+  --v3-radius-lg: 1.5rem;
+  --v3-radius-pill: 999px;
+
+  --v3-shadow-card: 0 10px 28px rgb(24 45 34 / 0.06);
+  --v3-shadow-float: 0 16px 42px rgb(24 45 34 / 0.12);
+
+  --v3-page-max: 80rem;
+  --v3-tap-min: 2.75rem;
+  --v3-transition-fast: 140ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --v3-transition-fast: 0ms;
+  }
+}

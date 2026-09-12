@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { authorizationDisplay, dominantFixturePhase } from '../domain/fplPresentation';
 import {
   fetchFplWorkspace,
   type FplWorkspaceApi,
@@ -372,15 +373,9 @@ function fixtureStateForPlayer(player: WorkspacePlayer | undefined): {
   if (!player || player.fixtures.length === 0) return { label: 'Fixture unavailable', phase: null };
 
   const labels = player.fixtures.map((fixture) => `${fixture.opponent_short ?? fixture.opponent ?? 'OPP'} (${fixture.venue})`);
-  const phase = player.fixtures.some((fixture) => fixture.phase === 'LIVE')
-    ? 'LIVE'
-    : player.fixtures.every((fixture) => fixture.phase === 'FINISHED')
-      ? 'FINISHED'
-      : 'FUTURE';
-
   return {
     label: labels.join(' · '),
-    phase,
+    phase: dominantFixturePhase(player.fixtures.map((fixture) => fixture.phase)),
   };
 }
 
@@ -419,9 +414,7 @@ function AuthorizationBadge({ recommendation }: { recommendation: NonNullable<Fp
   const authorized = recommendation.execution_authorized;
   return (
     <span className="v3-authorization" data-authorized={authorized ? 'true' : 'false'}>
-      {authorized ? 'Authorized final recommendation' : recommendation.publication_status === 'FINAL'
-        ? 'Final frozen recommendation · not authorized'
-        : 'Provisional recommendation · not authorized'}
+      {authorizationDisplay(recommendation.publication_status, authorized)}
     </span>
   );
 }

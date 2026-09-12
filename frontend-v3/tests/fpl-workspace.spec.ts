@@ -33,6 +33,18 @@ test('Actual state renders the locked submitted squad rather than the engine rec
   await expect(page.getByText('Automatically verified from the public FPL picks endpoint after Gameweek lock.')).toBeVisible();
 });
 
+test('browser refresh reads persisted APIs and never invokes the post-lock sync function', async ({ page }) => {
+  let syncRequests = 0;
+  await page.route('**/sync-fpl-actual-decision**', async (route) => {
+    syncRequests += 1;
+    await route.abort();
+  });
+  await loadWorkspace(page);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Pick the state. Read the pitch.' })).toBeVisible();
+  expect(syncRequests).toBe(0);
+});
+
 test('Actual and Live fail closed when submitted picks are not verified', async ({ page }) => {
   await loadWorkspace(page, gw4ActualUnverifiedFixture);
   await page.getByRole('tab', { name: 'Actual' }).click();

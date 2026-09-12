@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { endpoints, fetchValidated } from './api';
+import { apiQueryKeys } from './queryKeys';
 import { FixtureFactsApiSchema, FplApiSchema, type FixtureFact, type FixtureFactsItem, type FplFixtureResult } from './contracts';
 import { FixtureIntelligenceApiSchema } from './fixture-intelligence-contracts';
 
@@ -25,17 +26,17 @@ function withGameweek(endpoint: string, gameweek: number): string {
 
 export function useFixturesData(requestedGameweek: number) {
   const fpl = useQuery({
-    queryKey: ['fixtures', 'fpl', requestedGameweek],
+    queryKey: apiQueryKeys.fpl(requestedGameweek),
     queryFn: ({ signal }) => fetchValidated(withGameweek(endpoints.fpl, requestedGameweek), FplApiSchema, signal),
   });
   const resolvedGameweek = fpl.data?.gameweek ?? requestedGameweek;
   const facts = useQuery({
-    queryKey: ['fixtures', 'facts', resolvedGameweek],
+    queryKey: apiQueryKeys.fixtureFacts(resolvedGameweek),
     queryFn: ({ signal }) => fetchValidated(withGameweek(endpoints.fixtureFacts, resolvedGameweek), FixtureFactsApiSchema, signal),
     enabled: resolvedGameweek > 0,
   });
   const intelligence = useQuery({
-    queryKey: ['fixtures', 'intelligence', resolvedGameweek],
+    queryKey: apiQueryKeys.fixtureIntelligence(resolvedGameweek),
     queryFn: ({ signal }) => fetchValidated(withGameweek(endpoints.fixtures, resolvedGameweek), FixtureIntelligenceApiSchema, signal),
     enabled: resolvedGameweek > 0,
   });
@@ -54,9 +55,6 @@ export function assessCall(markets: MarketSet | null | undefined): CallAssessmen
   const second = outcomes[1] ?? null;
   if (!top || !second) return { state: 'unavailable', top: null, second: null, margin: null };
   const margin = top.probability - second.probability;
-  // C0250: separation alone is not enough to call an outcome strong. A 43% favorite
-  // can lead the next outcome by >8pp while still losing/drawing more often than winning.
-  // Require both absolute probability and separation so UI language respects Noise-Control.
   const state: CallState = top.probability >= 0.50 && margin >= 0.08
     ? 'strong'
     : top.probability >= 0.40 && margin >= 0.04
@@ -162,7 +160,7 @@ export function buildMatchStory(fixture: FplFixtureResult, facts: FixtureFactsIt
   const marginPp = assessment.margin * 100;
   const allGroups = groupModalFacts(facts.modal_facts, 20);
   const supportCount = allGroups.supports.length;
-  const counterCount = allGroups.contradicts.length;
+  const counterCount = allGroups.contrads?.length ?? allGroups.contradicts.length;
 
   if (assessment.state === 'no-edge') {
     const leadCase = supportCount

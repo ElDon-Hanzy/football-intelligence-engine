@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 import { fetchValidated, publicGatewayHeaders } from './api';
 import { analysisEndpoints } from './analysis-api';
+import { apiQueryKeys } from './queryKeys';
 import { BettingApiSchema, CalibrationSummarySchema, EngineDiagnosticsSchema, type BettingFixture, type CalibrationSummary } from './analysis-contracts';
 
 const withGameweek = (endpoint: string, gameweek: number) => gameweek > 0 ? `${endpoint}?gw=${gameweek}` : endpoint;
@@ -29,14 +30,14 @@ export type StrongestBettingCall = z.infer<typeof StrongestBettingCallSchema>;
 
 export function useStrongestBettingCalls(gameweek: number) {
   return useQuery({
-    queryKey: ['strongest-betting-calls', gameweek],
+    queryKey: apiQueryKeys.humanInsights(gameweek),
     queryFn: ({ signal }) => fetchValidated(withGameweek(analysisEndpoints.humanInsights, gameweek), HumanInsightsMarketsSchema, signal),
   });
 }
 
 export function useMarketsData(gameweek: number) {
   return useQuery({
-    queryKey: ['markets', gameweek],
+    queryKey: apiQueryKeys.betting(gameweek),
     queryFn: ({ signal }) => fetchValidated(withGameweek(analysisEndpoints.betting, gameweek), BettingApiSchema, signal),
   });
 }
@@ -58,7 +59,7 @@ export function normalizeCalibrationSummary(data: CalibrationSummary): Calibrati
 
 export function usePerformanceData(gameweek: number) {
   return useQuery({
-    queryKey: ['performance', gameweek],
+    queryKey: apiQueryKeys.calibration(gameweek),
     queryFn: async ({ signal }) => normalizeCalibrationSummary(
       await fetchValidated(withGameweek(analysisEndpoints.calibration, gameweek), CalibrationSummarySchema, signal),
     ),
@@ -67,7 +68,7 @@ export function usePerformanceData(gameweek: number) {
 
 export function useEngineData(gameweek: number) {
   return useQuery({
-    queryKey: ['engine', gameweek],
+    queryKey: apiQueryKeys.engineDiagnostics(gameweek),
     queryFn: ({ signal }) => fetchValidated(withGameweek(analysisEndpoints.engineDiagnostics, gameweek), EngineDiagnosticsSchema, signal, publicGatewayHeaders),
   });
 }

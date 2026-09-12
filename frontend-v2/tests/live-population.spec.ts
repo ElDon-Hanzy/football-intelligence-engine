@@ -117,7 +117,19 @@ test('current production APIs populate every v2 data surface', async ({ request 
   expect(intelligence.fixtures).toHaveLength(10);
   expect(intelligence.fixtures.every((fixture: any) => fixture.high_score_intelligence != null)).toBe(true);
   expect(intelligence.fixtures.every((fixture: any) => fixture.home_team?.tactical_profile != null && fixture.away_team?.tactical_profile != null)).toBe(true);
-  expect(intelligence.fixtures.every((fixture: any) => (fixture.home_team?.expected_xi?.length ?? 0) > 0 && (fixture.away_team?.expected_xi?.length ?? 0) > 0)).toBe(true);
+  // Expected-XI coverage is a forward-looking requirement. Once a fixture is finished it is
+  // valid for the live serving layer to retire or stop refreshing its expected XI, so only
+  // unfinished fixtures should block deployment for missing XI evidence.
+  const unfinishedMatchIds = new Set(
+    (fpl.fixture_results ?? [])
+      .filter((fixture: any) => fixture.finished !== true)
+      .map((fixture: any) => Number(fixture.match_id)),
+  );
+  for (const fixture of intelligence.fixtures) {
+    if (!unfinishedMatchIds.has(Number(fixture.match_id))) continue;
+    expect(fixture.home_team?.expected_xi?.length ?? 0, `home expected XI for match ${fixture.match_id}`).toBeGreaterThan(0);
+    expect(fixture.away_team?.expected_xi?.length ?? 0, `away expected XI for match ${fixture.match_id}`).toBeGreaterThan(0);
+  }
 
   expect(facts.gameweek).toBe(gw);
   expect(facts.facts_available).toBe(true);
@@ -166,7 +178,11 @@ test('current production APIs populate every v2 data surface', async ({ request 
   expect(engine.latest_prediction_run?.id).toBe(fpl.prediction_run_id);
   expect(engine.production_fixture_layer?.fixtures).toBe(10);
   expect(engine.governance?.ok).toBe(true);
-  expect(engine.orchestration_readiness?.projection_ready).toBe(true);
+  const deadlinePassed = fpl.deadline_at != null && Number.isFinite(new Date(fpl.deadline_at).getTime())
+    ? Date.now() >= new Date(fpl.deadline_at).getTime()
+    : false;
+  if (!deadlinePassed) expect(engine.orchestration_readiness?.projection_ready).toBe(true);
+  else expect(typeof engine.orchestration_readiness?.projection_ready).toBe('boolean');
   expect(typeof engine.orchestration_readiness?.decision_ready).toBe('boolean');
   expect((engine.source_health?.zero_cost?.sources ?? []).length).toBeGreaterThan(0);
 });

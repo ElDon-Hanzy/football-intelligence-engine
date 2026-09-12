@@ -185,11 +185,13 @@ test('matchup modal exposes frozen 1X2, score call and result confirmation', asy
   await page.goto('/#matches');
   const chelsea = page.locator('.v3-match-card').filter({ hasText: 'Chelsea' }).first();
   await chelsea.getByRole('button', { name: /Open matchup intelligence/ }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(page.getByText('1X2 thesis', { exact: true })).toBeVisible();
-  await expect(page.getByText('Score call', { exact: true })).toBeVisible();
-  await expect(page.getByText('Result confirmation', { exact: true })).toBeVisible();
-  await expect(page.getByText('Counterpoints / risks', { exact: true })).toBeVisible();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText('1X2 thesis', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Score call', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Result confirmation', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: /Counterpoints \/ risks/ })).toBeVisible();
+  await expect(dialog.getByText('Transition exposure remains a credible counterpoint.', { exact: true })).toBeVisible();
 });
 
 test('hash routes survive direct entry and browser history', async ({ page }) => {

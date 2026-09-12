@@ -39,7 +39,7 @@ export function MarketsPage() {
 
       <section className="v3-surface v3-dense-card" aria-labelledby="core-market-heading">
         <div className="v3-dense-card-head"><div><span className="v3-kicker">Strongest model call per market</span><h2 id="core-market-heading">1X2 · O/U 2.5 · BTTS · Correct score</h2></div><small>Model probability, not bookmaker value</small></div>
-        <div className="v3-table-scroll">
+        <div className="v3-table-scroll" tabIndex={0} role="region" aria-label="Four core market predictions table">
           <table className="v3-data-table v3-markets-table">
             <thead><tr><th>Market</th><th>Fixture</th><th>Prediction</th><th>Prob.</th><th>xG</th><th>Final audit</th></tr></thead>
             <tbody>

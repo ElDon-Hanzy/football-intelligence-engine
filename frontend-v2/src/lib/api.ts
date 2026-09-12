@@ -37,7 +37,10 @@ export async function fetchValidated<T>(
   extraHeaders?: Record<string, string>,
 ): Promise<T> {
   const response = await fetch(url, {
-    cache: 'no-store',
+    // C0253: do not force every browser navigation or refresh to bypass its HTTP cache.
+    // Server cache headers remain authoritative; React Query handles stale-while-revalidate
+    // semantics above this layer.
+    cache: 'default',
     headers: { Accept: 'application/json', ...(extraHeaders ?? {}) },
     ...(signal ? { signal } : {}),
   });

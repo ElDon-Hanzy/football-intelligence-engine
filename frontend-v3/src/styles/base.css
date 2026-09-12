@@ -54,11 +54,17 @@ button {
 
 .v3-page {
   width: min(100%, var(--v3-page-max));
+  min-width: 0;
   margin-inline: auto;
   padding: clamp(1rem, 3vw, 2rem);
 }
 
+.v3-page > * {
+  min-width: 0;
+}
+
 .v3-surface {
+  min-width: 0;
   border: 1px solid var(--v3-color-line);
   border-radius: var(--v3-radius-md);
   background: var(--v3-color-surface);

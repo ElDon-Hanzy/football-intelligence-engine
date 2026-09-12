@@ -4,7 +4,7 @@ import {
   authorizationDisplay,
   dominantFixturePhase,
   formationFromPositions,
-} from './fplPresentation';
+} from './fplPresentation.ts';
 
 test('formation helper resolves the current GW4 engine XI as 3-5-2', () => {
   assert.equal(

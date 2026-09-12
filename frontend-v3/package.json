@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test:contract": "node --experimental-strip-types --test src/domain/*.test.ts",
+    "test:e2e": "playwright test",
     "gate:serving-parity": "node scripts/verify-serving-parity.mjs"
   },
   "dependencies": {
@@ -19,6 +20,8 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.62.1",
     "@types/node": "26.4.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",

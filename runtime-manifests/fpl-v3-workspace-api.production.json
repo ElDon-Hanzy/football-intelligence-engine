@@ -1,7 +1,7 @@
 {
   "function": "fpl-v3-workspace-api",
   "supabase_project": "knooiwezzsxcwhtjtdap",
-  "observed_at": "2026-09-13T00:58:00+04:00",
+  "observed_at": "2026-09-13T01:38:00+04:00",
   "production": {
     "version": 2,
     "bundle_sha256": "989e097caf66980805157b0da38e31da1bcf507cfd1d9533984311bf56f04d6f",
@@ -16,17 +16,21 @@
   },
   "live_contract_verification": {
     "request_id": 5714,
+    "github_actions_run_id": 34720478702,
     "http_status": 200,
     "actual_status": "NOT_VERIFIED",
     "authorization_label": "FINAL_FROZEN_NOT_AUTHORIZED",
     "player_evidence_count": 15,
-    "gabriel_xpts": 6.173361,
-    "gabriel_opponent": "SUN",
-    "live_fixture_count": 1,
+    "fixture_phases": {
+      "future": 3,
+      "live": 0,
+      "finished": 7
+    },
     "historical_forecasts_rewritten": false
   },
   "parity_status": "GREEN",
   "private_contract_verified": true,
-  "public_v3_deploy_allowed": false,
-  "reason": "V3 API source/runtime parity is green, but public V3 deployment remains blocked by the separate legacy fpl-api v18 repository/runtime drift and remaining UI/QA gates."
+  "public_client_live_smoke_verified": true,
+  "public_v3_deploy_allowed": true,
+  "reason": "Workspace source/runtime parity is green. The shipped public-client authentication path, semantic/browser/accessibility gates, deterministic build, data-integrity audit and V2-preserving Pages artifact rehearsal are green."
 }

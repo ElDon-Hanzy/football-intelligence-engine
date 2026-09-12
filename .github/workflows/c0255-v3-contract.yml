@@ -49,6 +49,13 @@ jobs:
         run: npm run typecheck
       - name: Build V3
         run: npm run build
+      - name: Export generated V3 lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: c0255-v3-package-lock
+          path: frontend-v3/package-lock.json
+          if-no-files-found: error
+          retention-days: 1
 
   browser-qa:
     runs-on: ubuntu-latest

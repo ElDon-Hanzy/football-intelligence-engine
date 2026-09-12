@@ -29,11 +29,17 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: frontend-v2/package-lock.json
+          cache-dependency-path: |
+            frontend-v2/package-lock.json
+            frontend-v3/package-lock.json
 
       - name: Install UI v2 dependencies
         working-directory: frontend-v2
         run: npm ci --no-audit --no-fund
+
+      - name: Install UI v3 dependencies
+        working-directory: frontend-v3
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Typecheck UI v2
         working-directory: frontend-v2
@@ -51,15 +57,27 @@ jobs:
         working-directory: frontend-v2
         run: npm run budget
 
-      - name: Install Chromium for UI v2 E2E
+      - name: Semantic contract UI v3
+        working-directory: frontend-v3
+        run: npm run test:contract
+
+      - name: Typecheck UI v3
+        working-directory: frontend-v3
+        run: npm run typecheck
+
+      - name: Build UI v3
+        working-directory: frontend-v3
+        run: npm run build
+
+      - name: Enforce V3 serving parity gate
+        working-directory: frontend-v3
+        run: npm run gate:serving-parity
+
+      - name: Install Chromium for UI E2E
         working-directory: frontend-v2
         shell: bash
         run: |
           set -euo pipefail
-          # Hosted runners may carry an unrelated Google Chrome apt source in either
-          # legacy .list or modern deb822 .sources format. Remove only files that
-          # actually reference the Chrome repository before Playwright installs its
-          # own Chromium runtime and OS dependencies.
           mapfile -t chrome_sources < <(grep -RIl 'dl.google.com/linux/chrome' /etc/apt/sources.list.d 2>/dev/null || true)
           if ((${#chrome_sources[@]})); then
             printf 'C0238 disabling hosted-runner Chrome apt source: %s\n' "${chrome_sources[@]}"
@@ -81,30 +99,73 @@ jobs:
           set -o pipefail
           npm run test:e2e 2>&1 | tee e2e.log
 
-      - name: Preserve E2E diagnostic log
+      - name: Responsive semantic E2E and accessibility UI v3
+        working-directory: frontend-v3
+        run: npm run test:e2e
+
+      - name: Preserve E2E diagnostic logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-v2-e2e-log-${{ github.run_attempt }}
-          path: frontend-v2/e2e.log
+          name: ui-e2e-log-${{ github.run_attempt }}
+          path: |
+            frontend-v2/e2e.log
+            frontend-v3/playwright-report
           if-no-files-found: ignore
           retention-days: 1
 
       - name: Prepare Pages artifact
         run: |
+          set -euo pipefail
           mkdir -p _site
           rsync -a ./ _site/ \
             --exclude '.git/' \
             --exclude '.github/' \
             --exclude 'frontend-v2/' \
+            --exclude 'frontend-v3/' \
             --exclude '_site/' \
             --exclude 'node_modules/'
-          mkdir -p _site/v2
+          mkdir -p _site/v2 _site/v3
           cp -R frontend-v2/dist/. _site/v2/
+          cp -R frontend-v3/dist/. _site/v3/
 
-      - name: Verify Pages artifact and legacy rollback
-        working-directory: frontend-v2
-        run: npm run artifact:verify
+      - name: Verify Pages artifact and V2 rollback isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm --prefix frontend-v2 run artifact:verify
+          cmp -s index.html _site/index.html || {
+            echo 'C0255 Pages artifact failure: legacy root differs from repository index.html'
+            exit 1
+          }
+          cmp -s frontend-v2/dist/index.html _site/v2/index.html || {
+            echo 'C0255 Pages artifact failure: V2 build was altered while assembling artifact'
+            exit 1
+          }
+          cmp -s frontend-v3/dist/index.html _site/v3/index.html || {
+            echo 'C0255 Pages artifact failure: V3 build was altered while assembling artifact'
+            exit 1
+          }
+          test ! -e _site/frontend-v2 || {
+            echo 'C0255 Pages artifact failure: frontend-v2 source is exposed'
+            exit 1
+          }
+          test ! -e _site/frontend-v3 || {
+            echo 'C0255 Pages artifact failure: frontend-v3 source is exposed'
+            exit 1
+          }
+          for app in v2 v3; do
+            js_asset="$(grep -oE '\./assets/[^\"]+\.js' "_site/$app/index.html" | head -n 1)"
+            test -n "$js_asset" || {
+              echo "C0255 Pages artifact failure: $app has no JavaScript asset reference"
+              exit 1
+            }
+            test -s "_site/$app/${js_asset#./}" || {
+              echo "C0255 Pages artifact failure: $app JavaScript asset is missing or empty"
+              exit 1
+            }
+          done
+          echo 'C0255 Pages artifact integrity verified: legacy root + V2 fallback + V3'
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -123,13 +184,14 @@ jobs:
         with:
           artifact_name: github-pages-${{ github.run_attempt }}
 
-      - name: Verify deployed legacy root and v2 entrypoint
+      - name: Verify deployed legacy root, V2 fallback and V3 entrypoint
         env:
           PAGE_URL: ${{ steps.deployment.outputs.page_url }}
         run: |
           set -euo pipefail
           ROOT_URL="${PAGE_URL%/}/"
           V2_URL="${PAGE_URL%/}/v2/"
+          V3_URL="${PAGE_URL%/}/v3/"
 
           fetch_with_retry() {
             local url="$1"
@@ -145,30 +207,43 @@ jobs:
 
           fetch_with_retry "$ROOT_URL" /tmp/pages-root.html
           fetch_with_retry "$V2_URL" /tmp/pages-v2.html
+          fetch_with_retry "$V3_URL" /tmp/pages-v3.html
 
           cmp -s index.html /tmp/pages-root.html || {
-            echo "C0175 deployment integrity failure: live legacy root differs from repository index.html"
+            echo 'C0255 deployment integrity failure: live legacy root differs from repository index.html'
             exit 1
           }
           cmp -s frontend-v2/dist/index.html /tmp/pages-v2.html || {
-            echo "C0175 deployment integrity failure: live /v2/ index differs from built dist/index.html"
+            echo 'C0255 deployment integrity failure: live /v2/ index differs from built V2 dist'
+            exit 1
+          }
+          cmp -s frontend-v3/dist/index.html /tmp/pages-v3.html || {
+            echo 'C0255 deployment integrity failure: live /v3/ index differs from built V3 dist'
             exit 1
           }
 
-          V2_JS_ASSET="$(grep -oE '\./assets/[^\"]+\.js' /tmp/pages-v2.html | head -n 1)"
-          test -n "$V2_JS_ASSET" || {
-            echo "C0175 deployment integrity failure: live /v2/ index has no JavaScript asset reference"
-            exit 1
-          }
-          fetch_with_retry "${V2_URL}${V2_JS_ASSET#./}" /tmp/pages-v2.js
-          test -s /tmp/pages-v2.js || {
-            echo "C0175 deployment integrity failure: live /v2/ JavaScript asset is empty"
-            exit 1
-          }
+          for app in v2 v3; do
+            eval "APP_URL=\${${app^^}_URL}"
+            index_file="/tmp/pages-$app.html"
+            js_asset="$(grep -oE '\./assets/[^\"]+\.js' "$index_file" | head -n 1)"
+            test -n "$js_asset" || {
+              echo "C0255 deployment integrity failure: live /$app/ index has no JavaScript asset reference"
+              exit 1
+            }
+            fetch_with_retry "${APP_URL}${js_asset#./}" "/tmp/pages-$app.js"
+            test -s "/tmp/pages-$app.js" || {
+              echo "C0255 deployment integrity failure: live /$app/ JavaScript asset is empty"
+              exit 1
+            }
+          done
 
           if curl --fail --silent --location "${ROOT_URL}frontend-v2/package.json" --output /dev/null; then
-            echo "C0175 deployment integrity failure: frontend-v2 source is publicly deployed"
+            echo 'C0255 deployment integrity failure: frontend-v2 source is publicly deployed'
+            exit 1
+          fi
+          if curl --fail --silent --location "${ROOT_URL}frontend-v3/package.json" --output /dev/null; then
+            echo 'C0255 deployment integrity failure: frontend-v3 source is publicly deployed'
             exit 1
           fi
 
-          echo "C0175 live deployment integrity verified"
+          echo 'C0255 live deployment integrity verified: legacy root + V2 fallback + V3'

@@ -132,38 +132,38 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf _site-qa
-          mkdir -p _site-qa
-          rsync -a ./ _site-qa/ \
+          rm -rf _site
+          mkdir -p _site
+          rsync -a ./ _site/ \
             --exclude '.git/' \
             --exclude '.github/' \
             --exclude 'frontend-v2/' \
             --exclude 'frontend-v3/' \
-            --exclude '_site-qa/' \
+            --exclude '_site/' \
             --exclude 'node_modules/'
-          mkdir -p _site-qa/v2 _site-qa/v3
-          cp -R frontend-v2/dist/. _site-qa/v2/
-          cp -R frontend-v3/dist/. _site-qa/v3/
+          mkdir -p _site/v2 _site/v3
+          cp -R frontend-v2/dist/. _site/v2/
+          cp -R frontend-v3/dist/. _site/v3/
 
-          cmp -s index.html _site-qa/index.html || {
+          cmp -s index.html _site/index.html || {
             echo 'C0255 Pages QA failure: legacy root changed during assembly'
             exit 1
           }
-          cmp -s frontend-v2/dist/index.html _site-qa/v2/index.html || {
+          cmp -s frontend-v2/dist/index.html _site/v2/index.html || {
             echo 'C0255 Pages QA failure: V2 fallback changed during assembly'
             exit 1
           }
-          cmp -s frontend-v3/dist/index.html _site-qa/v3/index.html || {
+          cmp -s frontend-v3/dist/index.html _site/v3/index.html || {
             echo 'C0255 Pages QA failure: V3 changed during assembly'
             exit 1
           }
-          test ! -e _site-qa/frontend-v2
-          test ! -e _site-qa/frontend-v3
+          test ! -e _site/frontend-v2
+          test ! -e _site/frontend-v3
           for app in v2 v3; do
-            js_asset="$(grep -oE '\./assets/[^\"]+\.js' "_site-qa/$app/index.html" | head -n 1)"
+            js_asset="$(grep -oE '\./assets/[^\"]+\.js' "_site/$app/index.html" | head -n 1)"
             test -n "$js_asset"
-            test -s "_site-qa/$app/${js_asset#./}"
+            test -s "_site/$app/${js_asset#./}"
           done
 
-          npm --prefix frontend-v2 run artifact:verify -- ../_site-qa
+          npm --prefix frontend-v2 run artifact:verify
           echo 'C0255 branch Pages artifact QA: PASS'

@@ -12,6 +12,10 @@ async function mockWorkspace(page: Page) {
   });
 }
 
+async function nav(page: Page, view: 'home' | 'fpl' | 'matches' | 'insights' | 'history') {
+  await page.locator(`a[href="#${view}"]:visible`).click();
+}
+
 async function assertNoOverflow(page: Page) {
   const dimensions = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -25,23 +29,23 @@ test('all five V3 navigation destinations render real product surfaces', async (
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Pick the state. Read the pitch.' })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Home' }).first().click();
+  await nav(page, 'home');
   await expect(page.getByRole('heading', { name: 'Football intelligence, distilled to what matters now.' })).toBeVisible();
   await expect(page.locator('main')).toHaveAttribute('data-active-view', 'home');
 
-  await page.getByRole('link', { name: 'Matches' }).first().click();
+  await nav(page, 'matches');
   await expect(page.getByRole('heading', { name: 'Every fixture in its real state.' })).toBeVisible();
   await expect(page.locator('.v3-match-card')).toHaveCount(10);
 
-  await page.getByRole('link', { name: 'Insights' }).first().click();
+  await nav(page, 'insights');
   await expect(page.getByRole('heading', { name: 'Decision intelligence without pretending noise is certainty.' })).toBeVisible();
   await expect(page.getByText('Highest P10+ inside the recommended squad')).toBeVisible();
 
-  await page.getByRole('link', { name: 'History' }).first().click();
+  await nav(page, 'history');
   await expect(page.getByRole('heading', { name: 'Judge the decision from the evidence that existed then.' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Projection vs realized' })).toBeVisible();
 
-  await page.getByRole('link', { name: 'FPL' }).first().click();
+  await nav(page, 'fpl');
   await expect(page.getByRole('heading', { name: 'Pick the state. Read the pitch.' })).toBeVisible();
 });
 
@@ -50,7 +54,7 @@ test('hash routes survive direct entry and browser history', async ({ page }) =>
   await page.goto('/#matches');
   await expect(page.getByRole('heading', { name: 'Every fixture in its real state.' })).toBeVisible();
 
-  await page.getByRole('link', { name: 'Insights' }).first().click();
+  await nav(page, 'insights');
   await expect(page.locator('main')).toHaveAttribute('data-active-view', 'insights');
   await page.goBack();
   await expect(page.locator('main')).toHaveAttribute('data-active-view', 'matches');

@@ -6,16 +6,18 @@ on:
       - c0255-v3-product-semantic-architecture
     paths:
       - 'frontend-v3/**'
+      - 'runtime-manifests/fpl-api.production.json'
       - 'runtime-manifests/fpl-v3-workspace-api.production.json'
       - '.github/workflows/c0255-v3-contract.yml'
   pull_request:
     paths:
       - 'frontend-v3/**'
+      - 'runtime-manifests/fpl-api.production.json'
       - 'runtime-manifests/fpl-v3-workspace-api.production.json'
       - '.github/workflows/c0255-v3-contract.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   semantic-contract:
@@ -43,23 +45,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install V3 dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Capture generated V3 lockfile on architecture branch
-        if: github.event_name == 'push' && github.ref == 'refs/heads/c0255-v3-product-semantic-architecture'
-        working-directory: .
-        shell: bash
-        run: |
-          set -euo pipefail
-          git add frontend-v3/package-lock.json
-          if git diff --cached --quiet; then
-            echo 'V3 package-lock.json already deterministic'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'C0255-E commit deterministic V3 package lock'
-          git push origin HEAD:c0255-v3-product-semantic-architecture
+          cache: npm
+          cache-dependency-path: frontend-v3/package-lock.json
+      - name: Install V3 dependencies deterministically
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Typecheck V3
         run: npm run typecheck
       - name: Build V3
@@ -76,8 +65,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install V3 dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund
+          cache: npm
+          cache-dependency-path: frontend-v3/package-lock.json
+      - name: Install V3 dependencies deterministically
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Build V3

@@ -1,7 +1,7 @@
 import { createClient } from 'supabase';
 const cors={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'authorization, x-client-info, apikey, content-type','Access-Control-Allow-Methods':'GET, OPTIONS','Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'};
 const finiteOrNull=(v:any)=>{if(v==null||v==='')return null;const n=Number(v);return Number.isFinite(n)?n:null};
-const distributionMeta=(p:any)=>{const d=p?.features?.point_distribution;return{q90:finiteOrNull(d?.q90),q95:finiteOrNull(d?.q95),distribution_version:typeof d?.version==='string'?d.version:null,tail_semantics:typeof p?.features?.tail_semantics==='string'?p.features.tail_semantics:null}};
+const distributionMeta=(p:any)=>{const d=p?.features?.point_distribution;return{q90:finiteOrNull(p?.q90??d?.q90),q95:finiteOrNull(p?.q95??d?.q95),distribution_version:typeof p?.distribution_version==='string'?p.distribution_version:typeof d?.version==='string'?d.version:null,tail_semantics:typeof p?.tail_semantics==='string'?p.tail_semantics:typeof p?.features?.tail_semantics==='string'?p.features.tail_semantics:null}};
 const publicPrediction=(p:any)=>{if(!p)return p;const{features:_features,...rest}=p;return rest};
 const ts=(x:any)=>x?new Date(x).getTime():NaN;
 const fetchLiveFixtures=async(gw:number)=>{
@@ -73,7 +73,7 @@ Deno.serve(async(req:Request)=>{
     if(!ids.length){const{data:sm}=await sb.from('squad_members').select('player_id').eq('active',true);ids=(sm||[]).map((x:any)=>Number(x.player_id))}
 
     const[{data:allPreds,error:pre},{data:states},prevStatesRes]=await Promise.all([
-      sb.from('model_predictions').select('player_id,expected_points,p_blank,p_5_plus,p_10_plus,p_15_plus,p_20_plus,p_start,p_goal,p_assist,p_clean_sheet,p_dc,p_bonus,expected_minutes,confidence,features').eq('prediction_run_id',run.id),
+      sb.from('fpl_public_projection_payload_v01').select('player_id,expected_points,p_blank,p_5_plus,p_10_plus,p_15_plus,p_20_plus,p_start,p_goal,p_assist,p_clean_sheet,p_dc,p_bonus,expected_minutes,confidence,q90,q95,distribution_version,tail_semantics').eq('prediction_run_id',run.id),
       sb.from('player_state').select('player_id,as_of,expected_minutes,start_probability,role,formation,xg90,xa90,xgi90,shots_box90,big_chances90,cbit90,cbirt90,dc_probability').in('player_id',ids).lte('as_of',run.generated_at).order('as_of',{ascending:false}),
       prevRun?sb.from('player_state').select('player_id,as_of,expected_minutes,start_probability,role,formation,xg90,xa90,xgi90,shots_box90,big_chances90,cbit90,cbirt90,dc_probability').in('player_id',ids).lte('as_of',prevRun.generated_at).order('as_of',{ascending:false}):Promise.resolve({data:[]})
     ]);

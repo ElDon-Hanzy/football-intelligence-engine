@@ -1,0 +1,18 @@
+{
+  "function": "fpl-api",
+  "supabase_project": "knooiwezzsxcwhtjtdap",
+  "observed_at": "2026-09-13T00:00:00+04:00",
+  "production": {
+    "version": 18,
+    "bundle_sha256": "3f02d4e011a635e8cc2fa5edd9fbad5c1c0c95d6c087bcdda472ff309ac5b347",
+    "contract_version": "fpl_api_v18_active_gw_public_payload"
+  },
+  "repository": {
+    "branch": "main",
+    "path": "supabase/functions/fpl-api/index.ts",
+    "git_blob_sha": "df66472cc9038be576133d5c57cef5e49c162e17"
+  },
+  "parity_status": "DRIFT_DETECTED",
+  "public_v3_deploy_allowed": false,
+  "reason": "Production fpl-api v18 is newer than the committed source. Preserve the correct live runtime; capture/reconcile production source before allowing V3 public deployment."
+}

@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-11 (Dubai) — through C0248 Checkpoint L_
+_Last updated: 2026-09-13 (Dubai) — after C0255 V3 production deployment_
 
 ## 1. Mission and immutable rules
 
@@ -10,7 +10,7 @@ Immutable rules: historical forecasts are append-only; completed evidence may ch
 
 Sources of truth: Supabase `knooiwezzsxcwhtjtdap`; GitHub `ElDon-Hanzy/football-intelligence-engine`; FPL entry `3559923`; engineering ledger `public.change_tracker_working`; C0213 architecture/governance surfaces.
 
-Forecast core remains 14 production-effect components and is behaviorally tested.
+The football/FPL forecast core is unchanged by C0255.
 
 ## 2. Current decision architecture
 
@@ -29,160 +29,190 @@ Forecast core remains 14 production-effect components and is behaviorally tested
 → C0237 live publication
 → external execution only if separately authorized.
 
-C0244, C0245 and C0248 are **Completed / Verified**.
+C0248 remains the canonical sequential selector. C0240 remains a required adversarial benchmark/regression root rather than the normal-transfer selector. C0231/C0233 remain supporting gates. C0234 remains the authorization boundary and C0237 the publication boundary.
 
-C0240 is no longer the normal-transfer selector. It remains a required supporting adversarial benchmark and regression root. C0231/C0233 are still required supporting gates and are not physically retired yet.
+## 3. Current GW4 lifecycle and decision truth
 
-## 3. C0248 production selector
+GW4 is **POST_DEADLINE_ACTIVE**. It remains active until all GW4 fixtures finish.
 
-Production planner row: **7**.
+Current fixture state at the C0255 closeout audit:
 
-Planner version: `C0248_SEQUENTIAL_PLANNER_V06_PRODUCTION_SELECTED`.
+- 10 fixtures total;
+- 7 finished;
+- 0 started-but-unfinished;
+- 3 future.
 
-Promotion contract: `C0248_VERIFIED_CANDIDATE_PROMOTION_V01`.
+Current live publication:
 
-A planner run cannot self-promote. Fresh candidate lineage starts `shadow_only=true / production_selected=false`; cross-beam deterministic validation and hardening checks are required before an append-only production-selected row is created. If fresh data creates a newer unpromoted candidate, decision readiness fails closed until promotion. This applies at T−2.
+- publication id: **34**;
+- prediction run: **1365**;
+- publication stage: `FINAL`;
+- publication status: `FINAL`;
+- final status: `FINAL_POST_DEADLINE_CLOSURE`;
+- scenario: `NAMED:GW4_3FT_GUEHI_GABRIEL_SCHADE`;
+- transfers: Mosquera → Guéhi, O'Reilly → Gabriel, Palmer → Schade;
+- captain: Gabriel (player 4);
+- vice-captain: Bruno Fernandes (player 470);
+- chip: `NONE`;
+- post-action bank: **£1.4m**;
+- `execution_authorized=false`.
 
-Verified C0248 capabilities:
+`FINAL` therefore describes publication maturity only. It is **not** execution authority.
 
-- squad, acquisition/selling values, bank and FT state;
-- FT carry/accrual to cap 5 and exact hit accounting;
-- ROLL plus normal actions through 5 transfers/GW, with serious larger preserved roots;
-- conservative legal autosub EV with formation legality enforced where a complete legal substitution set exists; unfillable multi-absence states receive zero fabricated autosub value;
-- dynamic XI / captain / vice / bench order;
-- explicit Wildcard, Free Hit, Bench Boost and Triple Captain action roots;
-- BB/TC transfer+chip combinations on preserved normal roots;
-- Wildcard canonical role-safe full-pool fresh squad over exact horizon;
-- Free Hit independent one-GW role-safe fresh squad and squad reversion after the GW;
-- Wildcard/Free Hit retain banked FTs under 2026/27 rules;
-- exact current-price feasibility and path bank-headroom diagnostics; price does not modify xPts;
-- ROLL, C0228, C0240 and named challengers preserved for regression / Noise-Control;
-- same-run lineage across chip, price and terminal controls;
-- C0234 action authority and C0237 publication authority cut over to C0248.
+## 4. Actual manager state versus recommendation
 
-Cross-beam validation: candidate runs 5 (beam 6) and 6 (beam 8) produced identical selected normal root, best root, best utility and ROLL utility. Candidate run 6 was promoted append-only to production run 7.
+No verified GW4 actual-manager-decision row exists in `public.fpl_actual_manager_decisions`.
 
-Detailed closeout: `project-management/C0248_CHECKPOINT_L_PRODUCTION_SELECTOR_CUTOVER_20260911.md`.
+Therefore the current truth is:
 
-## 4. Current manager / projection lineage
+- **Actual submitted team: not verified.**
+- The engine recommendation is not substituted for the actual team.
+- No retrospective execution authority is manufactured.
 
-Manager state before any GW4 action:
+The latest separate pre-transfer manager-state snapshot remains:
 
-- entry `3559923`;
 - 3 free transfers;
 - £0.0m bank;
-- acquisition cost £100.0m;
-- latest stored liquidation snapshot £99.6m;
-- no GW4 transfer/chip has been executed by the engine.
+- 15-player current squad proof;
+- locked from the prior submitted-lineage state.
 
-Current frozen prospective prediction lineage:
+That pre-transfer manager state is never presented as the recommendation's post-transfer economy. The recommendation has its own post-action state, including £1.4m bank.
 
-- GW4 run 1356
-- GW5 run 1348
-- GW6 run 1350
-- GW7 run 1352
-- GW8 run 1353.
+## 5. Frozen decision evidence
 
-## 5. Current GW4 pre-final sequential evidence
+The current V3 workspace resolves all **15/15** recommendation players against frozen decision-time evidence from prediction run 1365.
 
-Selected no-chip normal root: `C0240_LEGACY`, selected by C0248 after root-preserved regression.
+Decision-time xPts/xMin/haul evidence remains frozen and timestamped. Decision-time price/ownership is shown only when captured in the coherent decision-time lineage; current values are not backfilled into a missing historical slot.
 
-Five-GW selected normal utility: **232.617**.
+Historical forecasts remain append-only and `historical_forecasts_rewritten=false`.
 
-ROLL utility: **221.610**.
+## 6. V3 production product
 
-Selected edge vs ROLL: **+11.007 weighted utility**.
+C0255 introduced a new isolated consumer product under `frontend-v3/` and production route `/v3/`.
 
-Current first action represented by that pre-final root:
+Production URLs:
 
-- O'Reilly → Gabriel
-- Palmer → Saka
-- Semenyo → Schade
-- Mosquera → Guéhi
-- 4 transfers with 3 FTs, therefore -4 hit
-- bank after: £0.3m.
+- V3: `https://eldon-hanzy.github.io/football-intelligence-engine/v3/`
+- V2 fallback: `https://eldon-hanzy.github.io/football-intelligence-engine/v2/`
+- legacy root remains preserved.
 
-This is pre-final evidence only. It is not an instruction to execute before T−2.
+V3 is not a V2 redesign and does not inherit the dark FIE visual identity. V2 remains the rollback/fallback product; no V2 retirement is authorized.
 
-Exact/conservative autosub hardening did not create a new normal winner; C0240 remained the best normal preserved path.
+V3 FPL product structure:
 
-## 6. Chip control
+- pitch-first formation-aware `FplPitch`;
+- separate bench;
+- captain / vice markers;
+- opponent and venue context;
+- frozen decision-time player evidence;
+- Engine / Actual / Live modes;
+- secondary List View;
+- explicit FUTURE / LIVE / FINISHED fixture states;
+- responsive mobile/tablet/desktop layout;
+- fail-closed rendering when actual manager state is unverified.
 
-C0244 remains the mature first-half opportunity control. GW4-GW8 are exact numerical; GW9-GW19 are structural-only until decision-grade player projections exist. No BGW/DGW is currently confirmed through GW19; that means none confirmed yet, not none will occur.
+## 7. V3 semantic state contract
 
-Current chip state:
+The V3 serving/UI contract keeps four lanes distinct:
 
-- Bench Boost: **HOLD**, current incremental EV +4.849; GW4 5/5 inside exact GW4-GW8 window.
-- Triple Captain: **HOLD**, current incremental EV +6.174; GW4 5/5 inside exact window.
-- Free Hit: **HOLD_NO_ROBUST_EDGE**, canonical one-GW fresh-squad candidate +2.599 versus selected normal current-GW utility; future FH option value unresolved.
-- Wildcard: **HOLD_NO_ROBUST_EDGE**, raw exact-horizon edge +12.498; terminal normal-minus-WC FT gap 4; FT-only break-even 3.125 points per extra FT; retained-chip and future-information option value unresolved.
-- recommended current chip: **NONE**.
+1. **Actual** — verified submitted manager state only.
+2. **Recommendation** — engine hypothetical action/state only.
+3. **Decision snapshot** — frozen decision-time evidence only.
+4. **Realized** — live/finished outcome state only.
 
-## 7. Price timing
+Permanent V3 semantic invariants:
 
-Official FPL price-predictor fields are captured append-only. Price timing is scoped to no-chip normal roots and reports path affordability/headroom only. Price evidence may accelerate an already-robust football decision; it cannot create a transfer or alter xPts.
+- `FINAL` never implies `execution_authorized=true`;
+- missing actual submission displays `Actual submitted team not verified`;
+- pre-transfer manager FT/bank/squad cannot be merged with hypothetical post-transfer state;
+- FUTURE, LIVE and FINISHED fixtures are explicit;
+- a started fixture is never labelled `Next`;
+- post-kickoff probabilities are frozen pre-match evidence, not current forecasts;
+- chronology/coherent evidence timestamps outrank UI convenience.
 
-Current preserved roots show no material next-update risk sufficient to justify early action. Guidance remains `WAIT_FOR_T_MINUS_2`.
+## 8. Serving/runtime parity
 
-## 8. Captaincy
+### Legacy `fpl-api`
 
-C0242 captaincy remains an equivalence problem. Current class is `NO_MEANINGFUL_EDGE` inside model error. Do not describe the nominal captain as having a robust edge before refreshed T−2 evidence survives distribution/tail sensitivity.
+- production version: **18**;
+- contract: `fpl_api_v18_active_gw_public_payload`;
+- bundle SHA-256: `3f02d4e011a635e8cc2fa5edd9fbad5c1c0c95d6c087bcdda472ff309ac5b347`;
+- repository source reconciled to the unchanged live runtime;
+- no runtime redeploy was required for reconciliation.
 
-## 9. C0234 / C0237 after cutover
+### V3 `fpl-v3-workspace-api`
 
-`fpl-autonomous-gate` v6: `C0234_AUTONOMOUS_FINAL_GATE_V06_C0248_SELECTOR_AUTHORITY`.
+- production version: **2**;
+- contract: `fpl_v3_workspace_v02_player_evidence`;
+- bundle SHA-256: `989e097caf66980805157b0da38e31da1bcf507cfd1d9533984311bf56f04d6f`;
+- JWT verification enabled;
+- repository/runtime parity GREEN.
 
-Latest verification against production planner run 7:
+The public-client smoke uses the exact endpoint and anonymous JWT/header path shipped by `frontend-v3` and passed against the live Edge Function.
 
-- 14 / 15 gates pass;
-- only blocker = `FINAL_T_MINUS_2H_REFRESH`;
-- `final_status=DECISION_NOT_READY`;
-- action `NONE`;
-- selector `C0248`;
-- authorized false.
+## 9. C0255 production QA
 
-C0237 publication 20:
+C0255 promotion evidence:
 
-- source `C0237_ALWAYS_LIVE_PLAN_V07`;
-- C0248 selected path rendered;
-- C0240 supporting benchmark rendered;
-- `PRE_FINAL / CONTESTED`;
-- chip NONE;
-- execution authorized false.
+- architecture-branch run `34720566041`: **5/5 green**;
+- PR-context run `34720642769`: **5/5 green**;
+- PR #9 merged to main as `7fa27410b482aa5a002c5724e1e098c28d5732d7`;
+- production Pages run `34720702295`: **SUCCESS**;
+- Pages deployment `6414713753`: **SUCCESS**.
 
-No external transfer or chip has been executed.
+Production checks passed for:
 
-## 10. Legacy disposition
+- deterministic V2/V3 installs;
+- V2 typecheck/unit/bundle-budget/E2E/accessibility;
+- V3 semantic contract/typecheck/build/E2E/accessibility;
+- source/runtime serving parity;
+- explicit V3 deployment authorization;
+- live public-client V3 API smoke;
+- mobile/tablet/desktop responsive QA;
+- Pages root + `/v2/` + `/v3/` artifact integrity;
+- live post-deploy HTML and JavaScript-asset verification;
+- exclusion of frontend source trees from the public artifact.
 
-Do not physically retire these yet:
+## 10. Model / governance non-effects
 
-- C0231 — supporting forward-management gate still consumed by C0234.
-- C0233 — supporting red-team gate still consumed by C0234.
-- C0240 — supporting adversarial benchmark / regression evidence / C0245 calibration source.
-- C0242 — unique named-challenger and captaincy-consistency gate.
-- C0234 — final fail-closed authorization boundary.
-- C0237 — serving/publication boundary.
+C0255 is product/serving architecture only.
 
-Any further simplification must be a separate evidence-driven consolidation that proves unique responsibilities are absorbed before removal.
+It did **not**:
 
-## 11. Governance verification
+- alter model coefficients or production forecast behavior;
+- rewrite historical predictions;
+- weaken C0234, Decision-Control, Noise-Control or chronology gates;
+- promote research evidence;
+- infer a manager action;
+- create retrospective authorization;
+- retire V2.
 
-After Checkpoint L:
+## 11. Legacy decision-layer disposition
 
-- C0248 tracker: **Completed / Verified**.
-- C0213 behavioral consumption: **14/14 PASS** on GW4 prediction run 1356.
-- tracker governance: PASS; 0 violations; 0 completed-not-verified; 0 completed-without-refs.
-- consumption governance: PASS; **87/87** covered; 0 violations.
-- production planner: run 7, `shadow_only=false`, `production_selected=true`.
-- current chip NONE; historical forecasts rewritten false.
+Do not physically retire these merely because V3 is live:
 
-## 12. Final timing
+- C0231 — supporting forward-management gate consumed by C0234;
+- C0233 — supporting red-team gate consumed by C0234;
+- C0240 — supporting adversarial benchmark/regression evidence;
+- C0242 — named-challenger and captaincy-consistency gate;
+- C0234 — final fail-closed authorization boundary;
+- C0237 — live publication boundary.
 
-GW4 deadline: 2026-09-12 12:30 UTC / 16:30 Dubai.
+Any simplification remains a separate evidence-driven architecture decision.
 
-Final T−2 threshold: 2026-09-12 10:30 UTC / 14:30 Dubai.
+## 12. Governance status
 
-At T−2: fresh ingestion → full-pool projections/roles → generate new C0248 candidate → cross-beam validation → promote only if acceptance is green → C0242/C0240 supporting checks → C0234 final gate → C0237 final publication. A new unpromoted C0248 lineage must fail closed.
+Latest pre-closeout governance audit on 2026-09-13:
+
+- tracker governance: PASS;
+- bad change IDs: 0;
+- completed-not-verified: 0;
+- completed-without-refs: 0;
+- decision rows without refs: 0;
+- consumption governance: PASS;
+- consumption-contract violations: 0.
+
+C0255 production acceptance is satisfied. Formal tracker transition to `Completed / Verified` and its post-update governance audit are recorded in the C0255 production closeout evidence.
 
 ## 13. Canonical references
 
@@ -193,8 +223,10 @@ At T−2: fresh ingestion → full-pool projections/roles → generate new C0248
 - `WEEKLY_DATA_PIPELINE.md`
 - `MODEL_CONSUMPTION_AUDIT.md`
 - `skills/fie/SKILL.md`
-- `project-management/C0245_MATURE_OPTION_VALUE_CLOSEOUT_20260911.md`
-- `project-management/C0247_FULL_ENGINE_DECISION_ARCHITECTURE_AUDIT_20260911.md`
-- `project-management/C0248_SEQUENTIAL_MULTI_GW_DECISION_PLANNER_PLAN_20260911.md`
-- `project-management/C0248_CHECKPOINT_K_SAME_LINEAGE_CHIP_PRICE_FH_REPAIR_20260911.md`
+- `project-management/C0237_GW4_POST_DEADLINE_CLOSURE_20260912.md`
 - `project-management/C0248_CHECKPOINT_L_PRODUCTION_SELECTOR_CUTOVER_20260911.md`
+- `project-management/C0254_FPL_ACTIVE_GW_SERVING_LIFECYCLE_FIX_20260912.md`
+- `project-management/C0255_V3_PRODUCT_SEMANTIC_ARCHITECTURE_20260913.md`
+- `project-management/C0255_CHECKPOINT_C_FPL_WORKSPACE_20260913.md`
+- `project-management/C0255_PREDEPLOYMENT_GATE_20260913.md`
+- `project-management/C0255_PRODUCTION_CLOSEOUT_20260913.md`

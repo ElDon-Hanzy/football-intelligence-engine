@@ -1,0 +1,12 @@
+{
+  "name": "football-intelligence-engine-ui-v3-contracts",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "test:contract": "node --experimental-strip-types --test src/domain/*.test.ts"
+  }
+}

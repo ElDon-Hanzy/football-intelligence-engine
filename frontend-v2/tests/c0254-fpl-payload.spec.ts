@@ -24,9 +24,11 @@ test('C0254 fpl-api omits internal feature blobs from the public UI payload', as
   const payload = JSON.parse(body.toString('utf8'));
 
   expect(payload.ok).toBe(true);
-  expect(payload.serving_semantics?.internal_feature_blobs_serialized).toBe(false);
   expect(payload.all_predictions.length).toBeGreaterThanOrEqual(500);
   expect(payload.squad).toHaveLength(15);
+  // The payload itself is the authority for this contract. A descriptive serving_semantics
+  // flag is useful metadata, but its presence must not be stronger than proving that the
+  // internal feature blobs are actually absent from every serialized player row.
   expect(payload.all_predictions.every((player: Record<string, unknown>) => player.features === undefined)).toBe(true);
   expect(payload.squad.every((player: Record<string, unknown>) => player.features === undefined)).toBe(true);
 

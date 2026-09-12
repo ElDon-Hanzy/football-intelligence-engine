@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   fetchFplWorkspace,
   type FplWorkspaceApi,
@@ -137,9 +137,9 @@ export function MatchesPage() {
         tone={counts.LIVE > 0 ? 'positive' : 'neutral'}
       />
 
-      <div className="v3-filter-tabs" role="tablist" aria-label="Fixture state filter">
+      <div className="v3-filter-tabs" aria-label="Fixture state filter">
         {(['ALL', 'FUTURE', 'LIVE', 'FINISHED'] as const).map((item) => (
-          <button key={item} type="button" className={filter === item ? 'is-active' : ''} onClick={() => setFilter(item)}>
+          <button key={item} type="button" aria-pressed={filter === item} className={filter === item ? 'is-active' : ''} onClick={() => setFilter(item)}>
             {item === 'ALL' ? `All ${fixtures.length}` : item === 'FUTURE' ? `Upcoming ${counts.FUTURE}` : item === 'LIVE' ? `Live ${counts.LIVE}` : `Finished ${counts.FINISHED}`}
           </button>
         ))}
@@ -235,83 +235,11 @@ export function InsightsPage() {
   );
 }
 
-export function HistoryPage() {
-  const current = useWorkspace();
-  const currentGameweek = current.data?.gameweek ?? 0;
-  const [selectedGameweek, setSelectedGameweek] = useState<number | null>(null);
-  const resolvedGameweek = selectedGameweek ?? currentGameweek;
-  const historical = useWorkspace(resolvedGameweek > 0 ? resolvedGameweek : 0);
-
-  useEffect(() => {
-    if (selectedGameweek == null && currentGameweek > 0) setSelectedGameweek(currentGameweek);
-  }, [currentGameweek, selectedGameweek]);
-
-  if (current.loading || resolvedGameweek === 0) return <PageSkeleton label="Loading history" />;
-  if (current.error) return <ErrorState title="History unavailable" message={current.error} retry={current.reload} />;
-  if (historical.loading) return <PageSkeleton label={`Loading Gameweek ${resolvedGameweek}`} />;
-  if (historical.error || !historical.data) return <ErrorState title={`Gameweek ${resolvedGameweek} unavailable`} message={historical.error} retry={historical.reload} />;
-
-  const workspace = historical.data;
-  const recommendation = workspace.recommendation;
-  const starterIds = recommendation?.starting_xi ?? [];
-  const rows = starterIds.map((id) => {
-    const player = workspace.players.find((item) => item.player_id === id);
-    const evidence = workspace.decision_snapshot?.player_evidence.find((item) => item.player_id === id);
-    const actual = workspace.realized.player_actuals.find((item) => item.player_id === id);
-    return { id, name: player?.name ?? `Player ${id}`, evidence, actual };
-  });
-  const projected = rows.reduce((sum, row) => sum + (captured(row.evidence, 'expected_points') ?? 0), 0);
-  const realizedKnown = rows.filter((row) => row.actual?.status === 'FINAL' && typeof row.actual.total_points === 'number');
-  const realized = realizedKnown.reduce((sum, row) => sum + (row.actual?.total_points ?? 0), 0);
-
-  return (
-    <div className="v3-product-page" data-page="history">
-      <PageHero
-        kicker="Decision journal"
-        title="Judge the decision from the evidence that existed then."
-        copy="Historical recommendations stay frozen. Realized results sit beside them; they never rewrite the original forecast or manufacture an actual submitted team."
-        status={`Gameweek ${workspace.gameweek} · ${lifecycleLabel(workspace.lifecycle)}`}
-        tone="neutral"
-      />
-
-      <div className="v3-history-gw" aria-label="Select Gameweek">
-        {Array.from({ length: currentGameweek }, (_, index) => index + 1).map((gw) => (
-          <button key={gw} type="button" className={gw === resolvedGameweek ? 'is-active' : ''} onClick={() => setSelectedGameweek(gw)}>GW{gw}</button>
-        ))}
-      </div>
-
-      <section className="v3-history-summary">
-        <article className="v3-surface"><span>Publication</span><strong>{recommendation ? `#${recommendation.publication_id}` : '—'}</strong><small>{recommendation?.publication_status ?? 'No recommendation'}</small></article>
-        <article className="v3-surface"><span>XI projected</span><strong>{starterIds.length ? projected.toFixed(1) : '—'}</strong><small>Frozen xPts, no hindsight update</small></article>
-        <article className="v3-surface"><span>XI realized</span><strong>{realizedKnown.length ? realized.toFixed(0) : '—'}</strong><small>{realizedKnown.length}/{starterIds.length} final player outcomes</small></article>
-        <article className="v3-surface"><span>Actual submission</span><strong>{workspace.actual.verification_status === 'VERIFIED' ? 'Verified' : 'Not verified'}</strong><small>Never inferred from recommendation</small></article>
-      </section>
-
-      <section className="v3-surface v3-history-table" aria-labelledby="history-xi-heading">
-        <div className="v3-history-table-head">
-          <div><span className="v3-kicker">Frozen XI audit</span><h2 id="history-xi-heading">Projection vs realized</h2></div>
-          <small>Realized points appear only when final fixture evidence exists.</small>
-        </div>
-        <div className="v3-history-rows">
-          {rows.map((row) => (
-            <div className="v3-history-row" key={row.id}>
-              <strong>{row.name}</strong>
-              <span>{formatNumber(captured(row.evidence, 'expected_points'), 1)} xPts</span>
-              <span>{row.actual?.status === 'FINAL' && typeof row.actual.total_points === 'number' ? `${row.actual.total_points} pts` : 'Pending'}</span>
-            </div>
-          ))}
-        </div>
-        {rows.length === 0 ? <EmptyState title="No frozen XI for this Gameweek." copy="History remains blank rather than borrowing a later recommendation." /> : null}
-      </section>
-    </div>
-  );
-}
-
 function PageHero({ kicker, title, copy, status, tone }: { kicker: string; title: string; copy: string; status: string; tone: 'positive' | 'warning' | 'neutral' | 'intelligence' }) {
   return (
     <section className="v3-product-hero">
       <div><span className="v3-kicker">{kicker}</span><h1 className="v3-display">{title}</h1><p>{copy}</p></div>
-      <span className="v3-status" data-tone={tone === 'positive' ? undefined : tone}>{status}</span>
+      <span className="v3-status" data-tone={tone}>{status}</span>
     </section>
   );
 }

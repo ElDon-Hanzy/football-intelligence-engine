@@ -1,0 +1,23 @@
+/* C0255-D: narrow-screen layout owns its overflow instead of creating page-level
+   or non-keyboard horizontal scrolling regions. Desktop keeps the compact rail. */
+
+@media (max-width: 900px) {
+  .v3-fixture-rail {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow-x: visible;
+    scroll-snap-type: none;
+  }
+
+  .v3-fixture-card {
+    min-width: 0;
+    scroll-snap-align: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .v3-fixture-rail {
+    grid-template-columns: 1fr;
+  }
+}

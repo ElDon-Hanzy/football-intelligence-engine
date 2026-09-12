@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { FplWorkspace } from './components/FplWorkspace';
-import { HistoryPage, HomePage, InsightsPage, MatchesPage, type ProductView } from './components/ProductPages';
+import { HistoryPage } from './components/HistoryPage';
+import { HomePage, InsightsPage, MatchesPage, type ProductView } from './components/ProductPages';
 
 const navItems: Array<{ label: string; view: ProductView }> = [
   { label: 'Home', view: 'home' },

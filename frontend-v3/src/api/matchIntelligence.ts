@@ -4,33 +4,33 @@ export type OutcomeCode = 'H' | 'D' | 'A';
 export type MatchCallState = 'strong' | 'lean' | 'no-edge' | 'unavailable';
 
 export type MatchPrediction = {
-  snapshot_id?: number;
-  source_change_id?: string | null;
-  captured_at?: string;
-  home_lambda?: number;
-  away_lambda?: number;
-  markets?: { home_win: number; draw: number; away_win: number };
-  headline_score?: string | null;
-  headline_score_probability?: number | null;
-  raw_modal_score?: string | null;
-  raw_modal_probability?: number | null;
-  script_family?: string | null;
-  script_confidence?: number | null;
-  selector?: Record<string, unknown> | null;
-  top_scorelines?: Array<{ score: string; prob: number }>;
+  snapshot_id: number | undefined;
+  source_change_id: string | null;
+  captured_at: string | undefined;
+  home_lambda: number | undefined;
+  away_lambda: number | undefined;
+  markets: { home_win: number; draw: number; away_win: number } | undefined;
+  headline_score: string | null;
+  headline_score_probability: number | null;
+  raw_modal_score: string | null;
+  raw_modal_probability: number | null;
+  script_family: string | null;
+  script_confidence: number | null;
+  selector: Record<string, unknown> | null;
+  top_scorelines: Array<{ score: string; prob: number }>;
 };
 
 export type MatchFixture = {
   match_id: number;
-  fpl_fixture_id?: number | null;
+  fpl_fixture_id: number | null;
   kickoff_time: string;
   home_team: string | null;
   away_team: string | null;
-  home_short?: string | null;
-  away_short?: string | null;
+  home_short: string | null;
+  away_short: string | null;
   finished: boolean;
-  home_score?: number | null;
-  away_score?: number | null;
+  home_score: number | null;
+  away_score: number | null;
   prediction: MatchPrediction | null;
 };
 
@@ -38,7 +38,7 @@ export type FixtureFact = {
   id: number;
   fact_type: string;
   usefulness_score: number;
-  card_rank?: number | null;
+  card_rank: number | null;
   alignment: 'SUPPORTS' | 'CONTRADICTS' | 'NEUTRAL';
   one_liner: string;
 };
@@ -131,23 +131,23 @@ function parseFacts(value: unknown): FixtureFacts | null {
   const basisRaw = object(row?.alignment_basis);
   const snapshotId = number(basisRaw?.snapshot_id);
   const capturedAt = string(basisRaw?.captured_at);
-  const modalFacts: FixtureFact[] = Array.isArray(row?.modal_facts)
-    ? row!.modal_facts.map((item) => {
-        const fact = object(item);
-        const id = number(fact?.id);
-        const alignment = string(fact?.alignment);
-        const oneLiner = string(fact?.one_liner);
-        if (id == null || !oneLiner || !['SUPPORTS', 'CONTRADICTS', 'NEUTRAL'].includes(alignment ?? '')) return null;
-        return {
-          id,
-          fact_type: string(fact?.fact_type) ?? 'context',
-          usefulness_score: number(fact?.usefulness_score) ?? 0,
-          card_rank: number(fact?.card_rank),
-          alignment: alignment as FixtureFact['alignment'],
-          one_liner: oneLiner,
-        };
-      }).filter((item): item is FixtureFact => item != null)
-    : [];
+  const rawFacts = Array.isArray(row?.modal_facts) ? row.modal_facts : [];
+  const modalFacts: FixtureFact[] = [];
+  for (const item of rawFacts) {
+    const fact = object(item);
+    const id = number(fact?.id);
+    const alignment = string(fact?.alignment);
+    const oneLiner = string(fact?.one_liner);
+    if (id == null || !oneLiner || !['SUPPORTS', 'CONTRADICTS', 'NEUTRAL'].includes(alignment ?? '')) continue;
+    modalFacts.push({
+      id,
+      fact_type: string(fact?.fact_type) ?? 'context',
+      usefulness_score: number(fact?.usefulness_score) ?? 0,
+      card_rank: number(fact?.card_rank),
+      alignment: alignment as FixtureFact['alignment'],
+      one_liner: oneLiner,
+    });
+  }
   return {
     match_id: matchId,
     alignment_basis: snapshotId != null && capturedAt ? {
@@ -202,8 +202,8 @@ export function assessCall(prediction: MatchPrediction | null): {
     { code: 'D' as const, probability: prediction.markets.draw },
     { code: 'A' as const, probability: prediction.markets.away_win },
   ].sort((a, b) => b.probability - a.probability);
-  const top = outcomes[0];
-  const second = outcomes[1];
+  const top = outcomes[0]!;
+  const second = outcomes[1]!;
   const margin = top.probability - second.probability;
   const state: MatchCallState = top.probability >= 0.5 && margin >= 0.08
     ? 'strong'
@@ -220,7 +220,10 @@ export function actualOutcome(home: number | null | undefined, away: number | nu
 
 export function scoreOutcome(score: string | null | undefined): OutcomeCode | null {
   if (!score || !/^\d+-\d+$/.test(score)) return null;
-  const [home, away] = score.split('-').map(Number);
+  const parts = score.split('-').map(Number);
+  const home = parts[0];
+  const away = parts[1];
+  if (home == null || away == null) return null;
   return home > away ? 'H' : away > home ? 'A' : 'D';
 }
 

@@ -1,0 +1,35 @@
+{
+  "function": "fpl-v3-actual-live-api",
+  "supabase_project": "knooiwezzsxcwhtjtdap",
+  "observed_at": "2026-09-13T03:02:00+04:00",
+  "production": {
+    "version": 1,
+    "bundle_sha256": "49782885a5b4a039339fd1411ed7c56bc48bbd3e98814466feec0480a4ceca20",
+    "contract_version": "fpl_v3_actual_live_v01",
+    "verify_jwt": true
+  },
+  "repository": {
+    "branch": "c0257-v3-live-actuals-match-intelligence",
+    "path": "supabase/functions/fpl-v3-actual-live-api/index.ts",
+    "git_blob_sha": "eb3265ecca98eee60b3826e7187a28085417fa5d",
+    "source_commit": "7aa1350453cf840348a3f18d9bb2e67f7253cbd3"
+  },
+  "live_contract_verification": {
+    "request_id": 5739,
+    "http_status": 200,
+    "gameweek": 4,
+    "actual_status": "VERIFIED",
+    "actual_decision_id": 2,
+    "starting_xi_count": 11,
+    "bench_count": 4,
+    "player_count": 15,
+    "result_run_id": 216,
+    "engine_recommendation_used_as_actual": false,
+    "provisional_live_points_are_not_final": true
+  },
+  "parity_status": "GREEN",
+  "private_contract_verified": true,
+  "public_client_live_smoke_verified": true,
+  "public_v3_deploy_allowed": true,
+  "reason": "Committed source was deployed as production v1. Public-client JWT smoke returned the verified 11+4 GW4 submitted squad and result snapshot without substituting engine recommendation state."
+}

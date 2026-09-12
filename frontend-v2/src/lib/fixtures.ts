@@ -160,7 +160,7 @@ export function buildMatchStory(fixture: FplFixtureResult, facts: FixtureFactsIt
   const marginPp = assessment.margin * 100;
   const allGroups = groupModalFacts(facts.modal_facts, 20);
   const supportCount = allGroups.supports.length;
-  const counterCount = allGroups.contrads?.length ?? allGroups.contradicts.length;
+  const counterCount = allGroups.contradicts.length;
 
   if (assessment.state === 'no-edge') {
     const leadCase = supportCount

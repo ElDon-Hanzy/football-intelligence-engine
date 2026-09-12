@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { endpoints, fetchValidated, publicGatewayHeaders } from './api';
+import { apiQueryKeys } from './queryKeys';
 import {
   FplApiSchema,
   ManagerPlanApiSchema,
@@ -15,11 +16,11 @@ function withGameweek(endpoint: string, gameweek: number): string {
 
 export function useHomeData(gameweek: number) {
   const fpl = useQuery({
-    queryKey: ['home', 'fpl', gameweek],
+    queryKey: apiQueryKeys.fpl(gameweek),
     queryFn: ({ signal }) => fetchValidated(withGameweek(endpoints.fpl, gameweek), FplApiSchema, signal),
   });
   const managerPlan = useQuery({
-    queryKey: ['home', 'manager-plan', gameweek],
+    queryKey: apiQueryKeys.managerPlan(gameweek),
     queryFn: ({ signal }) => fetchValidated(
       withGameweek(endpoints.managerPlan, gameweek),
       ManagerPlanApiSchema,

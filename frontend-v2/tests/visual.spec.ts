@@ -280,6 +280,7 @@ test('C0182 deterministic visual baselines cover every v2 surface', async ({ pag
     const baseline = visualBaselines[key];
     if (!baseline) mismatches.push(`${key}: missing baseline (actual ${hash})`);
     else if (baseline !== hash) mismatches.push(`${key}: expected ${baseline}, actual ${hash}`);
+    await page.evaluate(() => window.localStorage.removeItem('fie-v2-api-cache'));
   }
   expect(mismatches, `Visual regression mismatch:\n${mismatches.join('\n')}`).toEqual([]);
 });

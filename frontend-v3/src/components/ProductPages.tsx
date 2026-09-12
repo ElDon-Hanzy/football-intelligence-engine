@@ -220,14 +220,14 @@ export function InsightsPage() {
 
       <section className="v3-product-section" aria-labelledby="upside-heading">
         <SectionHeading kicker="Ceiling" title="Highest P10+ inside the recommended squad" id="upside-heading" />
-        <div className="v3-signal-table" aria-label="Highest P10 plus players">
+        <div className="v3-signal-table" role="list" aria-label="Highest P10 plus players">
           {upside.map(({ player, evidence }, index) => <SignalRow key={player.player_id} rank={index + 1} player={player.name} team={player.team_short ?? player.team ?? '—'} primary={formatPercent(captured(evidence, 'p_10_plus'))} secondary={`${formatNumber(captured(evidence, 'expected_points'), 1)} xPts`} />)}
         </div>
       </section>
 
       <section className="v3-product-section" aria-labelledby="minutes-heading">
         <SectionHeading kicker="Expected minutes gate" title="Most secure starting signals inside the recommendation" id="minutes-heading" />
-        <div className="v3-signal-table" aria-label="Highest start probability players">
+        <div className="v3-signal-table" role="list" aria-label="Highest start probability players">
           {reliable.map(({ player, evidence }, index) => <SignalRow key={player.player_id} rank={index + 1} player={player.name} team={player.team_short ?? player.team ?? '—'} primary={formatPercent(captured(evidence, 'p_start'))} secondary={`${formatNumber(captured(evidence, 'expected_minutes'), 0)} xMin`} />)}
         </div>
       </section>
@@ -253,7 +253,7 @@ function PlayerSignalCard({ name, team, evidence }: { name: string; team: string
 }
 
 function SignalRow({ rank, player, team, primary, secondary }: { rank: number; player: string; team: string; primary: string; secondary: string }) {
-  return <div className="v3-signal-row"><b>{rank}</b><div><strong>{player}</strong><small>{team}</small></div><span>{secondary}</span><strong>{primary}</strong></div>;
+  return <div className="v3-signal-row" role="listitem"><b>{rank}</b><div><strong>{player}</strong><small>{team}</small></div><span>{secondary}</span><strong>{primary}</strong></div>;
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

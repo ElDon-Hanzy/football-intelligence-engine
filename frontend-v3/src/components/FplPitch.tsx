@@ -1,3 +1,5 @@
+import { formationFromPositions } from '../domain/fplPresentation';
+
 export type PitchPlayer = {
   id: number;
   name: string;
@@ -29,18 +31,15 @@ export function FplPitch({
     position,
     players: players.filter((player) => player.position === position),
   }));
-  const formation = rows
-    .filter((row) => row.position !== 'GKP')
-    .map((row) => row.players.length)
-    .join('-');
+  const formation = formationFromPositions(players.map((player) => player.position));
 
   return (
     <div className="v3-fpl-pitch-wrap">
       <div className="v3-pitch-meta">
         <span>{players.length}/11 selected</span>
-        <strong>{formation || '—'}</strong>
+        <strong>{formation === 'INVALID' ? 'Invalid XI' : formation}</strong>
       </div>
-      <div className="v3-fpl-pitch" aria-label={`Formation ${formation || 'unknown'}`}>
+      <div className="v3-fpl-pitch" aria-label={formation === 'INVALID' ? 'Invalid formation' : `Formation ${formation}`}>
         <span className="v3-field-halfway" aria-hidden="true" />
         <span className="v3-field-circle" aria-hidden="true" />
         <span className="v3-field-box v3-field-box--top" aria-hidden="true" />

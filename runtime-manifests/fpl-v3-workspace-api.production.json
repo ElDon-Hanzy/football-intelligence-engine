@@ -1,0 +1,21 @@
+{
+  "function": "fpl-v3-workspace-api",
+  "supabase_project": "knooiwezzsxcwhtjtdap",
+  "observed_at": "2026-09-13T00:50:00+04:00",
+  "production": {
+    "version": 1,
+    "bundle_sha256": "7d540a2d255f87df6608bd11257b2024cc7c327f02bfa658c7b1a3c845bd2cb7",
+    "contract_version": "fpl_v3_workspace_v01",
+    "verify_jwt": true
+  },
+  "repository": {
+    "branch": "c0255-v3-product-semantic-architecture",
+    "path": "supabase/functions/fpl-v3-workspace-api/index.ts",
+    "git_blob_sha": "9ad56ddae22efd627f0fc70fae7571e072dc2cee",
+    "source_commit": "502a2f60d964ba9f198ad4d604fd10ddf82e9e9a"
+  },
+  "parity_status": "GREEN",
+  "private_contract_verified": true,
+  "public_v3_deploy_allowed": false,
+  "reason": "V3 API source/runtime parity is green, but public V3 deployment remains blocked by the separate legacy fpl-api v18 repository/runtime drift and remaining UI/QA gates."
+}

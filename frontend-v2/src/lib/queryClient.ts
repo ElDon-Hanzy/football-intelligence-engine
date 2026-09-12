@@ -92,5 +92,9 @@ if (typeof window !== 'undefined') {
     if (persistTimer != null) window.clearTimeout(persistTimer);
     persistTimer = window.setTimeout(persistApiCache, 250);
   });
-  window.addEventListener('pagehide', persistApiCache);
+  window.addEventListener('pagehide', () => {
+    // Respect an explicit cache clear. Do not recreate site data during pagehide after
+    // the browser/user/test intentionally removed the persisted snapshot.
+    if (window.localStorage.getItem(CACHE_KEY)) persistApiCache();
+  });
 }

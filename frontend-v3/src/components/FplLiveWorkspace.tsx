@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchActualLive, type ActualLiveApi, type ActualLivePlayer } from '../api/actualLive';
 import { fetchFplWorkspace, type FplWorkspaceApi, type PlayerEvidence, type WorkspacePlayer } from '../api/fplWorkspace';
+import { fetchHistoricalFpl, type HistoricalFplPayload, type HistoricalPlayer } from '../api/historicalFpl';
 import { dominantFixturePhase } from '../domain/fplPresentation';
 import { BenchStrip, FplPitch, SquadList, type PitchMetricMode, type PitchPlayer } from './FplPitch';
 import { PlayerIntelligenceModal } from './PlayerIntelligenceModal';
@@ -16,6 +17,10 @@ type XiScoreComparison = {
 };
 
 export function FplLiveWorkspace({ gameweek = 0 }: { gameweek?: number }) {
+  return gameweek > 0 ? <HistoricalFplReview gameweek={gameweek} /> : <CurrentFplLiveWorkspace />;
+}
+
+function CurrentFplLiveWorkspace() {
   const [workspace, setWorkspace] = useState<FplWorkspaceApi | null>(null);
   const [live, setLive] = useState<ActualLiveApi | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,7 +34,7 @@ export function FplLiveWorkspace({ gameweek = 0 }: { gameweek?: number }) {
     setLoading(true);
     setError(null);
     setSelectedPlayerId(null);
-    void fetchFplWorkspace(gameweek, controller.signal)
+    void fetchFplWorkspace(0, controller.signal)
       .then(async (current) => {
         const actual = await fetchActualLive(current.gameweek, controller.signal);
         setWorkspace(current);
@@ -42,7 +47,7 @@ export function FplLiveWorkspace({ gameweek = 0 }: { gameweek?: number }) {
         setLoading(false);
       });
     return () => controller.abort();
-  }, [gameweek]);
+  }, []);
 
   if (loading) return <WorkspaceSkeleton />;
   if (error || !workspace || !live) {
@@ -59,6 +64,56 @@ export function FplLiveWorkspace({ gameweek = 0 }: { gameweek?: number }) {
     selectedPlayerId={selectedPlayerId}
     setSelectedPlayerId={setSelectedPlayerId}
   />;
+}
+
+function HistoricalFplReview({ gameweek }: { gameweek: number }) {
+  const [data, setData] = useState<HistoricalFplPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('pitch');
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true); setError(null); setData(null);
+    void fetchHistoricalFpl(gameweek, controller.signal)
+      .then((payload) => { setData(payload); setLoading(false); })
+      .catch((reason: unknown) => {
+        if (reason instanceof DOMException && reason.name === 'AbortError') return;
+        setError(reason instanceof Error ? reason.message : String(reason)); setLoading(false);
+      });
+    return () => controller.abort();
+  }, [gameweek]);
+
+  if (loading) return <WorkspaceSkeleton />;
+  if (error || !data) return <section className="v3-surface v3-workspace-error" aria-live="polite"><span className="v3-kicker">FPL history</span><h1>Gameweek review unavailable.</h1><p>{error ?? 'The chronology-safe historical contract could not be resolved.'}</p></section>;
+
+  const xi = data.decision?.starting_xi ?? [];
+  const bench = data.decision?.bench ?? [];
+  const players = resolveHistoricalPitchPlayers(xi, data, data.decision?.captain_player_id ?? null, data.decision?.vice_player_id ?? null);
+  const benchPlayers = resolveHistoricalPitchPlayers(bench, data, data.decision?.captain_player_id ?? null, data.decision?.vice_player_id ?? null);
+  const score = buildHistoricalXiScoreComparison(xi, data);
+  const hasOutcomeEvidence = score.actualCoverage > 0;
+
+  return <div className="v3-fpl-workspace" data-historical-gameweek={data.gameweek}>
+    <section className="v3-fpl-hero">
+      <div><span className="v3-kicker">Gameweek {data.gameweek} review</span><h1 className="v3-display">Your Gameweek</h1><p>Frozen engine XI compared with the points those players actually returned.</p></div>
+      <div className="v3-fpl-hero-status"><span className="v3-status" data-tone="neutral">Historical review</span><span className="v3-status" data-tone={data.historical_projection_valid ? 'positive' : 'neutral'}>{data.historical_projection_valid ? 'Valid frozen projection' : 'Audit only'}</span></div>
+    </section>
+
+    <FplScorecard score={score} actualVerified={hasOutcomeEvidence} note="Frozen engine-XI comparison. Captain multiplier and automatic substitutions are not applied." />
+
+    <div className="v3-fpl-controls">
+      <div><span className="v3-kicker">Historical state</span><strong>Frozen engine XI</strong></div>
+      <div className="v3-view-toggle" aria-label="Squad view"><button className={viewMode === 'pitch' ? 'is-active' : ''} type="button" onClick={() => setViewMode('pitch')}>Pitch</button><button className={viewMode === 'list' ? 'is-active' : ''} type="button" onClick={() => setViewMode('list')}>List</button></div>
+    </div>
+
+    <section className="v3-surface v3-squad-stage" aria-labelledby="v3-historical-state-title">
+      <div className="v3-squad-stage-head"><div><span className="v3-kicker">xPts vs actual points</span><h2 id="v3-historical-state-title">Frozen engine XI</h2></div></div>
+      {players.length === 0 ? <div className="v3-empty-state"><strong>No valid frozen XI is available.</strong><span>Missing history is not reconstructed from current data.</span></div> : viewMode === 'pitch' ? <><FplPitch players={players} metricMode="comparison" /><BenchStrip players={benchPlayers} metricMode="comparison" /></> : <SquadList starters={players} bench={benchPlayers} metricMode="comparison" />}
+    </section>
+
+    <details className="v3-data-details v3-surface"><summary>Data details</summary><div className="v3-data-details-grid"><div><span>Projection snapshot</span><strong>{data.prediction_run_id == null ? 'Unavailable' : `Run #${data.prediction_run_id}`}</strong></div><div><span>Snapshot stage</span><strong>{data.snapshot_stage ?? 'Historical'}</strong></div><div><span>Projection validity</span><strong>{data.historical_projection_valid ? 'Valid' : 'Audit only'}</strong></div><div><span>Metadata policy</span><strong>{data.metadata_availability?.current_metadata_not_backfilled_into_history ? 'No current backfill' : 'Unavailable'}</strong></div></div><p>Historical evidence stays chronology-safe. Current prices, ownership and post-deadline metadata are not used to rewrite the frozen projection.</p></details>
+  </div>;
 }
 
 function WorkspaceContent({
@@ -162,14 +217,14 @@ function WorkspaceContent({
   );
 }
 
-function FplScorecard({ score, actualVerified }: { score: XiScoreComparison; actualVerified: boolean }) {
+function FplScorecard({ score, actualVerified, note = 'Raw submitted-XI comparison. Captain multiplier and automatic substitutions are not applied here.' }: { score: XiScoreComparison; actualVerified: boolean; note?: string }) {
   const completeComparison = score.projectedPoints != null && score.actualCoverage === 11;
-  const difference = completeComparison && score.actualPoints != null ? score.actualPoints - score.projectedPoints! : null;
+  const difference = completeComparison && score.actualPoints != null ? score.actualPoints - score.projectedPoints : null;
   return <section className="v3-fpl-scorecard v3-surface" aria-label="Projected xPTS versus Actual PTS">
     <div className="v3-fpl-scoremetric" data-metric="xpts"><span>XI xPTS</span><strong>{score.projectedPoints == null ? '—' : score.projectedPoints.toFixed(1)}</strong><small>{score.projectedPoints == null ? `${score.projectedCoverage}/11 projections captured` : 'Frozen pre-deadline projection'}</small></div>
-    <div className="v3-fpl-scoremetric" data-metric="actual"><span>Actual PTS</span><strong>{!actualVerified || score.actualPoints == null ? '—' : String(score.actualPoints)}</strong><small>{!actualVerified ? 'Submitted team not verified' : `${score.actualCoverage}/11 players reported`}</small></div>
+    <div className="v3-fpl-scoremetric" data-metric="actual"><span>Actual PTS</span><strong>{!actualVerified || score.actualPoints == null ? '—' : String(score.actualPoints)}</strong><small>{!actualVerified ? 'Actual points unavailable' : `${score.actualCoverage}/11 players reported`}</small></div>
     <div className="v3-fpl-scoremetric" data-metric="delta"><span>vs xPTS</span><strong>{difference == null ? '—' : `${difference >= 0 ? '+' : ''}${difference.toFixed(1)}`}</strong><small>{difference == null ? 'Shown when all XI points are available' : 'Actual minus projected'}</small></div>
-    <p>Raw submitted-XI comparison. Captain multiplier and automatic substitutions are not applied here.</p>
+    <p>{note}</p>
   </section>;
 }
 
@@ -216,12 +271,34 @@ function buildXiScoreComparison(workspace: FplWorkspaceApi, live: ActualLiveApi)
   const actualById = new Map(live.player_actuals.map((row) => [row.player_id, row]));
   const projections = xi.map((id) => captured(evidenceById.get(id), 'expected_points')).filter((value): value is number => value != null);
   const actuals = xi.map((id) => actualById.get(id)?.total_points ?? null).filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
-  return {
-    projectedPoints: projections.length === xi.length ? projections.reduce((sum, value) => sum + value, 0) : null,
-    projectedCoverage: projections.length,
-    actualPoints: actuals.length ? actuals.reduce((sum, value) => sum + value, 0) : null,
-    actualCoverage: actuals.length,
-  };
+  return { projectedPoints: projections.length === xi.length ? projections.reduce((sum, value) => sum + value, 0) : null, projectedCoverage: projections.length, actualPoints: actuals.length ? actuals.reduce((sum, value) => sum + value, 0) : null, actualCoverage: actuals.length };
+}
+
+function buildHistoricalXiScoreComparison(xi: HistoricalPlayer[], data: HistoricalFplPayload): XiScoreComparison {
+  const actualById = new Map((data.all_predictions ?? []).map((row) => [row.id, row.actual?.total_points ?? null]));
+  const projections = xi.map((player) => numeric(player.xPts)).filter((value): value is number => value != null);
+  const actuals = xi.map((player) => actualById.get(player.id) ?? null).filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  return { projectedPoints: projections.length === xi.length && xi.length === 11 ? projections.reduce((sum, value) => sum + value, 0) : null, projectedCoverage: projections.length, actualPoints: actuals.length ? actuals.reduce((sum, value) => sum + value, 0) : null, actualCoverage: actuals.length };
+}
+
+function resolveHistoricalPitchPlayers(players: HistoricalPlayer[], data: HistoricalFplPayload, captainId: number | null, viceId: number | null): PitchPlayer[] {
+  const predictionById = new Map((data.all_predictions ?? []).map((row) => [row.id, row]));
+  return players.map((player) => {
+    const prediction = predictionById.get(player.id);
+    const fixture = historicalFixtureState(player.team ?? null, data);
+    const actualPoints = numeric(prediction?.actual?.total_points);
+    return { id: player.id, name: player.name, position: player.position ?? prediction?.position ?? 'UNKNOWN', teamShort: teamShort(player.team ?? prediction?.team ?? null), fixtureLabel: fixture.label, fixturePhase: fixture.phase, expectedPoints: numeric(player.xPts) ?? numeric(prediction?.expected_points), expectedMinutes: numeric(prediction?.expected_minutes), p10: numeric(player.p10) ?? numeric(prediction?.p_10_plus), actualPoints, actualStatus: actualPoints == null ? 'PENDING' : 'FINAL', captain: player.id === captainId, vice: player.id === viceId };
+  });
+}
+
+function historicalFixtureState(team: string | null, data: HistoricalFplPayload) {
+  if (!team) return { label: `GW${data.gameweek}`, phase: 'FINISHED' as const };
+  const normalized = team.toLowerCase();
+  const fixture = (data.fixture_results ?? []).find((row) => row.home_team?.toLowerCase() === normalized || row.away_team?.toLowerCase() === normalized);
+  if (!fixture) return { label: `GW${data.gameweek}`, phase: 'FINISHED' as const };
+  const home = fixture.home_team?.toLowerCase() === normalized;
+  const opponent = home ? fixture.away_team : fixture.home_team;
+  return { label: `${teamShort(opponent)} (${home ? 'H' : 'A'})`, phase: fixture.finished ? 'FINISHED' as const : 'FUTURE' as const };
 }
 
 function resolveEnginePitchPlayers(ids: number[], workspace: FplWorkspaceApi, captainId: number | null, viceId: number | null): PitchPlayer[] {
@@ -260,15 +337,10 @@ function captured(evidence: PlayerEvidence | undefined, key: keyof Pick<PlayerEv
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-function playerName(workspace: FplWorkspaceApi, id: number | null): string | null {
-  if (id == null) return null;
-  return workspace.players.find((player) => player.player_id === id)?.name ?? workspace.recommendation?.squad.find((player) => player.player_id === id)?.name ?? null;
-}
-
-function Tab({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) {
-  return <button className={active ? 'is-active' : ''} type="button" role="tab" aria-selected={active} onClick={onClick}>{children}</button>;
-}
-
+function playerName(workspace: FplWorkspaceApi, id: number | null): string | null { if (id == null) return null; return workspace.players.find((player) => player.player_id === id)?.name ?? workspace.recommendation?.squad.find((player) => player.player_id === id)?.name ?? null; }
+function teamShort(value: string | null | undefined): string { if (!value) return '—'; const tokens = value.replace(/[^A-Za-z ]/g, '').split(/\s+/).filter(Boolean); if (tokens.length > 1) return tokens.map((token) => token[0]).join('').slice(0, 3).toUpperCase(); return value.slice(0, 3).toUpperCase(); }
+function numeric(value: unknown): number | null { const parsed = Number(value); return value == null || value === '' || !Number.isFinite(parsed) ? null : parsed; }
+function Tab({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) { return <button className={active ? 'is-active' : ''} type="button" role="tab" aria-selected={active} onClick={onClick}>{children}</button>; }
 function Summary({ label, value }: { label: string; value: string }) { return <div><span>{label}</span><strong>{value}</strong></div>; }
 function readString(value: unknown): string | null { return typeof value === 'string' && value.trim() ? value : null; }
 function readNumber(value: unknown): number | null { const n = Number(value); return Number.isFinite(n) ? n : null; }
@@ -276,6 +348,4 @@ function lifecycleLabel(value: string): string { return value === 'PRE_DEADLINE'
 function formatTimestamp(value: string): string { return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value)); }
 function formatKickoff(value: string): string { return new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value)); }
 
-function WorkspaceSkeleton() {
-  return <div className="v3-fpl-workspace" aria-busy="true" aria-label="Loading FPL workspace"><section className="v3-fpl-hero"><div><span className="v3-kicker">FPL</span><h1 className="v3-display">Loading Gameweek…</h1></div></section><div className="v3-surface v3-skeleton-panel" /></div>;
-}
+function WorkspaceSkeleton() { return <div className="v3-fpl-workspace" aria-busy="true" aria-label="Loading FPL workspace"><section className="v3-fpl-hero"><div><span className="v3-kicker">FPL</span><h1 className="v3-display">Loading Gameweek…</h1></div></section><div className="v3-surface v3-skeleton-panel" /></div>; }

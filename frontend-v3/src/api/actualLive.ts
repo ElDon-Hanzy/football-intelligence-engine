@@ -111,6 +111,15 @@ function isActualLiveApi(value: unknown): value is ActualLiveApi {
     && (payload.scenario_player_actuals == null || Array.isArray(payload.scenario_player_actuals));
 }
 
+function comparisonHydrated(payload: ActualLiveApi): ActualLiveApi {
+  if (!payload.scenario_players?.length || !payload.scenario_player_actuals?.length) return payload;
+  return {
+    ...payload,
+    players: payload.scenario_players,
+    player_actuals: payload.scenario_player_actuals,
+  };
+}
+
 function cachedCurrentActual(): ActualLiveApi | null {
   if (!currentActualCache) return null;
   if (currentActualCache.expiresAt <= Date.now()) {
@@ -133,8 +142,9 @@ function fetchCurrentActualLive(): Promise<ActualLiveApi> {
     ttlMs: CURRENT_ACTUAL_REUSE_MS,
   }).then((payload) => {
     if (!isActualLiveApi(payload)) throw new Error('Actual-live contract mismatch');
-    currentActualCache = { value: payload, expiresAt: Date.now() + CURRENT_ACTUAL_REUSE_MS };
-    return payload;
+    const hydrated = comparisonHydrated(payload);
+    currentActualCache = { value: hydrated, expiresAt: Date.now() + CURRENT_ACTUAL_REUSE_MS };
+    return hydrated;
   }).finally(() => {
     if (currentActualPending === pending) currentActualPending = null;
   });
@@ -173,7 +183,7 @@ export async function fetchActualLive(gameweek = 0, signal?: AbortSignal): Promi
   if (payload.gameweek !== gameweek) {
     throw new Error(`Actual-live Gameweek mismatch: requested GW${gameweek}, received GW${payload.gameweek}`);
   }
-  return payload;
+  return comparisonHydrated(payload);
 }
 
 function awaitWithAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {

@@ -29,7 +29,17 @@ export type HistoricalPrediction = {
   position?: string | null;
   expected_points?: number | null;
   expected_minutes?: number | null;
+  p_start?: number | null;
+  p_blank?: number | null;
+  p_5_plus?: number | null;
   p_10_plus?: number | null;
+  p_15_plus?: number | null;
+  p_20_plus?: number | null;
+  p_goal?: number | null;
+  p_assist?: number | null;
+  p_clean_sheet?: number | null;
+  p_dc?: number | null;
+  p_bonus?: number | null;
   actual?: HistoricalPlayerOutcome | null;
   actual_status?: string | null;
 };
@@ -39,6 +49,8 @@ export type HistoricalFixture = {
   kickoff_time: string;
   home_team: string | null;
   away_team: string | null;
+  home_short?: string | null;
+  away_short?: string | null;
   finished: boolean;
   home_score?: number | null;
   away_score?: number | null;
@@ -69,7 +81,9 @@ export type HistoricalFplPayload = {
     bench?: HistoricalPlayer[];
     recommendations?: Record<string, unknown> | null;
   } | null;
+  squad?: HistoricalPrediction[];
   all_predictions?: HistoricalPrediction[];
+  top_double_digit?: HistoricalPrediction[];
   fixture_results?: HistoricalFixture[];
 };
 

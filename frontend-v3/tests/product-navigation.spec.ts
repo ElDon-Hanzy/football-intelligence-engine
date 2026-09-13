@@ -48,7 +48,9 @@ test('markets show large result stamps without probability or xG', async ({ page
   await expect(page.getByText(/xG/i)).toHaveCount(0);
   await expect(page.getByText(/\b(12\.0|25\.0|63\.0|66\.0)%\b/)).toHaveCount(0);
   await expect(page.getByText('2-2', { exact: true })).toBeVisible();
-  await expect(page.getByText('Draw', { exact: true })).toBeVisible();
+  const drawCard = page.locator('.v3-market-card').filter({ hasText: '1X2' });
+  await expect(drawCard.getByRole('heading', { name: 'Draw', exact: true })).toBeVisible();
+  await expect(drawCard.locator('.v3-market-result small')).toHaveText('Draw');
 });
 
 test('no-edge fixture is consumer-labelled DRAW and finished audit is understated', async ({ page }) => {

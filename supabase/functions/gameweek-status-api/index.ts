@@ -8,6 +8,9 @@ const cors = {
   'Cache-Control': 'no-store',
 };
 
+const LEGACY_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub29pd2V6enN4Y3dodGp0ZGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzY0MjQsImV4cCI6MjEwMjkxMjQyNH0.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
+const PUBLISHABLE_KEY = 'sb_publishable_Xp7UoMBctE-KCtfHlWcQ1Q_0sVknJfp';
+
 type FixtureRow = { gameweek: number; kickoff_time: string; finished: boolean };
 
 type GameweekSummary = {
@@ -19,8 +22,16 @@ type GameweekSummary = {
   last_kickoff: string;
 };
 
+function hasPublicClientAuth(req: Request): boolean {
+  const authorization = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
+  const apiKey = req.headers.get('apikey') ?? '';
+  return [authorization, apiKey].some((value) => value === LEGACY_ANON_KEY || value === PUBLISHABLE_KEY);
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (req.method !== 'GET') return new Response(JSON.stringify({ ok: false, error: 'GET required' }), { status: 405, headers: cors });
+  if (!hasPublicClientAuth(req)) return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: cors });
   try {
     const keys = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}');
     const serviceKey = keys.default || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');

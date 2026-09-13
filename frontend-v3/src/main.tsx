@@ -8,6 +8,7 @@ import './styles/product.css';
 import './styles/c0257.css';
 import './styles/c0258.css';
 import './styles/responsive.css';
+import './styles/c0259.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('V3 root element not found');

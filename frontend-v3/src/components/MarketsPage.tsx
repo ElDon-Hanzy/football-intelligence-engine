@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchMatchIntelligence, type MatchFixture } from '../api/matchIntelligence';
 import { fetchCoreMarkets, type CoreMarketCall, type CoreMarketsPayload } from '../api/markets';
-import { fetchFplWorkspace } from '../api/fplWorkspace';
 
 type LoadState = { calls: CoreMarketsPayload | null; fixtures: MatchFixture[]; loading: boolean; error: string | null };
 
@@ -9,26 +8,24 @@ export function MarketsPage({ gameweek = 0 }: { gameweek?: number }) {
   const [state, setState] = useState<LoadState>({ calls: null, fixtures: [], loading: true, error: null });
 
   useEffect(() => {
+    if (gameweek < 1) return;
     const controller = new AbortController();
     setState({ calls: null, fixtures: [], loading: true, error: null });
-    void fetchFplWorkspace(gameweek, controller.signal)
-      .then(async (workspace) => {
-        const [calls, matches] = await Promise.all([
-          fetchCoreMarkets(workspace.gameweek, controller.signal),
-          fetchMatchIntelligence(workspace.gameweek, controller.signal),
-        ]);
-        setState({ calls, fixtures: matches.fixtures, loading: false, error: null });
-      })
-      .catch((reason: unknown) => {
-        if (reason instanceof DOMException && reason.name === 'AbortError') return;
-        setState({ calls: null, fixtures: [], loading: false, error: reason instanceof Error ? reason.message : String(reason) });
-      });
+    void Promise.all([
+      fetchCoreMarkets(gameweek, controller.signal),
+      fetchMatchIntelligence(gameweek, controller.signal),
+    ]).then(([calls, matches]) => {
+      setState({ calls, fixtures: matches.fixtures, loading: false, error: null });
+    }).catch((reason: unknown) => {
+      if (reason instanceof DOMException && reason.name === 'AbortError') return;
+      setState({ calls: null, fixtures: [], loading: false, error: reason instanceof Error ? reason.message : String(reason) });
+    });
     return () => controller.abort();
   }, [gameweek]);
 
   const fixtureById = useMemo(() => new Map(state.fixtures.map((fixture) => [fixture.match_id, fixture])), [state.fixtures]);
 
-  if (state.loading) return <section className="v3-product-page" aria-busy="true"><div className="v3-surface v3-skeleton-panel" /></section>;
+  if (gameweek < 1 || state.loading) return <section className="v3-product-page" aria-busy="true"><div className="v3-surface v3-skeleton-panel" /></section>;
   if (state.error || !state.calls) return <section className="v3-product-page"><div className="v3-surface v3-page-state"><span className="v3-kicker">Core markets</span><h1>Market calls unavailable</h1><p>{state.error ?? 'The frozen strongest-call contract did not resolve.'}</p></div></section>;
 
   return <div className="v3-product-page v3-dense-page" data-page="markets">

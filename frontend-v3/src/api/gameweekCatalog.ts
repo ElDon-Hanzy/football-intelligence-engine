@@ -2,7 +2,7 @@ import { fetchJsonCached } from './requestCache';
 
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
 const PUBLIC_SUPABASE_ANON_JWT =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXAiLCJyZWYiOiJrbm9vaXdlenpzeGN3aHRqdGRhcCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzg3MzM2NDI0LCJleHAiOjIxMDI5MTI0MjR9.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBiYXNlIiwicmVmIjoia25vb2l3ZXp6c3hjd2h0anRkYXAiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4NzMzNjQyNCwiZXhwIjoyMTAyOTEyNDI0fQ.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
 
 export type GameweekCatalog = {
   currentGameweek: number;

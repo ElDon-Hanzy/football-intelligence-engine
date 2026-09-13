@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchForwardIntelligence } from './api/forwardIntelligence';
-import { fetchFplWorkspace } from './api/fplWorkspace';
+import { fetchActualLive } from './api/actualLive';
+import { fetchGameweekCatalog } from './api/gameweekCatalog';
 import { FplLiveWorkspace } from './components/FplLiveWorkspace';
 import { ForwardFplPage, ForwardHomePage, ForwardInsightsPage } from './components/ForwardPages';
 import { HistoryPage } from './components/HistoryPage';
@@ -37,18 +37,27 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void Promise.allSettled([
-      fetchFplWorkspace(0, controller.signal),
-      fetchForwardIntelligence(0, controller.signal),
-    ]).then(([workspaceResult, forwardResult]) => {
-      if (workspaceResult.status === 'fulfilled') setCurrentGameweek(workspaceResult.value.gameweek);
-      else setCurrentGameweek(null);
-      if (forwardResult.status === 'fulfilled') setLatestIntelligenceGameweek(forwardResult.value.gameweek);
-      else setLatestIntelligenceGameweek(null);
-      setCatalogReady(true);
-    });
+    void fetchGameweekCatalog(controller.signal)
+      .then((catalog) => {
+        setCurrentGameweek(catalog.currentGameweek);
+        setLatestIntelligenceGameweek(catalog.latestIntelligenceGameweek);
+        setCatalogReady(true);
+      })
+      .catch((reason: unknown) => {
+        if (reason instanceof DOMException && reason.name === 'AbortError') return;
+        setCurrentGameweek(null);
+        setLatestIntelligenceGameweek(null);
+        setCatalogReady(true);
+      });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (active !== 'fpl' || selectedGameweek !== 0 || currentGameweek == null) return;
+    const controller = new AbortController();
+    void fetchActualLive(currentGameweek, controller.signal).catch(() => undefined);
+    return () => controller.abort();
+  }, [active, currentGameweek, selectedGameweek]);
 
   const latestAvailableGameweek = Math.max(currentGameweek ?? 0, latestIntelligenceGameweek ?? 0);
 
@@ -72,10 +81,10 @@ export function App() {
   let content;
   if (active === 'home') content = isForwardGameweek ? <ForwardHomePage onNavigate={navigate} gameweek={selectedGameweek} /> : <HomePage onNavigate={navigate} gameweek={selectedGameweek} />;
   else if (active === 'fpl') content = isForwardGameweek && currentGameweek != null ? <ForwardFplPage gameweek={selectedGameweek} activeGameweek={currentGameweek} /> : <FplLiveWorkspace gameweek={selectedGameweek} />;
-  else if (active === 'matches') content = <MatchesIntelligencePage gameweek={selectedGameweek} />;
-  else if (active === 'markets') content = <MarketsPage gameweek={selectedGameweek} />;
+  else if (active === 'matches') content = <MatchesIntelligencePage gameweek={visibleGameweek} />;
+  else if (active === 'markets') content = <MarketsPage gameweek={visibleGameweek} />;
   else if (active === 'insights') content = isForwardGameweek ? <ForwardInsightsPage gameweek={selectedGameweek} /> : <InsightsPage gameweek={selectedGameweek} />;
-  else content = <HistoryPage gameweek={selectedGameweek} />;
+  else content = visibleGameweek > 0 ? <HistoryPage gameweek={visibleGameweek} /> : <PageLoading />;
 
   return <div className="v3-app-shell">
     <header className="v3-topbar">
@@ -94,6 +103,8 @@ export function App() {
     <nav className="v3-mobile-nav" aria-label="Mobile navigation">{navItems.map((item) => <a key={item.view} href={`#${item.view}`} aria-current={item.view === active ? 'page' : undefined}><span aria-hidden="true">•</span>{item.label}</a>)}</nav>
   </div>;
 }
+
+function PageLoading() { return <section className="v3-product-page" aria-busy="true"><div className="v3-surface v3-skeleton-panel" /></section>; }
 
 function gameweekLabel(gameweek: number, currentGameweek: number | null, latestIntelligenceGameweek: number | null): string {
   if (gameweek === currentGameweek) return `GW${gameweek} · Live`;

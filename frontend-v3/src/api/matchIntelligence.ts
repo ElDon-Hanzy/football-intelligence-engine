@@ -1,3 +1,5 @@
+import { fetchJsonCached } from './requestCache';
+
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
 
 export type OutcomeCode = 'H' | 'D' | 'A';
@@ -159,35 +161,31 @@ function parseFacts(value: unknown): FixtureFacts | null {
   };
 }
 
-async function fetchJson(url: string, signal?: AbortSignal): Promise<unknown> {
-  const response = await fetch(url, { cache: 'no-store', headers: { Accept: 'application/json' }, ...(signal ? { signal } : {}) });
-  if (!response.ok) throw new Error(`HTTP ${response.status} from ${url}`);
-  return response.json();
-}
-
 export async function fetchMatchIntelligence(gameweek: number, signal?: AbortSignal): Promise<MatchIntelligence> {
-  const fplPayload = object(await fetchJson(`${API_ROOT}/fpl-api?gw=${gameweek}`, signal));
-  if (fplPayload?.ok !== true) throw new Error('FPL prediction contract unavailable');
+  if (gameweek < 1 || gameweek > 38) throw new Error('A resolved Gameweek is required for match intelligence');
+  const fplPayload = object(await fetchJsonCached(`${API_ROOT}/fpl-api?gw=${gameweek}`, { ttlMs: 30_000, signal }));
+  if (fplPayload?.ok !== true || number(fplPayload.gameweek) !== gameweek) throw new Error('FPL prediction contract unavailable');
   const fixtures = Array.isArray(fplPayload.fixture_results)
     ? fplPayload.fixture_results.map(parseFixture).filter((item): item is MatchFixture => item != null)
     : [];
+  return { gameweek, fixtures, factsByMatch: new Map<number, FixtureFacts>() };
+}
 
+export async function fetchFixtureFacts(gameweek: number, signal?: AbortSignal): Promise<Map<number, FixtureFacts>> {
   const factsByMatch = new Map<number, FixtureFacts>();
-  if (fixtures.some((fixture) => fixture.prediction?.snapshot_id != null)) {
-    try {
-      const factsPayload = object(await fetchJson(`${API_ROOT}/fixture-facts-api?gw=${gameweek}`, signal));
-      if (factsPayload?.ok === true && factsPayload.facts_available === true && Array.isArray(factsPayload.fixtures)) {
-        for (const raw of factsPayload.fixtures) {
-          const facts = parseFacts(raw);
-          if (facts) factsByMatch.set(facts.match_id, facts);
-        }
+  if (gameweek < 1 || gameweek > 38) return factsByMatch;
+  try {
+    const factsPayload = object(await fetchJsonCached(`${API_ROOT}/fixture-facts-api?gw=${gameweek}`, { ttlMs: 120_000, signal }));
+    if (factsPayload?.ok === true && factsPayload.facts_available === true && Array.isArray(factsPayload.fixtures)) {
+      for (const raw of factsPayload.fixtures) {
+        const facts = parseFacts(raw);
+        if (facts) factsByMatch.set(facts.match_id, facts);
       }
-    } catch {
-      // Match predictions remain usable if optional explanatory facts are temporarily unavailable.
     }
+  } catch (reason) {
+    if (reason instanceof DOMException && reason.name === 'AbortError') throw reason;
   }
-
-  return { gameweek, fixtures, factsByMatch };
+  return factsByMatch;
 }
 
 export function assessCall(prediction: MatchPrediction | null): {

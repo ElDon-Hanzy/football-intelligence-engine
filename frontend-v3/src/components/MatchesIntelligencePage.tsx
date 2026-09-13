@@ -1,25 +1,26 @@
 import { useEffect, useState } from 'react';
-import { alignedFacts, assessCall, actualOutcome, fetchMatchIntelligence, type FixtureFact, type MatchFixture, type MatchIntelligence, type OutcomeCode } from '../api/matchIntelligence';
-import { fetchFplWorkspace, type FplWorkspaceApi, type WorkspaceFixturePhase } from '../api/fplWorkspace';
+import { alignedFacts, assessCall, actualOutcome, fetchFixtureFacts, fetchMatchIntelligence, type FixtureFact, type FixtureFacts, type MatchFixture, type MatchIntelligence, type OutcomeCode } from '../api/matchIntelligence';
 import { V3Dialog } from './V3Dialog';
 
 type Filter = 'ALL' | 'FUTURE' | 'LIVE' | 'FINISHED';
+type FixturePhase = Exclude<Filter, 'ALL'>;
 type ConsumerCall = { code: OutcomeCode; label: string; probability: number } | null;
 
 export function MatchesIntelligencePage({ gameweek = 0 }: { gameweek?: number }) {
-  const [workspace, setWorkspace] = useState<FplWorkspaceApi | null>(null);
   const [intelligence, setIntelligence] = useState<MatchIntelligence | null>(null);
+  const [factsByMatch, setFactsByMatch] = useState<Map<number, FixtureFacts>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('ALL');
   const [selected, setSelected] = useState<number | null>(null);
 
   useEffect(() => {
+    if (gameweek < 1) return;
     const controller = new AbortController();
-    setLoading(true); setError(null); setSelected(null); setFilter('ALL');
-    void fetchFplWorkspace(gameweek, controller.signal).then(async (current) => {
-      const matchData = await fetchMatchIntelligence(current.gameweek, controller.signal);
-      setWorkspace(current); setIntelligence(matchData); setLoading(false);
+    setLoading(true); setError(null); setSelected(null); setFilter('ALL'); setFactsByMatch(new Map());
+    void fetchMatchIntelligence(gameweek, controller.signal).then((matchData) => {
+      setIntelligence(matchData); setLoading(false);
+      void fetchFixtureFacts(gameweek, controller.signal).then(setFactsByMatch).catch(() => undefined);
     }).catch((reason: unknown) => {
       if (reason instanceof DOMException && reason.name === 'AbortError') return;
       setError(reason instanceof Error ? reason.message : String(reason)); setLoading(false);
@@ -27,17 +28,21 @@ export function MatchesIntelligencePage({ gameweek = 0 }: { gameweek?: number })
     return () => controller.abort();
   }, [gameweek]);
 
-  if (loading) return <section className="v3-product-page" aria-busy="true"><div className="v3-surface v3-skeleton-panel" /></section>;
-  if (error || !workspace || !intelligence) return <section className="v3-product-page"><div className="v3-surface v3-page-state"><span className="v3-kicker">Match intelligence</span><h1>Match predictions unavailable</h1><p>{error ?? 'The frozen fixture contract did not resolve.'}</p></div></section>;
+  if (gameweek < 1 || loading) return <section className="v3-product-page" aria-busy="true"><div className="v3-surface v3-skeleton-panel" /></section>;
+  if (error || !intelligence) return <section className="v3-product-page"><div className="v3-surface v3-page-state"><span className="v3-kicker">Match intelligence</span><h1>Match predictions unavailable</h1><p>{error ?? 'The frozen fixture contract did not resolve.'}</p></div></section>;
 
-  const phaseByMatch = new Map(workspace.realized.fixtures.map((fixture) => [fixture.match_id, fixture.phase]));
-  const counts = { FUTURE: workspace.realized.fixtures.filter((fixture) => fixture.phase === 'FUTURE').length, LIVE: workspace.realized.fixtures.filter((fixture) => fixture.phase === 'LIVE').length, FINISHED: workspace.realized.fixtures.filter((fixture) => fixture.phase === 'FINISHED').length };
-  const fixtures = intelligence.fixtures.filter((fixture) => filter === 'ALL' || (phaseByMatch.get(fixture.match_id) ?? phaseFromFixture(fixture)) === filter);
+  const phaseByMatch = new Map(intelligence.fixtures.map((fixture) => [fixture.match_id, phaseFromFixture(fixture)]));
+  const counts = {
+    FUTURE: intelligence.fixtures.filter((fixture) => phaseByMatch.get(fixture.match_id) === 'FUTURE').length,
+    LIVE: intelligence.fixtures.filter((fixture) => phaseByMatch.get(fixture.match_id) === 'LIVE').length,
+    FINISHED: intelligence.fixtures.filter((fixture) => phaseByMatch.get(fixture.match_id) === 'FINISHED').length,
+  };
+  const fixtures = intelligence.fixtures.filter((fixture) => filter === 'ALL' || phaseByMatch.get(fixture.match_id) === filter);
   const selectedFixture = selected == null ? null : intelligence.fixtures.find((fixture) => fixture.match_id === selected) ?? null;
-  const selectedFacts = selectedFixture ? alignedFacts(selectedFixture, intelligence.factsByMatch.get(selectedFixture.match_id)) : null;
+  const selectedFacts = selectedFixture ? alignedFacts(selectedFixture, factsByMatch.get(selectedFixture.match_id)) : null;
 
   return <div className="v3-product-page v3-dense-page" data-page="matches">
-    <header className="v3-compact-header"><div><span className="v3-kicker">Gameweek {workspace.gameweek}</span><h1>Match center</h1></div><small>{counts.FINISHED} final · {counts.LIVE} live · {counts.FUTURE} upcoming</small></header>
+    <header className="v3-compact-header"><div><span className="v3-kicker">Gameweek {intelligence.gameweek}</span><h1>Match center</h1></div><small>{counts.FINISHED} final · {counts.LIVE} live · {counts.FUTURE} upcoming</small></header>
 
     <div className="v3-filter-tabs v3-filter-tabs--compact" aria-label="Fixture state filter">{(['ALL', 'FUTURE', 'LIVE', 'FINISHED'] as const).map((item) => <button key={item} type="button" aria-pressed={filter === item} className={filter === item ? 'is-active' : ''} onClick={() => setFilter(item)}>{item === 'ALL' ? `All ${intelligence.fixtures.length}` : item === 'FUTURE' ? `Upcoming ${counts.FUTURE}` : item === 'LIVE' ? `Live ${counts.LIVE}` : `Final ${counts.FINISHED}`}</button>)}</div>
 
@@ -46,11 +51,11 @@ export function MatchesIntelligencePage({ gameweek = 0 }: { gameweek?: number })
     </section>
     {fixtures.length === 0 ? <p className="v3-inline-warning">No fixtures in this state.</p> : null}
 
-    {selectedFixture ? <MatchupDialog fixture={selectedFixture} facts={selectedFacts?.modal_facts ?? []} open onClose={() => setSelected(null)} /> : null}
+    {selectedFixture ? <MatchupDialog fixture={selectedFixture} facts={selectedFacts?.modal_facts ?? []} factsLoading={!factsByMatch.size} open onClose={() => setSelected(null)} /> : null}
   </div>;
 }
 
-function PredictionCard({ fixture, phase, onOpen }: { fixture: MatchFixture; phase: WorkspaceFixturePhase; onOpen: () => void }) {
+function PredictionCard({ fixture, phase, onOpen }: { fixture: MatchFixture; phase: FixturePhase; onOpen: () => void }) {
   const assessment = assessCall(fixture.prediction);
   const call = consumerCall(fixture);
   const score = scoreCall(fixture);
@@ -67,7 +72,7 @@ function PredictionCard({ fixture, phase, onOpen }: { fixture: MatchFixture; pha
   </article>;
 }
 
-function MatchupDialog({ fixture, facts, open, onClose }: { fixture: MatchFixture; facts: FixtureFact[]; open: boolean; onClose: () => void }) {
+function MatchupDialog({ fixture, facts, factsLoading, open, onClose }: { fixture: MatchFixture; facts: FixtureFact[]; factsLoading: boolean; open: boolean; onClose: () => void }) {
   const home = fixture.home_team ?? 'Home'; const away = fixture.away_team ?? 'Away';
   const assessment = assessCall(fixture.prediction); const call = consumerCall(fixture); const score = scoreCall(fixture);
   const support = distinctFacts(facts.filter((fact) => fact.alignment === 'SUPPORTS')); const risks = distinctFacts(facts.filter((fact) => fact.alignment === 'CONTRADICTS'));
@@ -77,7 +82,7 @@ function MatchupDialog({ fixture, facts, open, onClose }: { fixture: MatchFixtur
     <section className="v3-modal-summary"><div><span>1X2 call</span><strong>{call?.label ?? '—'}</strong><small>{call ? `${percent(call.probability)}${assessment.state === 'no-edge' ? ' · parity/no-edge presented as DRAW' : ''}` : 'Unavailable'}</small></div><div><span>Correct score</span><strong>{score.value ?? '—'}</strong><small>{score.probability == null ? 'Unavailable' : percent(score.probability)}</small></div></section>
     {fixture.finished ? <section className="v3-modal-result"><span className="v3-kicker">Final comparison</span><h3>{home} {fixture.home_score ?? '–'}–{fixture.away_score ?? '–'} {away}</h3><div className="v3-comparison-line"><span>1X2</span><strong>{call?.label ?? '—'}</strong><b>{directionAligned == null ? '—' : directionAligned ? 'Aligned' : 'Different'}</b></div><div className="v3-comparison-line"><span>Exact score</span><strong>{score.value ?? '—'}</strong><b>{scoreAligned == null ? '—' : scoreAligned ? 'Aligned' : 'Different'}</b></div></section> : null}
     <section className="v3-modal-section"><div className="v3-modal-section-head"><span className="v3-kicker">Frozen probability board</span><small>Pre-kickoff</small></div><div className="v3-modal-metric-grid"><Metric label={home} value={fixture.prediction?.markets ? percent(fixture.prediction.markets.home_win) : '—'} /><Metric label="Draw" value={fixture.prediction?.markets ? percent(fixture.prediction.markets.draw) : '—'} /><Metric label={away} value={fixture.prediction?.markets ? percent(fixture.prediction.markets.away_win) : '—'} /><Metric label="xG" value={fixture.prediction?.home_lambda == null || fixture.prediction.away_lambda == null ? '—' : `${fixture.prediction.home_lambda.toFixed(2)}–${fixture.prediction.away_lambda.toFixed(2)}`} /></div></section>
-    <div className="v3-modal-evidence-grid"><FactGroup title="Supporting evidence" facts={support} /><FactGroup title="Counterpoints / risks" facts={risks} risk /></div>
+    {factsLoading ? <p className="v3-modal-note">Loading supporting evidence…</p> : <div className="v3-modal-evidence-grid"><FactGroup title="Supporting evidence" facts={support} /><FactGroup title="Counterpoints / risks" facts={risks} risk /></div>}
     {fixture.prediction?.top_scorelines?.length ? <section className="v3-modal-section"><div className="v3-modal-section-head"><span className="v3-kicker">Top scorelines</span></div><div className="v3-top-scorelines">{fixture.prediction.top_scorelines.slice(0, 5).map((row) => <span key={row.score}><strong>{row.score}</strong> {percent(row.prob)}</span>)}</div></section> : null}
   </V3Dialog>;
 }
@@ -94,6 +99,6 @@ function FactGroup({ title, facts, risk = false }: { title: string; facts: Fixtu
 function distinctFacts(facts: FixtureFact[], limit = 5): FixtureFact[] { const seen = new Set<string>(); return [...facts].sort((a, b) => b.usefulness_score - a.usefulness_score).filter((fact) => { const key = fact.one_liner.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); if (seen.has(key)) return false; seen.add(key); return true; }).slice(0, limit); }
 function callLabel(code: OutcomeCode, home: string, away: string): string { return code === 'H' ? `${home} win` : code === 'A' ? `${away} win` : 'DRAW'; }
 function percent(value: number): string { return `${(value * 100).toFixed(1)}%`; }
-function phaseLabel(value: WorkspaceFixturePhase): string { return value === 'FUTURE' ? 'Upcoming' : value === 'LIVE' ? 'Live' : 'Final'; }
-function phaseFromFixture(fixture: MatchFixture): WorkspaceFixturePhase { if (fixture.finished) return 'FINISHED'; return Date.now() >= new Date(fixture.kickoff_time).getTime() ? 'LIVE' : 'FUTURE'; }
+function phaseLabel(value: FixturePhase): string { return value === 'FUTURE' ? 'Upcoming' : value === 'LIVE' ? 'Live' : 'Final'; }
+function phaseFromFixture(fixture: MatchFixture): FixturePhase { if (fixture.finished) return 'FINISHED'; return Date.now() >= new Date(fixture.kickoff_time).getTime() ? 'LIVE' : 'FUTURE'; }
 function formatKickoff(value: string): string { return new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value)); }

@@ -1,3 +1,5 @@
+import { fetchJsonCached } from './requestCache';
+
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
 const PUBLIC_SUPABASE_ANON_JWT =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub29pd2V6enN4Y3dodGp0ZGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzY0MjQsImV4cCI6MjEwMjkxMjQyNH0.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
@@ -70,13 +72,12 @@ function fixture(value: unknown): ForwardFixtureModel | null {
 
 export async function fetchForwardIntelligence(gameweek = 0, signal?: AbortSignal): Promise<ForwardIntelligencePayload> {
   const suffix = gameweek > 0 ? `?gw=${gameweek}` : '';
-  const response = await fetch(`${API_ROOT}/human-insights-api${suffix}`, {
-    headers: { Accept: 'application/json', Authorization: `Bearer ${PUBLIC_SUPABASE_ANON_JWT}`, apikey: PUBLIC_SUPABASE_ANON_JWT },
-    cache: 'no-store',
-    ...(signal ? { signal } : {}),
+  const raw = await fetchJsonCached(`${API_ROOT}/human-insights-api${suffix}`, {
+    headers: { Authorization: `Bearer ${PUBLIC_SUPABASE_ANON_JWT}`, apikey: PUBLIC_SUPABASE_ANON_JWT },
+    ttlMs: 60_000,
+    signal,
   });
-  if (!response.ok) throw new Error(`Forward intelligence returned HTTP ${response.status}`);
-  const raw: unknown = await response.json(); const payload = object(raw);
+  const payload = object(raw);
   const gw = number(payload?.gameweek); const runId = number(payload?.prediction_run_id); const generatedAt = string(payload?.generated_at);
   if (payload?.ok !== true || gw == null || runId == null || !generatedAt) throw new Error('Forward intelligence contract mismatch');
   return {

@@ -1,3 +1,5 @@
+import { fetchJsonCached } from './requestCache';
+
 export const V3_WORKSPACE_ENDPOINT =
   'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1/fpl-v3-workspace-api';
 
@@ -210,21 +212,14 @@ function isWorkspacePayload(value: unknown): value is FplWorkspaceApi {
 
 export async function fetchFplWorkspace(gameweek = 0, signal?: AbortSignal): Promise<FplWorkspaceApi> {
   const endpoint = gameweek > 0 ? `${V3_WORKSPACE_ENDPOINT}?gw=${gameweek}` : V3_WORKSPACE_ENDPOINT;
-  const response = await fetch(endpoint, {
+  const payload = await fetchJsonCached(endpoint, {
     headers: {
-      Accept: 'application/json',
       Authorization: `Bearer ${PUBLIC_SUPABASE_ANON_JWT}`,
       apikey: PUBLIC_SUPABASE_ANON_JWT,
     },
-    cache: 'no-store',
-    ...(signal ? { signal } : {}),
+    ttlMs: 15_000,
+    signal,
   });
-
-  if (!response.ok) {
-    throw new Error(`V3 workspace returned HTTP ${response.status}`);
-  }
-
-  const payload: unknown = await response.json();
   if (!isWorkspacePayload(payload)) {
     throw new Error('V3 workspace contract mismatch');
   }

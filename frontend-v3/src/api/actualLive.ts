@@ -1,3 +1,5 @@
+import { fetchJsonCached } from './requestCache';
+
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
 const PUBLIC_SUPABASE_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub29pd2V6enN4Y3dodGp0ZGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzY0MjQsImV4cCI6MjEwMjkxMjQyNH0.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
 
@@ -94,17 +96,14 @@ function isActualLiveApi(value: unknown): value is ActualLiveApi {
 
 export async function fetchActualLive(gameweek = 0, signal?: AbortSignal): Promise<ActualLiveApi> {
   const suffix = gameweek > 0 ? `?gw=${gameweek}` : '';
-  const response = await fetch(`${API_ROOT}/fpl-v3-actual-live-api${suffix}`, {
-    cache: 'no-store',
+  const payload = await fetchJsonCached(`${API_ROOT}/fpl-v3-actual-live-api${suffix}`, {
     headers: {
-      Accept: 'application/json',
       Authorization: `Bearer ${PUBLIC_SUPABASE_ANON_JWT}`,
       apikey: PUBLIC_SUPABASE_ANON_JWT,
     },
-    ...(signal ? { signal } : {}),
+    ttlMs: 10_000,
+    signal,
   });
-  if (!response.ok) throw new Error(`Actual-live API returned HTTP ${response.status}`);
-  const payload: unknown = await response.json();
   if (!isActualLiveApi(payload)) throw new Error('Actual-live contract mismatch');
   return payload;
 }

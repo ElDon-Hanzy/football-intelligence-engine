@@ -80,7 +80,11 @@ export function App() {
   const isForwardGameweek = selectedGameweek > 0 && currentGameweek != null && selectedGameweek > currentGameweek;
   let content;
   if (active === 'home') content = isForwardGameweek ? <ForwardHomePage onNavigate={navigate} gameweek={selectedGameweek} /> : <HomePage onNavigate={navigate} gameweek={selectedGameweek} />;
-  else if (active === 'fpl') content = isForwardGameweek && currentGameweek != null ? <ForwardFplPage gameweek={selectedGameweek} activeGameweek={currentGameweek} /> : <FplLiveWorkspace gameweek={selectedGameweek} />;
+  else if (active === 'fpl') content = isForwardGameweek && currentGameweek != null
+    ? <ForwardFplPage gameweek={selectedGameweek} activeGameweek={currentGameweek} />
+    : selectedGameweek === 0 && !catalogReady
+      ? <PageLoading />
+      : <FplLiveWorkspace gameweek={selectedGameweek} />;
   else if (active === 'matches') content = <MatchesIntelligencePage gameweek={visibleGameweek} />;
   else if (active === 'markets') content = <MarketsPage gameweek={visibleGameweek} />;
   else if (active === 'insights') content = isForwardGameweek ? <ForwardInsightsPage gameweek={selectedGameweek} /> : <InsightsPage gameweek={selectedGameweek} />;

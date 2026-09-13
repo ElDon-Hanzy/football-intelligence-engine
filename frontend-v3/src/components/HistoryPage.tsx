@@ -37,14 +37,14 @@ export function HistoryPage() {
       <div><span>1X2 audit</span><strong>{calls.assessed ? `${calls.aligned}/${calls.assessed}` : '—'}</strong></div>
     </section>
 
-    <section className="v3-surface v3-dense-card" aria-labelledby="history-squad-heading">
-      <div className="v3-dense-card-head"><div><span className="v3-kicker">Frozen squad</span><h2 id="history-squad-heading">Decision-time player evidence</h2></div><small>{data.metadata_availability?.current_metadata_not_backfilled_into_history ? 'No current metadata backfill' : 'Metadata policy unavailable'}</small></div>
-      <div className="v3-table-scroll" tabIndex={0} role="region" aria-label="Historical squad evidence table"><table className="v3-data-table"><thead><tr><th>Slot</th><th>Player</th><th>Team / Pos</th><th>xPts</th><th>P10+</th><th>P15+</th><th>P20+</th></tr></thead><tbody>{xi.map((player, index) => <HistoricalPlayerRow key={`xi-${player.id}-${index}`} player={player} slot={player.id === data.decision?.captain_player_id ? 'XI · C' : player.id === data.decision?.vice_player_id ? 'XI · VC' : 'XI'} onOpen={setSelectedPlayer} />)}{bench.map((player, index) => <HistoricalPlayerRow key={`bench-${player.id}-${index}`} player={player} slot={`B${index + 1}`} onOpen={setSelectedPlayer} />)}</tbody></table></div>
+    <section aria-labelledby="history-squad-heading">
+      <div className="v3-section-head"><div><span className="v3-kicker">Frozen squad</span><h2 id="history-squad-heading">Decision-time player evidence</h2></div><small>{data.metadata_availability?.current_metadata_not_backfilled_into_history ? 'No current metadata backfill' : 'Metadata policy unavailable'}</small></div>
+      <div className="v3-card-grid v3-card-grid--history-players">{xi.map((player, index) => <HistoricalPlayerCard key={`xi-${player.id}-${index}`} player={player} slot={player.id === data.decision?.captain_player_id ? 'XI · C' : player.id === data.decision?.vice_player_id ? 'XI · VC' : 'XI'} onOpen={setSelectedPlayer} />)}{bench.map((player, index) => <HistoricalPlayerCard key={`bench-${player.id}-${index}`} player={player} slot={`B${index + 1}`} onOpen={setSelectedPlayer} />)}</div>
     </section>
 
-    <section className="v3-surface v3-dense-card" aria-labelledby="history-fixtures-heading">
-      <div className="v3-dense-card-head"><div><span className="v3-kicker">Fixture audit</span><h2 id="history-fixtures-heading">Frozen calls vs final results</h2></div><small>No-edge is displayed as DRAW</small></div>
-      <div className="v3-table-scroll" tabIndex={0} role="region" aria-label="Historical fixture audit table"><table className="v3-data-table v3-match-table"><thead><tr><th>Fixture</th><th>Final</th><th>1X2 call</th><th>Prob.</th><th>Correct score</th><th>Audit</th></tr></thead><tbody>{(data.fixture_results ?? []).map((fixture) => <HistoricalMatchRow key={fixture.match_id} fixture={fixture} />)}</tbody></table></div>
+    <section aria-labelledby="history-fixtures-heading">
+      <div className="v3-section-head"><div><span className="v3-kicker">Fixture audit</span><h2 id="history-fixtures-heading">Frozen calls vs final results</h2></div><small>No-edge is displayed as DRAW</small></div>
+      <div className="v3-card-grid v3-card-grid--history-matches">{(data.fixture_results ?? []).map((fixture) => <HistoricalMatchCard key={fixture.match_id} fixture={fixture} />)}</div>
     </section>
 
     {!data.historical_projection_valid ? <aside className="v3-compact-note" role="note"><strong>Audit only.</strong><span>This snapshot is excluded from historical forward evaluation.</span></aside> : null}
@@ -52,11 +52,23 @@ export function HistoryPage() {
   </div>;
 }
 
-function HistoricalPlayerRow({ player, slot, onOpen }: { player: HistoricalPlayer; slot: string; onOpen: (player: HistoricalPlayer) => void }) { return <tr><td>{slot}</td><td><button type="button" className="v3-player-link" onClick={() => onOpen(player)}>{player.name}</button></td><td>{player.team ?? '—'} · {player.position ?? '—'}</td><td>{formatNumber(nullableNumber(player.xPts), 1)}</td><td>{formatPercent(nullableProbability(player.p10))}</td><td>{formatPercent(nullableProbability(player.p15))}</td><td>{formatPercent(nullableProbability(player.p20))}</td></tr>; }
+function HistoricalPlayerCard({ player, slot, onOpen }: { player: HistoricalPlayer; slot: string; onOpen: (player: HistoricalPlayer) => void }) {
+  return <button type="button" className="v3-compact-card v3-history-player-card" onClick={() => onOpen(player)} aria-label={`Open ${player.name} historical intelligence`}>
+    <div className="v3-card-meta"><span>{slot}</span><small>{player.team ?? '—'} · {player.position ?? '—'}</small></div>
+    <strong className="v3-card-player-name">{player.name}</strong>
+    <div className="v3-mini-metrics"><span><small>xPts</small><b>{formatNumber(nullableNumber(player.xPts), 1)}</b></span><span><small>P10+</small><b>{formatPercent(nullableProbability(player.p10))}</b></span><span><small>P15+</small><b>{formatPercent(nullableProbability(player.p15))}</b></span><span><small>P20+</small><b>{formatPercent(nullableProbability(player.p20))}</b></span></div>
+  </button>;
+}
 
-function HistoricalMatchRow({ fixture }: { fixture: HistoricalFixture }) {
+function HistoricalMatchCard({ fixture }: { fixture: HistoricalFixture }) {
   const call = fixtureCall(fixture); const actual = actualOutcome(fixture); const directionAligned = call && actual ? call.code === actual : null; const score = scoreCall(fixture); const actualScore = fixture.finished && fixture.home_score != null && fixture.away_score != null ? `${fixture.home_score}-${fixture.away_score}` : null; const scoreAligned = score && actualScore ? score === actualScore : null;
-  return <tr><td><strong>{fixture.home_team ?? 'Home'}</strong> <span className="v3-muted">vs</span> <strong>{fixture.away_team ?? 'Away'}</strong><small className="v3-cell-sub">{formatKickoff(fixture.kickoff_time)}</small></td><td>{actualScore ?? '—'}</td><td><strong>{call?.label ?? '—'}</strong>{call?.state === 'no-edge' ? <small className="v3-cell-sub">Parity/no-edge → DRAW</small> : null}</td><td>{call ? formatPercent(call.probability) : '—'}</td><td>{score ?? '—'}</td><td>{fixture.finished ? <span className="v3-audit-text" data-result={directionAligned ? 'aligned' : 'different'}>1X2 {directionAligned ? 'aligned' : 'different'}{score ? ` · score ${scoreAligned ? 'aligned' : 'different'}` : ''}</span> : <span className="v3-muted">Pending</span>}</td></tr>;
+  return <article className="v3-compact-card v3-history-match-card">
+    <div className="v3-card-meta"><time>{formatKickoff(fixture.kickoff_time)}</time><span>{actualScore ?? 'Pending'}</span></div>
+    <div className="v3-fixture-teams"><strong>{fixture.home_team ?? 'Home'}</strong><b>{actualScore ?? 'vs'}</b><strong>{fixture.away_team ?? 'Away'}</strong></div>
+    <div className="v3-match-card-picks"><span><small>1X2</small><strong>{call?.label ?? '—'}</strong><b>{call ? formatPercent(call.probability) : '—'}</b></span><span><small>Correct score</small><strong>{score ?? '—'}</strong></span></div>
+    {call?.state === 'no-edge' ? <small className="v3-card-note">Parity/no-edge → DRAW</small> : null}
+    <div className="v3-card-footer">{fixture.finished ? <span className="v3-audit-text" data-result={directionAligned ? 'aligned' : 'different'}>1X2 {directionAligned ? 'aligned' : 'different'}{score ? ` · score ${scoreAligned ? 'aligned' : 'different'}` : ''}</span> : <span className="v3-muted">Pending</span>}</div>
+  </article>;
 }
 
 function HistoricalPlayerModal({ player, open, onClose, gameweek, runId }: { player: HistoricalPlayer; open: boolean; onClose: () => void; gameweek: number; runId: number | null }) { return <V3Dialog open={open} onClose={onClose} title={player.name} eyebrow={`GW${gameweek} · ${player.team ?? '—'} · ${player.position ?? '—'}`}><section className="v3-modal-section"><div className="v3-modal-section-head"><span className="v3-kicker">Frozen historical projection</span><small>{runId ? `Run #${runId}` : 'Run unavailable'}</small></div><div className="v3-modal-metric-grid"><Metric label="xPts" value={formatNumber(nullableNumber(player.xPts), 1)} /><Metric label="P10+" value={formatPercent(nullableProbability(player.p10))} /><Metric label="P15+" value={formatPercent(nullableProbability(player.p15))} /><Metric label="P20+" value={formatPercent(nullableProbability(player.p20))} /></div><p className="v3-modal-note">Only evidence captured in the historical contract is shown. Current player metadata is not backfilled.</p></section></V3Dialog>; }

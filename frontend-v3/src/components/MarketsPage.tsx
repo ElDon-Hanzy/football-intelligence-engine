@@ -30,39 +30,28 @@ export function MarketsPage() {
   if (state.loading) return <section className="v3-product-page" aria-busy="true"><div className="v3-surface v3-skeleton-panel" /></section>;
   if (state.error || !state.calls) return <section className="v3-product-page"><div className="v3-surface v3-page-state"><span className="v3-kicker">Core markets</span><h1>Market calls unavailable</h1><p>{state.error ?? 'The frozen strongest-call contract did not resolve.'}</p></div></section>;
 
-  return (
-    <div className="v3-product-page v3-dense-page" data-page="markets">
-      <header className="v3-compact-header">
-        <div><span className="v3-kicker">GW{state.calls.gameweek} · frozen run #{state.calls.prediction_run_id}</span><h1>Four core market predictions</h1></div>
-        <small>{formatTimestamp(state.calls.generated_at)}</small>
-      </header>
+  return <div className="v3-product-page v3-dense-page" data-page="markets">
+    <header className="v3-compact-header">
+      <div><span className="v3-kicker">GW{state.calls.gameweek} · frozen run #{state.calls.prediction_run_id}</span><h1>Four core market predictions</h1></div>
+      <small>{formatTimestamp(state.calls.generated_at)}</small>
+    </header>
 
-      <section className="v3-surface v3-dense-card" aria-labelledby="core-market-heading">
-        <div className="v3-dense-card-head"><div><span className="v3-kicker">Strongest model call per market</span><h2 id="core-market-heading">1X2 · O/U 2.5 · BTTS · Correct score</h2></div><small>Model probability, not bookmaker value</small></div>
-        <div className="v3-table-scroll" tabIndex={0} role="region" aria-label="Four core market predictions table">
-          <table className="v3-data-table v3-markets-table">
-            <thead><tr><th>Market</th><th>Fixture</th><th>Prediction</th><th>Prob.</th><th>xG</th><th>Final audit</th></tr></thead>
-            <tbody>
-              {state.calls.betting_recommendations.map((call) => <MarketRow key={`${call.type}-${call.match_id}`} call={call} fixture={fixtureById.get(call.match_id)} />)}
-            </tbody>
-          </table>
-        </div>
-        {state.calls.betting_recommendations.length !== 4 ? <p className="v3-inline-warning">Only {state.calls.betting_recommendations.length}/4 frozen market calls are currently available. Missing calls are not reconstructed.</p> : null}
-      </section>
-    </div>
-  );
+    <section aria-labelledby="core-market-heading">
+      <div className="v3-section-head"><div><span className="v3-kicker">Strongest model call per market</span><h2 id="core-market-heading">1X2 · O/U 2.5 · BTTS · Correct score</h2></div><small>Model probability, not bookmaker value</small></div>
+      <div className="v3-card-grid v3-card-grid--markets">{state.calls.betting_recommendations.map((call) => <MarketCard key={`${call.type}-${call.match_id}`} call={call} fixture={fixtureById.get(call.match_id)} />)}</div>
+      {state.calls.betting_recommendations.length !== 4 ? <p className="v3-inline-warning">Only {state.calls.betting_recommendations.length}/4 frozen market calls are currently available. Missing calls are not reconstructed.</p> : null}
+    </section>
+  </div>;
 }
 
-function MarketRow({ call, fixture }: { call: CoreMarketCall; fixture: MatchFixture | undefined }) {
+function MarketCard({ call, fixture }: { call: CoreMarketCall; fixture: MatchFixture | undefined }) {
   const audit = auditMarketCall(call, fixture);
-  return <tr>
-    <td><strong>{call.type}</strong></td>
-    <td>{call.fixture}</td>
-    <td><strong>{call.selection}</strong></td>
-    <td>{percent(call.probability)}</td>
-    <td>{call.home_lambda == null || call.away_lambda == null ? '—' : `${call.home_lambda.toFixed(2)}–${call.away_lambda.toFixed(2)}`}</td>
-    <td>{audit ? <span className="v3-audit-text" data-result={audit.aligned ? 'aligned' : 'different'}>{audit.aligned ? 'Aligned' : 'Different'} · {audit.actual}</span> : <span className="v3-muted">Pending</span>}</td>
-  </tr>;
+  return <article className="v3-compact-card v3-market-card">
+    <div className="v3-card-meta"><span>{call.type}</span><strong>{percent(call.probability)}</strong></div>
+    <small className="v3-card-fixture">{call.fixture}</small>
+    <h3>{call.selection}</h3>
+    <div className="v3-card-footer"><span>xG {call.home_lambda == null || call.away_lambda == null ? '—' : `${call.home_lambda.toFixed(2)}–${call.away_lambda.toFixed(2)}`}</span>{audit ? <span className="v3-audit-text" data-result={audit.aligned ? 'aligned' : 'different'}>{audit.aligned ? 'Aligned' : 'Different'} · {audit.actual}</span> : <span className="v3-muted">Pending</span>}</div>
+  </article>;
 }
 
 function auditMarketCall(call: CoreMarketCall, fixture: MatchFixture | undefined): { aligned: boolean; actual: string } | null {

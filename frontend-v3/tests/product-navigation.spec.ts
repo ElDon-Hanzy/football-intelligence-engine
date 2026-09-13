@@ -29,30 +29,30 @@ async function mockProductApis(page: Page) {
 async function nav(page: Page, view: 'home' | 'fpl' | 'matches' | 'markets' | 'insights' | 'history') { const label = view === 'fpl' ? 'FPL' : `${view.charAt(0).toUpperCase()}${view.slice(1)}`; await page.getByRole('link', { name: label, exact: true }).first().click(); }
 async function assertNoOverflow(page: Page) { const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth })); expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1); }
 
-test('all six V3 navigation destinations render dense product surfaces', async ({ page }) => {
+test('all six V3 navigation destinations render compact card surfaces', async ({ page }) => {
   await mockProductApis(page); await page.goto('/'); await expect(page.getByRole('heading', { name: 'Pick the state. Read the pitch.' })).toBeVisible();
-  await nav(page, 'home'); await expect(page.getByRole('heading', { name: 'Command center' })).toBeVisible(); await expect(page.locator('.v3-fixture-row')).toHaveCount(gw4WorkspaceFixture.realized.fixtures.length);
-  await nav(page, 'matches'); await expect(page.getByRole('heading', { name: 'Match center' })).toBeVisible(); await expect(page.locator('.v3-match-table tbody tr')).toHaveCount(currentFixtures.length); await expect(page.locator('.v3-match-card')).toHaveCount(0);
-  await nav(page, 'markets'); await expect(page.getByRole('heading', { name: 'Four core market predictions' })).toBeVisible(); await expect(page.locator('.v3-markets-table tbody tr')).toHaveCount(4); await expect(page.getByText('O/U 2.5', { exact: true })).toBeVisible(); await expect(page.getByText('BTTS', { exact: true })).toBeVisible();
-  await nav(page, 'insights'); await expect(page.getByRole('heading', { name: 'Player intelligence' })).toBeVisible(); await expect(page.locator('.v3-player-data-table tbody tr')).toHaveCount(gw4WorkspaceFixture.recommendation?.squad.length ?? 0);
-  await nav(page, 'history'); await expect(page.getByRole('heading', { name: 'History' })).toBeVisible(); await expect(page.getByText('GW3 · HISTORICAL_FROZEN')).toBeVisible();
+  await nav(page, 'home'); await expect(page.getByRole('heading', { name: 'Command center' })).toBeVisible(); await expect(page.locator('.v3-fixture-mini-card')).toHaveCount(gw4WorkspaceFixture.realized.fixtures.length);
+  await nav(page, 'matches'); await expect(page.getByRole('heading', { name: 'Match center' })).toBeVisible(); await expect(page.locator('.v3-match-card')).toHaveCount(currentFixtures.length); await expect(page.locator('.v3-data-table')).toHaveCount(0);
+  await nav(page, 'markets'); await expect(page.getByRole('heading', { name: 'Four core market predictions' })).toBeVisible(); await expect(page.locator('.v3-market-card')).toHaveCount(4); await expect(page.getByText('O/U 2.5', { exact: true })).toBeVisible(); await expect(page.getByText('BTTS', { exact: true })).toBeVisible();
+  await nav(page, 'insights'); await expect(page.getByRole('heading', { name: 'Player intelligence' })).toBeVisible(); await expect(page.locator('.v3-player-intel-card')).toHaveCount(gw4WorkspaceFixture.recommendation?.squad.length ?? 0); await expect(page.locator('.v3-data-table')).toHaveCount(0);
+  await nav(page, 'history'); await expect(page.getByRole('heading', { name: 'History' })).toBeVisible(); await expect(page.getByText('GW3 · HISTORICAL_FROZEN')).toBeVisible(); await expect(page.locator('.v3-history-player-card')).toHaveCount(3); await expect(page.locator('.v3-history-match-card')).toHaveCount(2); await expect(page.locator('.v3-data-table')).toHaveCount(0);
   await nav(page, 'fpl'); await expect(page.getByRole('heading', { name: 'Pick the state. Read the pitch.' })).toBeVisible();
 });
 
 test('no-edge fixture is consumer-labelled DRAW and finished audit is understated', async ({ page }) => {
   await mockProductApis(page); await page.goto('/#matches');
-  const derby = page.locator('.v3-match-table tbody tr').filter({ hasText: 'Man Utd' }); await expect(derby.getByText('DRAW', { exact: true })).toBeVisible(); await expect(derby.getByText('Parity/no-edge → DRAW', { exact: true })).toBeVisible();
-  const finished = page.locator('.v3-match-table tbody tr').filter({ hasText: 'Chelsea' }); await expect(finished.getByText(/1X2 .* · score /)).toBeVisible(); await expect(page.getByText('✓ Correct')).toHaveCount(0); await expect(page.getByText('✕ Miss')).toHaveCount(0);
+  const derby = page.locator('.v3-match-card').filter({ hasText: 'Man Utd' }); await expect(derby.getByText('DRAW', { exact: true })).toBeVisible(); await expect(derby.getByText('Parity/no-edge → DRAW', { exact: true })).toBeVisible();
+  const finished = page.locator('.v3-match-card').filter({ hasText: 'Chelsea' }); await expect(finished.getByText(/1X2 .* · score /)).toBeVisible(); await expect(page.getByText('✓ Correct')).toHaveCount(0); await expect(page.getByText('✕ Miss')).toHaveCount(0);
 });
 
-test('player names open intelligence modals outside the FPL pitch', async ({ page }) => {
+test('player cards open intelligence modals outside the FPL pitch', async ({ page }) => {
   await mockProductApis(page); await page.goto('/#insights');
-  const firstPlayer = page.locator('.v3-player-data-table .v3-player-link').first(); const name = (await firstPlayer.textContent())?.trim() ?? ''; expect(name.length).toBeGreaterThan(0); await firstPlayer.click(); await expect(page.getByRole('dialog')).toBeVisible(); await expect(page.getByRole('dialog').getByRole('heading', { name })).toBeVisible(); await page.getByRole('button', { name: /Close/ }).click();
-  await page.goto('/#history'); await page.locator('.v3-data-table .v3-player-link').first().click(); await expect(page.getByRole('dialog')).toBeVisible(); await expect(page.getByText('Frozen historical projection', { exact: true })).toBeVisible();
+  const firstPlayer = page.locator('.v3-player-intel-card').first(); const name = (await firstPlayer.locator('.v3-card-player-name').textContent())?.trim() ?? ''; expect(name.length).toBeGreaterThan(0); await firstPlayer.click(); await expect(page.getByRole('dialog')).toBeVisible(); await expect(page.getByRole('dialog').getByRole('heading', { name })).toBeVisible(); await page.getByRole('button', { name: /Close/ }).click();
+  await page.goto('/#history'); await page.locator('.v3-history-player-card').first().click(); await expect(page.getByRole('dialog')).toBeVisible(); await expect(page.getByText('Frozen historical projection', { exact: true })).toBeVisible();
 });
 
 test('matchup modal keeps frozen probabilities and compact result comparison', async ({ page }) => {
-  await mockProductApis(page); await page.goto('/#matches'); const chelsea = page.locator('.v3-match-table tbody tr').filter({ hasText: 'Chelsea' }); await chelsea.getByRole('button', { name: 'Details' }).click(); const dialog = page.getByRole('dialog'); await expect(dialog).toBeVisible(); await expect(dialog.getByText('Frozen probability board', { exact: true })).toBeVisible(); await expect(dialog.getByRole('heading', { name: /Counterpoints \/ risks/ })).toBeVisible(); await expect(dialog.getByText('Transition exposure remains a credible counterpoint.', { exact: true })).toBeVisible();
+  await mockProductApis(page); await page.goto('/#matches'); const chelsea = page.locator('.v3-match-card').filter({ hasText: 'Chelsea' }); await chelsea.getByRole('button', { name: 'Details' }).click(); const dialog = page.getByRole('dialog'); await expect(dialog).toBeVisible(); await expect(dialog.getByText('Frozen probability board', { exact: true })).toBeVisible(); await expect(dialog.getByRole('heading', { name: /Counterpoints \/ risks/ })).toBeVisible(); await expect(dialog.getByText('Transition exposure remains a credible counterpoint.', { exact: true })).toBeVisible();
 });
 
 test('all non-FPL V3 pages stay responsive and avoid serious accessibility violations', async ({ page }) => {

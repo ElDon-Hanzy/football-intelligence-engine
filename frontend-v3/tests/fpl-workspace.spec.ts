@@ -26,13 +26,29 @@ test('Engine pitch is formation-aware and remains separate from submitted-team t
   await expect(page.getByText('FINAL FROZEN NOT AUTHORIZED', { exact: true })).toHaveCount(0);
 });
 
-test('FPL primary summary is projected xPTS versus actual PTS while audit metadata is secondary', async ({ page }) => {
+test('FPL primary summary compares fully scored engine and actual scenarios with engine as baseline', async ({ page }) => {
   await loadWorkspace(page);
-  const scorecard = page.getByRole('region', { name: 'Projected xPTS versus Actual PTS' });
+  const scorecard = page.getByRole('region', { name: 'Engine versus actual Gameweek scoring' });
   await expect(scorecard).toBeVisible();
-  await expect(scorecard.getByText('XI xPTS', { exact: true })).toBeVisible();
-  await expect(scorecard.getByText('Actual PTS', { exact: true })).toBeVisible();
-  await expect(scorecard.getByText('vs xPTS', { exact: true })).toBeVisible();
+
+  const engine = scorecard.locator('[data-metric="xpts"]');
+  await expect(engine.getByText('Engine total', { exact: true })).toBeVisible();
+  await expect(engine.locator('strong')).toHaveText('20');
+  await expect(engine.locator('small')).toContainText('xPts 62.4');
+  await expect(engine.locator('small')).toContainText('Provisional');
+
+  const actual = scorecard.locator('[data-metric="actual"]');
+  await expect(actual.getByText('Actual total', { exact: true })).toBeVisible();
+  await expect(actual.locator('strong')).toHaveText('31');
+  await expect(actual.locator('small')).toContainText('xPts 61.0');
+
+  const gap = scorecard.locator('[data-metric="delta"]');
+  await expect(gap.getByText('vs engine', { exact: true })).toBeVisible();
+  await expect(gap.locator('strong')).toHaveText('+11');
+  await expect(gap.locator('small')).toContainText('xPts gap -1.4');
+  await expect(gap.locator('small')).toContainText('actual minus engine');
+
+  await expect(scorecard).toContainText('Captain multiplier and automatic substitutions are applied in both scenarios');
   await expect(page.locator('.v3-lifecycle-strip')).toHaveCount(0);
   const details = page.locator('details.v3-data-details');
   await expect(details).not.toHaveAttribute('open', '');
@@ -67,6 +83,10 @@ test('browser refresh reads persisted APIs and never invokes the post-lock sync 
 
 test('My team and Live fail closed when submitted picks are not verified', async ({ page }) => {
   await loadWorkspace(page, gw4ActualUnverifiedFixture);
+  const scorecard = page.getByRole('region', { name: 'Engine versus actual Gameweek scoring' });
+  await expect(scorecard.locator('[data-metric="actual"] strong')).toHaveText('—');
+  await expect(scorecard.locator('[data-metric="actual"] small')).toHaveText('Actual submitted team not verified');
+  await expect(scorecard.locator('[data-metric="delta"] strong')).toHaveText('—');
   await page.getByRole('tab', { name: 'My team' }).click();
   await expect(page.getByRole('heading', { name: 'Actual submitted team not verified' })).toBeVisible();
   await expect(page.locator('.v3-fpl-pitch')).toHaveCount(0);

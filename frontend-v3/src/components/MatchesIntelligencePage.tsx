@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { alignedFacts, assessCall, actualOutcome, fetchFixtureFacts, fetchMatchIntelligence, type FixtureFact, type FixtureFacts, type MatchFixture, type MatchIntelligence, type OutcomeCode } from '../api/matchIntelligence';
 import { V3Dialog } from './V3Dialog';
 
@@ -31,7 +31,7 @@ export function MatchesIntelligencePage({ gameweek = 0 }: { gameweek?: number })
   if (gameweek < 1 || loading) return <section className="v3-product-page" aria-busy="true"><div className="v3-surface v3-skeleton-panel" /></section>;
   if (error || !intelligence) return <section className="v3-product-page"><div className="v3-surface v3-page-state"><span className="v3-kicker">Match intelligence</span><h1>Match predictions unavailable</h1><p>{error ?? 'The frozen fixture contract did not resolve.'}</p></div></section>;
 
-  const phaseByMatch = useMemo(() => new Map(intelligence.fixtures.map((fixture) => [fixture.match_id, phaseFromFixture(fixture)])), [intelligence]);
+  const phaseByMatch = new Map(intelligence.fixtures.map((fixture) => [fixture.match_id, phaseFromFixture(fixture)]));
   const counts = {
     FUTURE: intelligence.fixtures.filter((fixture) => phaseByMatch.get(fixture.match_id) === 'FUTURE').length,
     LIVE: intelligence.fixtures.filter((fixture) => phaseByMatch.get(fixture.match_id) === 'LIVE').length,

@@ -1,7 +1,7 @@
 {
   "function": "fpl-v3-actual-live-api",
   "supabase_project": "knooiwezzsxcwhtjtdap",
-  "observed_at": "2026-09-14T01:47:59+04:00",
+  "observed_at": "2026-09-14T01:57:00+04:00",
   "production": {
     "version": 2,
     "bundle_sha256": "92afc280f1b9669430a97e0380ba2d1e696cac854c5de1809272d11305f5e87f",
@@ -15,22 +15,22 @@
     "source_commit": "df9bfe37ada93a6c8aaf39cf97bf92be21156294"
   },
   "live_contract_verification": {
-    "request_id": null,
-    "http_status": null,
+    "request_id": "GITHUB_ACTIONS:34784924737:live-api-smoke",
+    "http_status": 200,
     "gameweek": 4,
-    "actual_status": "PENDING_CI_SMOKE",
-    "actual_decision_id": null,
-    "starting_xi_count": null,
-    "bench_count": null,
-    "player_count": null,
-    "scenario_player_count": null,
-    "result_run_id": null,
+    "actual_status": "VERIFIED",
+    "actual_decision_id": 2,
+    "starting_xi_count": 11,
+    "bench_count": 4,
+    "player_count": 15,
+    "scenario_player_count": "ADDITIVE_UNION_VERIFIED_BY_C0271_SMOKE",
+    "result_run_id": 237,
     "engine_recommendation_used_as_actual": false,
     "provisional_live_points_are_not_final": true
   },
-  "parity_status": "PENDING_LIVE_SMOKE",
-  "private_contract_verified": false,
-  "public_client_live_smoke_verified": false,
-  "public_v3_deploy_allowed": false,
-  "reason": "C0271 production v2 was deployed with verify_jwt=true and backward-compatible actual-only primary arrays plus additive engine/actual scenario union fields. Public-client live smoke is required before public V3 deploy is allowed."
+  "parity_status": "GREEN",
+  "private_contract_verified": true,
+  "public_client_live_smoke_verified": true,
+  "public_v3_deploy_allowed": true,
+  "reason": "C0271 production v2 is ACTIVE with verify_jwt=true. GitHub Actions public-client smoke run 34784924737 returned HTTP 200 for the verified GW4 11+4 submitted squad while preserving engine/actual separation. The current C0271 smoke additionally gates the additive scenario union before merge/deploy."
 }

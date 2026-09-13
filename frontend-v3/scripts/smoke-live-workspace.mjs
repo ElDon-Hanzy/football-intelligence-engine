@@ -22,10 +22,19 @@ const timedFetch = async (url) => {
   return { response, payload, headersMs, totalMs: performance.now() - started };
 };
 
+const endToEndStarted = performance.now();
+const catalogCall = await timedFetch(`${apiRoot}/gameweek-status-api`);
+if (!catalogCall.response.ok) throw new Error(`Live Gameweek catalog returned HTTP ${catalogCall.response.status}`);
+const currentGameweek = Number(catalogCall.payload?.live_gameweek);
+if (!Number.isInteger(currentGameweek) || currentGameweek < 1 || currentGameweek > 38) {
+  throw new Error(`Live Gameweek catalog returned invalid live_gameweek=${catalogCall.payload?.live_gameweek ?? 'missing'}`);
+}
+
 const [workspaceCall, actualCall] = await Promise.all([
-  timedFetch(workspaceEndpoint),
-  timedFetch(`${apiRoot}/fpl-v3-actual-live-api`),
+  timedFetch(`${workspaceEndpoint}?gw=${currentGameweek}`),
+  timedFetch(`${apiRoot}/fpl-v3-actual-live-api?gw=${currentGameweek}`),
 ]);
+const endToEndMs = performance.now() - endToEndStarted;
 
 if (!workspaceCall.response.ok) throw new Error(`Live V3 workspace returned HTTP ${workspaceCall.response.status}`);
 if (!actualCall.response.ok) throw new Error(`Live V3 actual endpoint returned HTTP ${actualCall.response.status}`);
@@ -36,6 +45,7 @@ const failures = [];
 
 if (payload?.ok !== true) failures.push('workspace payload.ok is not true');
 if (payload?.contract_version !== 'fpl_v3_workspace_v02_player_evidence') failures.push(`unexpected workspace contract_version=${payload?.contract_version ?? 'missing'}`);
+if (payload?.gameweek !== currentGameweek) failures.push(`workspace GW ${payload?.gameweek ?? 'missing'} does not match catalog GW ${currentGameweek}`);
 if (!['PRE_DEADLINE', 'POST_DEADLINE_ACTIVE', 'GW_COMPLETE'].includes(payload?.lifecycle)) failures.push(`unexpected lifecycle=${payload?.lifecycle ?? 'missing'}`);
 if (!['VERIFIED', 'NOT_VERIFIED'].includes(payload?.actual?.verification_status)) failures.push(`unexpected workspace actual verification=${payload?.actual?.verification_status ?? 'missing'}`);
 if (payload?.recommendation && typeof payload.recommendation.execution_authorized !== 'boolean') failures.push('recommendation.execution_authorized is not boolean');
@@ -92,10 +102,13 @@ console.log(JSON.stringify({
   fixture_phases: phaseCounts,
   actual_result_states: resultCounts,
   latency_ms: {
+    catalog_headers: Math.round(catalogCall.headersMs),
+    catalog_total: Math.round(catalogCall.totalMs),
     workspace_headers: Math.round(workspaceCall.headersMs),
     workspace_total: Math.round(workspaceCall.totalMs),
     actual_headers: Math.round(actualCall.headersMs),
     actual_total: Math.round(actualCall.totalMs),
+    catalog_plus_parallel_live_total: Math.round(endToEndMs),
   },
   workspace_server_timing: workspaceCall.response.headers.get('server-timing'),
   historical_forecasts_rewritten: payload.semantics.historical_forecasts_rewritten,

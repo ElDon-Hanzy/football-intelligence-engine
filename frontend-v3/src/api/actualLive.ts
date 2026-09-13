@@ -1,7 +1,8 @@
 import { fetchJsonCached } from './requestCache';
 
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
-const PUBLIC_SUPABASE_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub29pd2V6enN4Y3dodGp0ZGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzY0MjQsImV4cCI6MjEwMjkxMjQyNH0.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
+const PUBLIC_SUPABASE_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYXNlIiwicmVmIjoia25vb2l3ZXp6c3hjd2h0anRkYXAiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4NzMzNjQyNCwiZXhwIjoyMTAyOTEyNDI0fQ.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
+const CURRENT_ACTUAL_REUSE_MS = 10_000;
 
 export type ActualLiveStatus = 'FINAL' | 'LIVE' | 'PARTIAL' | 'PENDING';
 
@@ -83,6 +84,14 @@ export type ActualLiveApi = {
   };
 };
 
+type CurrentActualCache = {
+  expiresAt: number;
+  value: ActualLiveApi;
+};
+
+let currentActualCache: CurrentActualCache | null = null;
+let currentActualPending: Promise<ActualLiveApi> | null = null;
+
 function isActualLiveApi(value: unknown): value is ActualLiveApi {
   if (!value || typeof value !== 'object') return false;
   const payload = value as Record<string, unknown>;
@@ -94,16 +103,79 @@ function isActualLiveApi(value: unknown): value is ActualLiveApi {
     && Array.isArray(payload.player_actuals);
 }
 
-export async function fetchActualLive(gameweek = 0, signal?: AbortSignal): Promise<ActualLiveApi> {
-  const suffix = gameweek > 0 ? `?gw=${gameweek}` : '';
-  const payload = await fetchJsonCached(`${API_ROOT}/fpl-v3-actual-live-api${suffix}`, {
+function cachedCurrentActual(): ActualLiveApi | null {
+  if (!currentActualCache) return null;
+  if (currentActualCache.expiresAt <= Date.now()) {
+    currentActualCache = null;
+    return null;
+  }
+  return currentActualCache.value;
+}
+
+function fetchCurrentActualLive(): Promise<ActualLiveApi> {
+  const cached = cachedCurrentActual();
+  if (cached) return Promise.resolve(cached);
+  if (currentActualPending) return currentActualPending;
+
+  const pending = fetchJsonCached(`${API_ROOT}/fpl-v3-actual-live-api`, {
     headers: {
       Authorization: `Bearer ${PUBLIC_SUPABASE_ANON_JWT}`,
       apikey: PUBLIC_SUPABASE_ANON_JWT,
     },
-    ttlMs: 10_000,
+    ttlMs: CURRENT_ACTUAL_REUSE_MS,
+  }).then((payload) => {
+    if (!isActualLiveApi(payload)) throw new Error('Actual-live contract mismatch');
+    currentActualCache = { value: payload, expiresAt: Date.now() + CURRENT_ACTUAL_REUSE_MS };
+    return payload;
+  }).finally(() => {
+    if (currentActualPending === pending) currentActualPending = null;
+  });
+
+  currentActualPending = pending;
+  return pending;
+}
+
+export async function fetchActualLive(gameweek = 0, signal?: AbortSignal): Promise<ActualLiveApi> {
+  if (gameweek <= 0) {
+    const pending = fetchCurrentActualLive();
+    return signal ? awaitWithAbort(pending, signal) : pending;
+  }
+
+  const cached = cachedCurrentActual();
+  if (cached?.gameweek === gameweek) return cached;
+
+  if (currentActualPending) {
+    try {
+      const current = signal ? await awaitWithAbort(currentActualPending, signal) : await currentActualPending;
+      if (current.gameweek === gameweek) return current;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') throw error;
+    }
+  }
+
+  const payload = await fetchJsonCached(`${API_ROOT}/fpl-v3-actual-live-api?gw=${gameweek}`, {
+    headers: {
+      Authorization: `Bearer ${PUBLIC_SUPABASE_ANON_JWT}`,
+      apikey: PUBLIC_SUPABASE_ANON_JWT,
+    },
+    ttlMs: CURRENT_ACTUAL_REUSE_MS,
     signal,
   });
   if (!isActualLiveApi(payload)) throw new Error('Actual-live contract mismatch');
+  if (payload.gameweek !== gameweek) {
+    throw new Error(`Actual-live Gameweek mismatch: requested GW${gameweek}, received GW${payload.gameweek}`);
+  }
   return payload;
+}
+
+function awaitWithAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(new DOMException('Aborted', 'AbortError'));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(new DOMException('Aborted', 'AbortError'));
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => { signal.removeEventListener('abort', onAbort); resolve(value); },
+      (error) => { signal.removeEventListener('abort', onAbort); reject(error); },
+    );
+  });
 }

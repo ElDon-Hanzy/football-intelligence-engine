@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-13 (Dubai) — after C0255 V3 production deployment_
+_Last updated: 2026-09-13 (Dubai) — after C0268 production verification_
 
 ## 1. Mission and immutable rules
 
@@ -10,7 +10,7 @@ Immutable rules: historical forecasts are append-only; completed evidence may ch
 
 Sources of truth: Supabase `knooiwezzsxcwhtjtdap`; GitHub `ElDon-Hanzy/football-intelligence-engine`; FPL entry `3559923`; engineering ledger `public.change_tracker_working`; C0213 architecture/governance surfaces.
 
-The football/FPL forecast core is unchanged by C0255.
+C0266–C0268 changed product serving/reliability only. The football/FPL forecast core and historical predictions were not changed.
 
 ## 2. Current decision architecture
 
@@ -29,66 +29,66 @@ The football/FPL forecast core is unchanged by C0255.
 → C0237 live publication
 → external execution only if separately authorized.
 
-C0248 remains the canonical sequential selector. C0240 remains a required adversarial benchmark/regression root rather than the normal-transfer selector. C0231/C0233 remain supporting gates. C0234 remains the authorization boundary and C0237 the publication boundary.
+C0248 remains the canonical sequential selector. C0240 is an adversarial benchmark/regression root, not the normal-transfer selector. C0234 remains the authorization boundary and C0237 the publication boundary.
 
-## 3. Current GW4 lifecycle and decision truth
+## 3. Current GW4 lifecycle
 
-GW4 is **POST_DEADLINE_ACTIVE**. It remains active until all GW4 fixtures finish.
-
-Current fixture state at the C0255 closeout audit:
+GW4 is **POST_DEADLINE_ACTIVE**. Current live fixture truth at this update:
 
 - 10 fixtures total;
-- 7 finished;
+- 9 finished;
 - 0 started-but-unfinished;
-- 3 future.
+- 1 future.
 
-Current live publication:
+GW4 remains active until the final fixture finishes.
 
-- publication id: **34**;
-- prediction run: **1365**;
-- publication stage: `FINAL`;
-- publication status: `FINAL`;
-- final status: `FINAL_POST_DEADLINE_CLOSURE`;
-- scenario: `NAMED:GW4_3FT_GUEHI_GABRIEL_SCHADE`;
-- transfers: Mosquera → Guéhi, O'Reilly → Gabriel, Palmer → Schade;
-- captain: Gabriel (player 4);
-- vice-captain: Bruno Fernandes (player 470);
+## 4. Engine recommendation versus actual submitted team
+
+The engine publication and the submitted FPL team are distinct records and must never be merged.
+
+### Engine recommendation
+
+Current GW4 publication:
+
+- publication id **34**;
+- prediction run **1365**;
+- `publication_stage=FINAL`;
+- `publication_status=FINAL`;
+- `final_status=FINAL_POST_DEADLINE_CLOSURE`;
+- scenario `NAMED:GW4_3FT_GUEHI_GABRIEL_SCHADE`;
+- recommended transfers: Mosquera → Guéhi, O'Reilly → Gabriel, Palmer → Schade;
+- recommended captain: Gabriel;
+- recommended vice: Bruno Fernandes;
 - chip: `NONE`;
-- post-action bank: **£1.4m**;
 - `execution_authorized=false`.
 
-`FINAL` therefore describes publication maturity only. It is **not** execution authority.
+`FINAL` describes publication maturity only. It is not execution authority.
 
-## 4. Actual manager state versus recommendation
+### Verified actual submitted team
 
-No verified GW4 actual-manager-decision row exists in `public.fpl_actual_manager_decisions`.
+C0257 subsequently captured the locked public FPL submission for GW4:
 
-Therefore the current truth is:
+- actual-decision id **2**;
+- source `public_fpl_api_locked_picks_c0257`;
+- 11 starters + 4 bench players verified;
+- actual captain: Bruno Fernandes (470);
+- actual vice-captain: João Pedro (170);
+- no chip recorded.
 
-- **Actual submitted team: not verified.**
-- The engine recommendation is not substituted for the actual team.
-- No retrospective execution authority is manufactured.
+The actual submitted squad is not reconstructed from the engine recommendation. This supersedes older C0255-era documentation that said the actual GW4 submission was unverified.
 
-The latest separate pre-transfer manager-state snapshot remains:
+## 5. Frozen evidence and historical integrity
 
-- 3 free transfers;
-- £0.0m bank;
-- 15-player current squad proof;
-- locked from the prior submitted-lineage state.
+The V3 current workspace serves frozen decision-time projection evidence tied to prediction run 1365. Decision-time xPts/xMins/haul evidence stays frozen. Current prices/ownership are not backfilled into missing historical slots.
 
-That pre-transfer manager state is never presented as the recommendation's post-transfer economy. The recommendation has its own post-action state, including £1.4m bank.
+Permanent state:
 
-## 5. Frozen decision evidence
-
-The current V3 workspace resolves all **15/15** recommendation players against frozen decision-time evidence from prediction run 1365.
-
-Decision-time xPts/xMin/haul evidence remains frozen and timestamped. Decision-time price/ownership is shown only when captured in the coherent decision-time lineage; current values are not backfilled into a missing historical slot.
-
-Historical forecasts remain append-only and `historical_forecasts_rewritten=false`.
+- `historical_forecasts_rewritten=false`;
+- missing remains missing;
+- actual submission, recommendation, frozen decision snapshot and realized outcome remain separate lanes;
+- realized values require corresponding finished-fixture evidence.
 
 ## 6. V3 production product
-
-C0255 introduced a new isolated consumer product under `frontend-v3/` and production route `/v3/`.
 
 Production URLs:
 
@@ -96,22 +96,20 @@ Production URLs:
 - V2 fallback: `https://eldon-hanzy.github.io/football-intelligence-engine/v2/`
 - legacy root remains preserved.
 
-V3 is not a V2 redesign and does not inherit the dark FIE visual identity. V2 remains the rollback/fallback product; no V2 retirement is authorized.
+V3 remains an isolated consumer product. V2 is still the rollback/fallback product and no V2 retirement is authorized.
 
-V3 FPL product structure:
+All six V3 destinations are covered by responsive semantic QA:
 
-- pitch-first formation-aware `FplPitch`;
-- separate bench;
-- captain / vice markers;
-- opponent and venue context;
-- frozen decision-time player evidence;
-- Engine / Actual / Live modes;
-- secondary List View;
-- explicit FUTURE / LIVE / FINISHED fixture states;
-- responsive mobile/tablet/desktop layout;
-- fail-closed rendering when actual manager state is unverified.
+- Home;
+- FPL;
+- Matches;
+- Markets;
+- Insights;
+- History.
 
-## 7. V3 semantic state contract
+GW4/GW5 switching is supported. Matches and Markets no longer depend on the FPL workspace critical path.
+
+## 7. V3 semantic contract
 
 The V3 serving/UI contract keeps four lanes distinct:
 
@@ -120,101 +118,105 @@ The V3 serving/UI contract keeps four lanes distinct:
 3. **Decision snapshot** — frozen decision-time evidence only.
 4. **Realized** — live/finished outcome state only.
 
-Permanent V3 semantic invariants:
+Permanent invariants:
 
 - `FINAL` never implies `execution_authorized=true`;
-- missing actual submission displays `Actual submitted team not verified`;
-- pre-transfer manager FT/bank/squad cannot be merged with hypothetical post-transfer state;
-- FUTURE, LIVE and FINISHED fixtures are explicit;
-- a started fixture is never labelled `Next`;
-- post-kickoff probabilities are frozen pre-match evidence, not current forecasts;
-- chronology/coherent evidence timestamps outrank UI convenience.
+- if actual submission is unavailable, the exact fail-closed phrase is `Actual submitted team not verified`;
+- engine recommendation is never substituted as actual;
+- pre-transfer manager economy is never merged into hypothetical post-transfer state;
+- FUTURE / LIVE / FINISHED are explicit;
+- historical/current chronology is not rewritten for UI convenience;
+- cross-Gameweek workspace/actual truth must never be combined.
 
-## 8. Serving/runtime parity
+## 8. Current serving/runtime parity
 
-### Legacy `fpl-api`
+Verified live Supabase Edge Functions:
 
-- production version: **18**;
-- contract: `fpl_api_v18_active_gw_public_payload`;
-- bundle SHA-256: `3f02d4e011a635e8cc2fa5edd9fbad5c1c0c95d6c087bcdda472ff309ac5b347`;
-- repository source reconciled to the unchanged live runtime;
-- no runtime redeploy was required for reconciliation.
+- `gameweek-status-api`: **v8**, ACTIVE, custom public-client authorization in handler, `verify_jwt=false`;
+- `fpl-v3-workspace-api`: **v3**, ACTIVE, `verify_jwt=true`, bundle `88548930feebaf42b45d23cb155bf731659b5eb0ce758a791cd6dc8e13e11273`;
+- `fpl-v3-actual-live-api`: **v1**, ACTIVE, `verify_jwt=true`, bundle `49782885a5b4a039339fd1411ed7c56bc48bbd3e98814466feec0480a4ceca20`;
+- legacy `fpl-api`: **v18**.
 
-### V3 `fpl-v3-workspace-api`
+C0267 restored repository/runtime parity after the C0264 incident. The contaminated C0264 branch must not be reused.
 
-- production version: **2**;
-- contract: `fpl_v3_workspace_v02_player_evidence`;
-- bundle SHA-256: `989e097caf66980805157b0da38e31da1bcf507cfd1d9533984311bf56f04d6f`;
-- JWT verification enabled;
-- repository/runtime parity GREEN.
+## 9. C0264 incident disposition
 
-The public-client smoke uses the exact endpoint and anonymous JWT/header path shipped by `frontend-v3` and passed against the live Edge Function.
+C0264 PR #20 is **closed unmerged** and tracker status remains **Blocked**.
 
-## 9. C0255 production QA
+Failure class: experimental catalog/auth work mutated a legacy anon-JWT payload (`iss` typo) and caused the public Gameweek catalog to reject the browser with HTTP 401. The catalog failure cascaded into the global GW switcher, Matches and Markets.
 
-C0255 promotion evidence:
+C0266 restored the public catalog contract. C0267 reconciled the live-proven workspace runtime into clean repository state.
 
-- architecture-branch run `34720566041`: **5/5 green**;
-- PR-context run `34720642769`: **5/5 green**;
-- PR #9 merged to main as `7fa27410b482aa5a002c5724e1e098c28d5732d7`;
-- production Pages run `34720702295`: **SUCCESS**;
-- Pages deployment `6414713753`: **SUCCESS**.
+Permanent lesson: browser public credentials must not be hand-edited or independently copied without parity/claim validation.
 
-Production checks passed for:
+## 10. C0268 verified latency optimization
 
-- deterministic V2/V3 installs;
-- V2 typecheck/unit/bundle-budget/E2E/accessibility;
-- V3 semantic contract/typecheck/build/E2E/accessibility;
-- source/runtime serving parity;
-- explicit V3 deployment authorization;
-- live public-client V3 API smoke;
-- mobile/tablet/desktop responsive QA;
-- Pages root + `/v2/` + `/v3/` artifact integrity;
-- live post-deploy HTML and JavaScript-asset verification;
-- exclusion of frontend source trees from the public artifact.
+C0268 resumed performance work from clean C0267 state rather than reviving C0264.
 
-## 10. Model / governance non-effects
+Change:
 
-C0255 is product/serving architecture only.
+- start default actual/live truth at page start alongside the current workspace/catalog;
+- reuse default actual/live only when its returned Gameweek matches the workspace Gameweek;
+- on mismatch, fetch actual/live explicitly for the workspace Gameweek;
+- keep all existing semantic/auth/history/V2 gates.
 
-It did **not**:
+Controlled same-run schedule A/B:
 
-- alter model coefficients or production forecast behavior;
-- rewrite historical predictions;
-- weaken C0234, Decision-Control, Noise-Control or chronology gates;
-- promote research evidence;
-- infer a manager action;
-- create retrospective authorization;
-- retire V2.
+- old: 1450 ms, 1297 ms → median **1374 ms**;
+- new: 1124 ms, 1212 ms → median **1168 ms**;
+- median improvement: **206 ms (~15%)**.
 
-## 11. Legacy decision-layer disposition
+A red-team review caught an intermediate copied-JWT issuer typo before merge. It never reached production. C0268 therefore added a permanent public-auth parity/claims gate requiring the workspace and actual-live clients to ship the same credential and decode to `iss=supabase`, the correct project ref and `role=anon`.
 
-Do not physically retire these merely because V3 is live:
+## 11. C0268 production acceptance
 
-- C0231 — supporting forward-management gate consumed by C0234;
-- C0233 — supporting red-team gate consumed by C0234;
-- C0240 — supporting adversarial benchmark/regression evidence;
-- C0242 — named-challenger and captaincy-consistency gate;
-- C0234 — final fail-closed authorization boundary;
-- C0237 — live publication boundary.
+PR #24 merged as:
 
-Any simplification remains a separate evidence-driven architecture decision.
+`4b16fd6364d78e26af1430bed05aa8178ea736e5`
 
-## 12. Governance status
+Final PR run: `34775557312` — PASS.
 
-Latest pre-closeout governance audit on 2026-09-13:
+Production Pages run: `34775635944` — **SUCCESS**.
 
-- tracker governance: PASS;
-- bad change IDs: 0;
-- completed-not-verified: 0;
-- completed-without-refs: 0;
-- decision rows without refs: 0;
-- consumption governance: PASS;
-- consumption-contract violations: 0.
+Production verification passed:
 
-C0255 production acceptance is satisfied. Formal tracker transition to `Completed / Verified` and its post-update governance audit are recorded in the C0255 production closeout evidence.
+- V2/V3 deterministic build/typecheck;
+- V3 semantic contract;
+- serving parity;
+- live public-client auth/contract smoke;
+- V2 E2E/accessibility;
+- V3 75-test responsive E2E/accessibility suite;
+- matching-default actual/live reuse test;
+- mismatched-default Gameweek fallback test;
+- Pages artifact isolation;
+- deployed legacy root + `/v2/` + `/v3/` HTML/JS integrity.
 
-## 13. Canonical references
+Production smoke during deployment confirmed GW4 `POST_DEADLINE_ACTIVE`, actual `VERIFIED`, 11 XI + 4 bench, `execution_authorized=false`, 20 recommendation evidence rows, 9 finished + 1 future fixture, 15 finalized actual rows, and `historical_forecasts_rewritten=false`.
+
+C0268 tracker state is **Completed / Verified**.
+
+## 12. Performance status and next optimization boundary
+
+C0268 removed a client scheduling waterfall but does not prove that latency optimization is exhausted. Absolute network timings vary materially by runner region/cold state; do not compare unrelated runs as if they were controlled experiments.
+
+Any further latency work must:
+
+- use a new change ID from current `main`;
+- establish same-run or otherwise controlled evidence;
+- preserve auth and semantic gates;
+- compare against no-change baseline;
+- reject changes whose advantage is inside measurement noise;
+- never reuse the C0264 branch.
+
+## 13. Governance status
+
+- C0264: **Blocked**, PR #20 closed unmerged.
+- C0267: **Completed / Verified**.
+- C0268: **Completed / Verified**.
+- V2 fallback: untouched operational rollback surface.
+- No model promotion, historical rewrite or retrospective authorization occurred in C0266–C0268.
+
+## 14. Canonical references
 
 - `PROJECT_DESCRIPTION.md`
 - `DECISIONS_AND_HISTORY.md`
@@ -223,10 +225,7 @@ C0255 production acceptance is satisfied. Formal tracker transition to `Complete
 - `WEEKLY_DATA_PIPELINE.md`
 - `MODEL_CONSUMPTION_AUDIT.md`
 - `skills/fie/SKILL.md`
-- `project-management/C0237_GW4_POST_DEADLINE_CLOSURE_20260912.md`
-- `project-management/C0248_CHECKPOINT_L_PRODUCTION_SELECTOR_CUTOVER_20260911.md`
-- `project-management/C0254_FPL_ACTIVE_GW_SERVING_LIFECYCLE_FIX_20260912.md`
-- `project-management/C0255_V3_PRODUCT_SEMANTIC_ARCHITECTURE_20260913.md`
-- `project-management/C0255_CHECKPOINT_C_FPL_WORKSPACE_20260913.md`
-- `project-management/C0255_PREDEPLOYMENT_GATE_20260913.md`
 - `project-management/C0255_PRODUCTION_CLOSEOUT_20260913.md`
+- `project-management/C0263_V3_PERFORMANCE_GW_ROUTING_20260913.md`
+- `project-management/C0268_V3_INITIAL_LOAD_LATENCY_PRODUCTION_CLOSEOUT_20260913.md`
+- `project-management/C0268_DECISIONS_AND_HISTORY_ADDENDUM_20260913.md`

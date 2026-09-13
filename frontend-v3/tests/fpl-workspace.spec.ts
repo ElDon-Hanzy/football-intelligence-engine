@@ -109,7 +109,7 @@ test('responsive shell has no page-level horizontal overflow', async ({ page }, 
   await expect(page.getByLabel('Select Gameweek')).toBeVisible();
   const dimensions = await page.evaluate(() => ({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth }));
   expect(dimensions.scrollWidth, `${testInfo.project.name} page overflow`).toBeLessThanOrEqual(dimensions.clientWidth + 1);
-  if (testInfo.project.name === 'desktop-1366') {
+  if (testInfo.project.name === 'desktop') {
     await expect(page.locator('.v3-desktop-nav')).toBeVisible();
     await expect(page.locator('.v3-mobile-nav')).toBeHidden();
   } else {

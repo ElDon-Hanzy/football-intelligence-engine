@@ -35,8 +35,8 @@ function useLive(gameweek: number | null) {
   return data;
 }
 
-export function HomePage({ onNavigate }: { onNavigate: Navigate }) {
-  const state = useWorkspace();
+export function HomePage({ onNavigate, gameweek = 0 }: { onNavigate: Navigate; gameweek?: number }) {
+  const state = useWorkspace(gameweek);
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const live = useLive(state.data?.gameweek ?? null);
   if (state.loading) return <PageSkeleton label="Loading command center" />;
@@ -75,8 +75,8 @@ export function HomePage({ onNavigate }: { onNavigate: Navigate }) {
   </div>;
 }
 
-export function InsightsPage() {
-  const state = useWorkspace();
+export function InsightsPage({ gameweek = 0 }: { gameweek?: number }) {
+  const state = useWorkspace(gameweek);
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const live = useLive(state.data?.gameweek ?? null);
   if (state.loading) return <PageSkeleton label="Loading player intelligence" />;
@@ -89,7 +89,7 @@ export function InsightsPage() {
 
   return <div className="v3-product-page v3-dense-page" data-page="insights">
     <header className="v3-compact-header">
-      <div><span className="v3-kicker">GW{workspace.gameweek} · frozen run #{workspace.decision_snapshot?.prediction_run_id ?? '—'}</span><h1>Player intelligence</h1></div>
+      <div><span className="v3-kicker">Gameweek {workspace.gameweek} · decision-time projections</span><h1>Player intelligence</h1></div>
       <small>{capturedCount}/{players.length} players with frozen evidence</small>
     </header>
 

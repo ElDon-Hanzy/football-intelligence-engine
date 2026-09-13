@@ -79,12 +79,14 @@ export type ActualLiveApi = {
   } | null;
   players: ActualLivePlayer[];
   player_actuals: ActualLivePlayerResult[];
+  scenario_players?: ActualLivePlayer[];
+  scenario_player_actuals?: ActualLivePlayerResult[];
   semantics: {
     engine_recommendation_is_never_used_as_actual: true;
     provisional_live_points_are_not_final: true;
     only_full_11_plus_4_actual_is_verified?: true;
     scoring_scope: 'RAW_FPL_PLAYER_POINTS_FOR_ENGINE_AND_ACTUAL_SCENARIO_SCORING';
-    player_scope?: 'UNION_ENGINE_RECOMMENDATION_AND_VERIFIED_ACTUAL_SQUADS' | 'VERIFIED_ACTUAL_REQUIRED_FOR_COMPARISON';
+    player_scope?: 'ACTUAL_PRIMARY_PLUS_ENGINE_ACTUAL_SCENARIO_UNION' | 'VERIFIED_ACTUAL_REQUIRED_FOR_COMPARISON' | 'UNION_ENGINE_RECOMMENDATION_AND_VERIFIED_ACTUAL_SQUADS';
   };
 };
 
@@ -104,7 +106,9 @@ function isActualLiveApi(value: unknown): value is ActualLiveApi {
     && typeof payload.gameweek === 'number'
     && typeof payload.actual === 'object'
     && Array.isArray(payload.players)
-    && Array.isArray(payload.player_actuals);
+    && Array.isArray(payload.player_actuals)
+    && (payload.scenario_players == null || Array.isArray(payload.scenario_players))
+    && (payload.scenario_player_actuals == null || Array.isArray(payload.scenario_player_actuals));
 }
 
 function cachedCurrentActual(): ActualLiveApi | null {

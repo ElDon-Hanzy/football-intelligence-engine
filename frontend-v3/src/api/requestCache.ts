@@ -1,9 +1,9 @@
 type CacheEntry = { expiresAt: number; value: unknown };
 
 type CachedJsonOptions = {
-  headers?: Record<string, string>;
-  ttlMs?: number;
-  signal?: AbortSignal;
+  headers?: Record<string, string> | undefined;
+  ttlMs?: number | undefined;
+  signal?: AbortSignal | undefined;
 };
 
 const resolved = new Map<string, CacheEntry>();

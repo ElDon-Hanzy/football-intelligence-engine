@@ -7,10 +7,19 @@ const workspaceSource = await readFile(resolve(here, '../src/api/fplWorkspace.ts
 const actualSource = await readFile(resolve(here, '../src/api/actualLive.ts'), 'utf8');
 const workspaceEndpoint = workspaceSource.match(/V3_WORKSPACE_ENDPOINT\s*=\s*\n?\s*'([^']+)'/)?.[1];
 const anonJwt = workspaceSource.match(/PUBLIC_SUPABASE_ANON_JWT\s*=\s*\n?\s*'([^']+)'/)?.[1];
+const actualAnonJwt = actualSource.match(/PUBLIC_SUPABASE_ANON_JWT\s*=\s*\n?\s*'([^']+)'/)?.[1];
 const apiRoot = actualSource.match(/API_ROOT\s*=\s*'([^']+)'/)?.[1];
 
-if (!workspaceEndpoint || !anonJwt || !apiRoot) {
+if (!workspaceEndpoint || !anonJwt || !actualAnonJwt || !apiRoot) {
   throw new Error('Could not resolve V3 public endpoint/auth configuration from shipped clients');
+}
+if (actualAnonJwt !== anonJwt) {
+  throw new Error('V3 public auth drift: workspace and actual-live clients do not ship the same anon credential');
+}
+const authPayload = JSON.parse(Buffer.from(anonJwt.split('.')[1] ?? '', 'base64url').toString('utf8'));
+const projectRef = new URL(apiRoot).hostname.split('.')[0];
+if (authPayload?.iss !== 'supabase' || authPayload?.ref !== projectRef || authPayload?.role !== 'anon') {
+  throw new Error(`V3 public auth claims invalid: iss=${authPayload?.iss ?? 'missing'} ref=${authPayload?.ref ?? 'missing'} role=${authPayload?.role ?? 'missing'}`);
 }
 
 const headers = { Accept: 'application/json', Authorization: `Bearer ${anonJwt}`, apikey: anonJwt };
@@ -21,6 +30,25 @@ const timedFetch = async (url) => {
   const payload = await response.json();
   return { response, payload, headersMs, totalMs: performance.now() - started };
 };
+
+const currentPageStarted = performance.now();
+const [defaultCatalogCall, defaultWorkspaceCall, defaultActualCall] = await Promise.all([
+  timedFetch(`${apiRoot}/gameweek-status-api`),
+  timedFetch(workspaceEndpoint),
+  timedFetch(`${apiRoot}/fpl-v3-actual-live-api`),
+]);
+const currentPageParallelMs = performance.now() - currentPageStarted;
+
+if (!defaultCatalogCall.response.ok) throw new Error(`Default-page Gameweek catalog returned HTTP ${defaultCatalogCall.response.status}`);
+if (!defaultWorkspaceCall.response.ok) throw new Error(`Default-page V3 workspace returned HTTP ${defaultWorkspaceCall.response.status}`);
+if (!defaultActualCall.response.ok) throw new Error(`Default-page actual-live endpoint returned HTTP ${defaultActualCall.response.status}`);
+const defaultCatalogGameweek = Number(defaultCatalogCall.payload?.live_gameweek);
+if (defaultWorkspaceCall.payload?.gameweek !== defaultCatalogGameweek) {
+  throw new Error(`Default workspace GW ${defaultWorkspaceCall.payload?.gameweek ?? 'missing'} does not match live catalog GW ${defaultCatalogGameweek || 'missing'}`);
+}
+if (defaultActualCall.payload?.gameweek !== defaultWorkspaceCall.payload?.gameweek) {
+  throw new Error(`Default actual-live GW ${defaultActualCall.payload?.gameweek ?? 'missing'} does not match default workspace GW ${defaultWorkspaceCall.payload?.gameweek ?? 'missing'}`);
+}
 
 const endToEndStarted = performance.now();
 const catalogCall = await timedFetch(`${apiRoot}/gameweek-status-api`);
@@ -102,6 +130,10 @@ console.log(JSON.stringify({
   fixture_phases: phaseCounts,
   actual_result_states: resultCounts,
   latency_ms: {
+    current_page_catalog_total: Math.round(defaultCatalogCall.totalMs),
+    current_page_workspace_total: Math.round(defaultWorkspaceCall.totalMs),
+    current_page_actual_total: Math.round(defaultActualCall.totalMs),
+    current_page_parallel_total: Math.round(currentPageParallelMs),
     catalog_headers: Math.round(catalogCall.headersMs),
     catalog_total: Math.round(catalogCall.totalMs),
     workspace_headers: Math.round(workspaceCall.headersMs),

@@ -90,6 +90,8 @@ Deno.serve(async (req: Request) => {
         result_snapshot: null,
         players: [],
         player_actuals: [],
+        scenario_players: [],
+        scenario_player_actuals: [],
         semantics: {
           engine_recommendation_is_never_used_as_actual: true,
           provisional_live_points_are_not_final: true,
@@ -109,6 +111,7 @@ Deno.serve(async (req: Request) => {
       ? recommendationSquad
       : [...recommendationXi, ...recommendationBench];
     const trackedIds = [...new Set([...squad, ...recommendationIds])];
+    const actualIdSet = new Set(squad);
 
     const matches = (matchesResult.data || []) as any[];
     const resultRun = resultRunResult.data as any;
@@ -130,7 +133,7 @@ Deno.serve(async (req: Request) => {
     const teamById = new Map((teamsResult.data || []).map((team: any) => [Number(team.id), team]));
     const actualByPlayer = new Map((actualsResult.data || []).map((row: any) => [Number(row.player_id), row]));
 
-    const players = (playersResult.data || []).map((player: any) => {
+    const scenarioPlayers = (playersResult.data || []).map((player: any) => {
       const teamId = Number(player.team_id);
       const fixtures = matches
         .filter((match) => Number(match.home_team_id) === teamId || Number(match.away_team_id) === teamId)
@@ -160,8 +163,8 @@ Deno.serve(async (req: Request) => {
       };
     });
 
-    const playerById = new Map(players.map((player: any) => [Number(player.player_id), player]));
-    const playerActuals = trackedIds.map((playerId) => {
+    const playerById = new Map(scenarioPlayers.map((player: any) => [Number(player.player_id), player]));
+    const scenarioPlayerActuals = trackedIds.map((playerId) => {
       const metadata: any = playerById.get(Number(playerId));
       const fixturePhases = Array.isArray(metadata?.fixtures) ? metadata.fixtures.map((fixture: any) => fixture.phase) : [];
       const allFinished = fixturePhases.length > 0 && fixturePhases.every((value: string) => value === 'FINISHED');
@@ -201,6 +204,9 @@ Deno.serve(async (req: Request) => {
       };
     });
 
+    const players = scenarioPlayers.filter((player: any) => actualIdSet.has(Number(player.player_id)));
+    const playerActuals = scenarioPlayerActuals.filter((row: any) => actualIdSet.has(Number(row.player_id)));
+
     return new Response(JSON.stringify({
       ok: true,
       contract_version: 'fpl_v3_actual_live_v01',
@@ -225,12 +231,14 @@ Deno.serve(async (req: Request) => {
       },
       players,
       player_actuals: playerActuals,
+      scenario_players: scenarioPlayers,
+      scenario_player_actuals: scenarioPlayerActuals,
       semantics: {
         engine_recommendation_is_never_used_as_actual: true,
         provisional_live_points_are_not_final: true,
         only_full_11_plus_4_actual_is_verified: true,
         scoring_scope: 'RAW_FPL_PLAYER_POINTS_FOR_ENGINE_AND_ACTUAL_SCENARIO_SCORING',
-        player_scope: 'UNION_ENGINE_RECOMMENDATION_AND_VERIFIED_ACTUAL_SQUADS',
+        player_scope: 'ACTUAL_PRIMARY_PLUS_ENGINE_ACTUAL_SCENARIO_UNION',
       },
     }), { headers: cors });
   } catch (error) {

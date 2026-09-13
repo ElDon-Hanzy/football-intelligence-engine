@@ -114,12 +114,16 @@ test('global Gameweek switcher persists across every V3 page and uses historical
   await expect(page.getByText('Gameweek 4 review', { exact: true })).toBeVisible();
 });
 
-test('FPL makes xPTS versus Actual PTS primary and demotes engineering metadata', async ({ page }) => {
+test('FPL makes full engine-versus-actual scoring primary and demotes engineering metadata', async ({ page }) => {
   await mockProductApis(page); await page.goto('/#fpl');
-  const scorecard = page.getByRole('region', { name: 'Projected xPTS versus Actual PTS' });
-  await expect(scorecard.locator('[data-metric="xpts"] strong')).toHaveText('52.7');
+  const scorecard = page.getByRole('region', { name: 'Engine versus actual Gameweek scoring' });
+  await expect(scorecard.locator('[data-metric="xpts"] strong')).toHaveText('20');
+  await expect(scorecard.locator('[data-metric="xpts"] small')).toContainText('xPts 62.4');
   await expect(scorecard.locator('[data-metric="actual"] strong')).toHaveText('31');
-  await expect(scorecard).toContainText('6/11 players reported');
+  await expect(scorecard.locator('[data-metric="actual"] small')).toContainText('xPts 61.0');
+  await expect(scorecard.locator('[data-metric="delta"] strong')).toHaveText('+11');
+  await expect(scorecard.locator('[data-metric="delta"] small')).toContainText('actual minus engine');
+  await expect(scorecard).toContainText('Captain multiplier and automatic substitutions are applied in both scenarios');
   await expect(page.locator('.v3-lifecycle-strip')).toHaveCount(0);
   const details = page.locator('details.v3-data-details');
   await expect(details.getByText('Actual source', { exact: true })).toBeHidden();

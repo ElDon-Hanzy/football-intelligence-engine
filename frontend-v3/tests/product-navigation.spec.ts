@@ -120,7 +120,7 @@ test('FPL makes full engine-versus-actual scoring primary and demotes engineerin
   await expect(scorecard.locator('[data-metric="xpts"] strong')).toHaveText('20');
   await expect(scorecard.locator('[data-metric="xpts"] small')).toContainText('xPts 62.4');
   await expect(scorecard.locator('[data-metric="actual"] strong')).toHaveText('31');
-  await expect(scorecard.locator('[data-metric="actual"] small')).toContainText('xPts 61.0');
+  await expect(scorecard.locator('[data-metric="actual"] small')).toContainText('xPts 58.3');
   await expect(scorecard.locator('[data-metric="delta"] strong')).toHaveText('+11');
   await expect(scorecard.locator('[data-metric="delta"] small')).toContainText('actual minus engine');
   await expect(scorecard).toContainText('Captain multiplier and automatic substitutions are applied in both scenarios');

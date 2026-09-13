@@ -22,6 +22,25 @@ const timedFetch = async (url) => {
   return { response, payload, headersMs, totalMs: performance.now() - started };
 };
 
+const currentPageStarted = performance.now();
+const [defaultCatalogCall, defaultWorkspaceCall, defaultActualCall] = await Promise.all([
+  timedFetch(`${apiRoot}/gameweek-status-api`),
+  timedFetch(workspaceEndpoint),
+  timedFetch(`${apiRoot}/fpl-v3-actual-live-api`),
+]);
+const currentPageParallelMs = performance.now() - currentPageStarted;
+
+if (!defaultCatalogCall.response.ok) throw new Error(`Default-page Gameweek catalog returned HTTP ${defaultCatalogCall.response.status}`);
+if (!defaultWorkspaceCall.response.ok) throw new Error(`Default-page V3 workspace returned HTTP ${defaultWorkspaceCall.response.status}`);
+if (!defaultActualCall.response.ok) throw new Error(`Default-page actual-live endpoint returned HTTP ${defaultActualCall.response.status}`);
+const defaultCatalogGameweek = Number(defaultCatalogCall.payload?.live_gameweek);
+if (defaultWorkspaceCall.payload?.gameweek !== defaultCatalogGameweek) {
+  throw new Error(`Default workspace GW ${defaultWorkspaceCall.payload?.gameweek ?? 'missing'} does not match live catalog GW ${defaultCatalogGameweek || 'missing'}`);
+}
+if (defaultActualCall.payload?.gameweek !== defaultWorkspaceCall.payload?.gameweek) {
+  throw new Error(`Default actual-live GW ${defaultActualCall.payload?.gameweek ?? 'missing'} does not match default workspace GW ${defaultWorkspaceCall.payload?.gameweek ?? 'missing'}`);
+}
+
 const endToEndStarted = performance.now();
 const catalogCall = await timedFetch(`${apiRoot}/gameweek-status-api`);
 if (!catalogCall.response.ok) throw new Error(`Live Gameweek catalog returned HTTP ${catalogCall.response.status}`);
@@ -102,6 +121,10 @@ console.log(JSON.stringify({
   fixture_phases: phaseCounts,
   actual_result_states: resultCounts,
   latency_ms: {
+    current_page_catalog_total: Math.round(defaultCatalogCall.totalMs),
+    current_page_workspace_total: Math.round(defaultWorkspaceCall.totalMs),
+    current_page_actual_total: Math.round(defaultActualCall.totalMs),
+    current_page_parallel_total: Math.round(currentPageParallelMs),
     catalog_headers: Math.round(catalogCall.headersMs),
     catalog_total: Math.round(catalogCall.totalMs),
     workspace_headers: Math.round(workspaceCall.headersMs),

@@ -53,11 +53,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (active !== 'fpl' || selectedGameweek !== 0 || currentGameweek == null) return;
+    if (active !== 'fpl' || selectedGameweek !== 0) return;
     const controller = new AbortController();
-    void fetchActualLive(currentGameweek, controller.signal).catch(() => undefined);
+    void fetchActualLive(0, controller.signal).catch(() => undefined);
     return () => controller.abort();
-  }, [active, currentGameweek, selectedGameweek]);
+  }, [active, selectedGameweek]);
 
   const latestAvailableGameweek = Math.max(currentGameweek ?? 0, latestIntelligenceGameweek ?? 0);
 

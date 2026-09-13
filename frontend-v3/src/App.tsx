@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchForwardIntelligence } from './api/forwardIntelligence';
-import { fetchFplWorkspace } from './api/fplWorkspace';
+import { fetchGameweekCatalog } from './api/gameweekCatalog';
 import { FplLiveWorkspace } from './components/FplLiveWorkspace';
 import { ForwardFplPage, ForwardHomePage, ForwardInsightsPage } from './components/ForwardPages';
 import { HistoryPage } from './components/HistoryPage';
@@ -37,16 +36,18 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void Promise.allSettled([
-      fetchFplWorkspace(0, controller.signal),
-      fetchForwardIntelligence(0, controller.signal),
-    ]).then(([workspaceResult, forwardResult]) => {
-      if (workspaceResult.status === 'fulfilled') setCurrentGameweek(workspaceResult.value.gameweek);
-      else setCurrentGameweek(null);
-      if (forwardResult.status === 'fulfilled') setLatestIntelligenceGameweek(forwardResult.value.gameweek);
-      else setLatestIntelligenceGameweek(null);
-      setCatalogReady(true);
-    });
+    void fetchGameweekCatalog(controller.signal)
+      .then((catalog) => {
+        setCurrentGameweek(catalog.currentGameweek);
+        setLatestIntelligenceGameweek(catalog.latestIntelligenceGameweek);
+        setCatalogReady(true);
+      })
+      .catch((reason: unknown) => {
+        if (reason instanceof DOMException && reason.name === 'AbortError') return;
+        setCurrentGameweek(null);
+        setLatestIntelligenceGameweek(null);
+        setCatalogReady(true);
+      });
     return () => controller.abort();
   }, []);
 
@@ -72,10 +73,10 @@ export function App() {
   let content;
   if (active === 'home') content = isForwardGameweek ? <ForwardHomePage onNavigate={navigate} gameweek={selectedGameweek} /> : <HomePage onNavigate={navigate} gameweek={selectedGameweek} />;
   else if (active === 'fpl') content = isForwardGameweek && currentGameweek != null ? <ForwardFplPage gameweek={selectedGameweek} activeGameweek={currentGameweek} /> : <FplLiveWorkspace gameweek={selectedGameweek} />;
-  else if (active === 'matches') content = <MatchesIntelligencePage gameweek={selectedGameweek} />;
-  else if (active === 'markets') content = <MarketsPage gameweek={selectedGameweek} />;
+  else if (active === 'matches') content = <MatchesIntelligencePage gameweek={visibleGameweek} />;
+  else if (active === 'markets') content = <MarketsPage gameweek={visibleGameweek} />;
   else if (active === 'insights') content = isForwardGameweek ? <ForwardInsightsPage gameweek={selectedGameweek} /> : <InsightsPage gameweek={selectedGameweek} />;
-  else content = <HistoryPage gameweek={selectedGameweek} />;
+  else content = <HistoryPage gameweek={visibleGameweek} />;
 
   return <div className="v3-app-shell">
     <header className="v3-topbar">

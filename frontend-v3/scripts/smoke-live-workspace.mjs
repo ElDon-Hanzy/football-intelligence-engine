@@ -14,15 +14,24 @@ if (!workspaceEndpoint || !anonJwt || !apiRoot) {
 }
 
 const headers = { Accept: 'application/json', Authorization: `Bearer ${anonJwt}`, apikey: anonJwt };
-const [workspaceResponse, actualResponse] = await Promise.all([
-  fetch(workspaceEndpoint, { headers, cache: 'no-store', signal: AbortSignal.timeout(15000) }),
-  fetch(`${apiRoot}/fpl-v3-actual-live-api`, { headers, cache: 'no-store', signal: AbortSignal.timeout(15000) }),
+const timedFetch = async (url) => {
+  const started = performance.now();
+  const response = await fetch(url, { headers, cache: 'no-store', signal: AbortSignal.timeout(15000) });
+  const headersMs = performance.now() - started;
+  const payload = await response.json();
+  return { response, payload, headersMs, totalMs: performance.now() - started };
+};
+
+const [workspaceCall, actualCall] = await Promise.all([
+  timedFetch(workspaceEndpoint),
+  timedFetch(`${apiRoot}/fpl-v3-actual-live-api`),
 ]);
 
-if (!workspaceResponse.ok) throw new Error(`Live V3 workspace returned HTTP ${workspaceResponse.status}`);
-if (!actualResponse.ok) throw new Error(`Live V3 actual endpoint returned HTTP ${actualResponse.status}`);
+if (!workspaceCall.response.ok) throw new Error(`Live V3 workspace returned HTTP ${workspaceCall.response.status}`);
+if (!actualCall.response.ok) throw new Error(`Live V3 actual endpoint returned HTTP ${actualCall.response.status}`);
 
-const [payload, actualPayload] = await Promise.all([workspaceResponse.json(), actualResponse.json()]);
+const payload = workspaceCall.payload;
+const actualPayload = actualCall.payload;
 const failures = [];
 
 if (payload?.ok !== true) failures.push('workspace payload.ok is not true');
@@ -82,5 +91,11 @@ console.log(JSON.stringify({
   recommendation_evidence_rows: evidence.length,
   fixture_phases: phaseCounts,
   actual_result_states: resultCounts,
+  latency_ms: {
+    workspace_headers: Math.round(workspaceCall.headersMs),
+    workspace_total: Math.round(workspaceCall.totalMs),
+    actual_headers: Math.round(actualCall.headersMs),
+    actual_total: Math.round(actualCall.totalMs),
+  },
   historical_forecasts_rewritten: payload.semantics.historical_forecasts_rewritten,
 }));

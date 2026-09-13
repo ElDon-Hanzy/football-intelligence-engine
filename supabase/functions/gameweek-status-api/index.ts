@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     const [scheduleResult, teamsResult, intelligenceResult] = await Promise.all([
       sb.from('matches').select('gameweek,kickoff_time,finished').eq('source', 'fpl').gte('gameweek', 1).lte('gameweek', 38).order('gameweek').order('kickoff_time'),
       sb.from('teams').select('id,fpl_team_id,name,short_name,team_code').not('fpl_team_id', 'is', null).order('fpl_team_id'),
-      sb.from('gameweek_prediction_runs').select('gameweek').eq('frozen', true).gte('gameweek', 1).lte('gameweek', 38).order('gameweek', { ascending: false }).limit(1).maybeSingle(),
+      sb.from('gameweek_prediction_runs').select('gameweek').eq('frozen', true).gte('gameweek', 1).lte('gameweek', 38),
     ]);
     if (scheduleResult.error) throw scheduleResult.error;
     if (teamsResult.error) throw teamsResult.error;
@@ -67,19 +67,25 @@ Deno.serve(async (req) => {
     const reason = activeOrNext
       ? (new Date(activeOrNext.first_kickoff).getTime() > now ? 'NEXT_UNFINISHED_GAMEWEEK' : 'ACTIVE_UNFINISHED_GAMEWEEK')
       : nextFuture ? 'NEXT_SCHEDULED_GAMEWEEK' : 'LATEST_SCHEDULED_GAMEWEEK';
-    const latestIntelligenceGameweek = Number(intelligenceResult.data?.gameweek || 0) || resolved.gameweek;
+
+    const frozenGameweeks = new Set((intelligenceResult.data ?? []).map((row: any) => Number(row.gameweek)).filter((gw: number) => Number.isInteger(gw)));
+    const immediateUpcoming = resolved.gameweek + 1;
+    const latestIntelligenceGameweek = frozenGameweeks.has(immediateUpcoming) ? immediateUpcoming : resolved.gameweek;
+    const planningHorizonGameweek = frozenGameweeks.size ? Math.max(...frozenGameweeks) : resolved.gameweek;
 
     return new Response(JSON.stringify({
       ok: true,
       live_gameweek: resolved.gameweek,
       latest_intelligence_gameweek: latestIntelligenceGameweek,
+      planning_horizon_gameweek: planningHorizonGameweek,
       reason,
       as_of: new Date(now).toISOString(),
       schedule,
       teams: teamsResult.data ?? [],
       semantics: {
         live_gameweek: 'earliest unfinished league gameweek whose fixture window has not elapsed; otherwise next scheduled gameweek',
-        latest_intelligence_gameweek: 'highest Gameweek with a frozen prediction run; this does not imply a manager plan exists',
+        latest_intelligence_gameweek: 'current Gameweek plus the immediately upcoming Gameweek only when frozen intelligence exists; deeper planning-horizon runs are not consumer-ready navigation',
+        planning_horizon_gameweek: 'highest frozen projection Gameweek used internally for multi-Gameweek planning',
         frozen_projection_runs_do_not_define_live_gameweek: true,
         team_badge_key: 'public.teams.team_code',
       },

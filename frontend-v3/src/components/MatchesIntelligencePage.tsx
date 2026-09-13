@@ -6,7 +6,7 @@ import { V3Dialog } from './V3Dialog';
 type Filter = 'ALL' | 'FUTURE' | 'LIVE' | 'FINISHED';
 type ConsumerCall = { code: OutcomeCode; label: string; probability: number } | null;
 
-export function MatchesIntelligencePage() {
+export function MatchesIntelligencePage({ gameweek = 0 }: { gameweek?: number }) {
   const [workspace, setWorkspace] = useState<FplWorkspaceApi | null>(null);
   const [intelligence, setIntelligence] = useState<MatchIntelligence | null>(null);
   const [loading, setLoading] = useState(true);
@@ -16,7 +16,8 @@ export function MatchesIntelligencePage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetchFplWorkspace(0, controller.signal).then(async (current) => {
+    setLoading(true); setError(null); setSelected(null); setFilter('ALL');
+    void fetchFplWorkspace(gameweek, controller.signal).then(async (current) => {
       const matchData = await fetchMatchIntelligence(current.gameweek, controller.signal);
       setWorkspace(current); setIntelligence(matchData); setLoading(false);
     }).catch((reason: unknown) => {
@@ -24,7 +25,7 @@ export function MatchesIntelligencePage() {
       setError(reason instanceof Error ? reason.message : String(reason)); setLoading(false);
     });
     return () => controller.abort();
-  }, []);
+  }, [gameweek]);
 
   if (loading) return <section className="v3-product-page" aria-busy="true"><div className="v3-surface v3-skeleton-panel" /></section>;
   if (error || !workspace || !intelligence) return <section className="v3-product-page"><div className="v3-surface v3-page-state"><span className="v3-kicker">Match intelligence</span><h1>Match predictions unavailable</h1><p>{error ?? 'The frozen fixture contract did not resolve.'}</p></div></section>;

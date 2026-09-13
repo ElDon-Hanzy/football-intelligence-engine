@@ -42,7 +42,11 @@ Deno.serve(async (req: Request) => {
     const gameweek = requestedGw >= 1 && requestedGw <= 38 ? requestedGw : asNumber(latestPlan?.gameweek);
     if (!gameweek) throw new Error('No active Gameweek available');
 
-    const [actualResult, matchesResult, resultRunResult] = await Promise.all([
+    const [livePlanResult, actualResult, matchesResult, resultRunResult] = await Promise.all([
+      sb.from('current_fpl_live_plan_v01')
+        .select('plan')
+        .eq('gameweek', gameweek)
+        .maybeSingle(),
       sb.from('fpl_actual_manager_decisions')
         .select('id,gameweek,captured_at,captain_player_id,vice_player_id,starting_xi,bench_order,chip,source,notes')
         .eq('gameweek', gameweek)
@@ -62,6 +66,7 @@ Deno.serve(async (req: Request) => {
         .limit(1)
         .maybeSingle(),
     ]);
+    if (livePlanResult.error) throw livePlanResult.error;
     if (actualResult.error) throw actualResult.error;
     if (matchesResult.error) throw matchesResult.error;
     if (resultRunResult.error) throw resultRunResult.error;
@@ -88,21 +93,33 @@ Deno.serve(async (req: Request) => {
         semantics: {
           engine_recommendation_is_never_used_as_actual: true,
           provisional_live_points_are_not_final: true,
-          scoring_scope: 'RAW_FPL_PLAYER_POINTS_NO_AUTO_SUBS_OR_CAPTAIN_MULTIPLIER',
+          scoring_scope: 'RAW_FPL_PLAYER_POINTS_FOR_ENGINE_AND_ACTUAL_SCENARIO_SCORING',
+          player_scope: 'VERIFIED_ACTUAL_REQUIRED_FOR_COMPARISON',
         },
       }), { headers: cors });
     }
 
+    const rawPlan = (livePlanResult.data as any)?.plan || {};
+    const recommendationSquad = Array.isArray(rawPlan?.squad)
+      ? rawPlan.squad.map((player: any) => asNumber(player?.player_id)).filter((id: number | null): id is number => id != null)
+      : [];
+    const recommendationXi = Array.isArray(rawPlan?.starting_xi) ? rawPlan.starting_xi.map(Number).filter(Number.isFinite) : [];
+    const recommendationBench = Array.isArray(rawPlan?.bench_order) ? rawPlan.bench_order.map(Number).filter(Number.isFinite) : [];
+    const recommendationIds = recommendationSquad.length
+      ? recommendationSquad
+      : [...recommendationXi, ...recommendationBench];
+    const trackedIds = [...new Set([...squad, ...recommendationIds])];
+
     const matches = (matchesResult.data || []) as any[];
     const resultRun = resultRunResult.data as any;
     const [playersResult, teamsResult, actualsResult] = await Promise.all([
-      sb.from('players').select('id,web_name,position,team_id').in('id', squad),
+      sb.from('players').select('id,web_name,position,team_id').in('id', trackedIds),
       sb.from('teams').select('id,name,short_name'),
       resultRun?.id
         ? sb.from('player_gameweek_actuals')
-            .select('player_id,fixture_ids,minutes,total_points,goals,assists,bonus,bps,defensive_contribution,xg,xa,xgi,xgc,clean_sheets')
+            .select('player_id,fixture_ids,minutes,total_points,goals,assists,bonus,bps,defensive_contribution,xg,xa,xgi,xgc,clean_sheets,yellow_cards,red_cards')
             .eq('result_run_id', resultRun.id)
-            .in('player_id', squad)
+            .in('player_id', trackedIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
     if (playersResult.error) throw playersResult.error;
@@ -144,7 +161,7 @@ Deno.serve(async (req: Request) => {
     });
 
     const playerById = new Map(players.map((player: any) => [Number(player.player_id), player]));
-    const playerActuals = squad.map((playerId) => {
+    const playerActuals = trackedIds.map((playerId) => {
       const metadata: any = playerById.get(Number(playerId));
       const fixturePhases = Array.isArray(metadata?.fixtures) ? metadata.fixtures.map((fixture: any) => fixture.phase) : [];
       const allFinished = fixturePhases.length > 0 && fixturePhases.every((value: string) => value === 'FINISHED');
@@ -153,12 +170,21 @@ Deno.serve(async (req: Request) => {
       const status = allFinished ? 'FINAL' : anyLive ? 'LIVE' : anyFinished ? 'PARTIAL' : 'PENDING';
       const row: any = actualByPlayer.get(Number(playerId));
       const visible = row && status !== 'PENDING';
+      const minutes = visible ? asNumber(row.minutes) : null;
+      const yellowCards = visible ? asNumber(row.yellow_cards) : null;
+      const redCards = visible ? asNumber(row.red_cards) : null;
+      const hasPlayed = Boolean(
+        (minutes != null && minutes > 0)
+        || (yellowCards != null && yellowCards > 0)
+        || (redCards != null && redCards > 0)
+      );
       return {
         player_id: Number(playerId),
         fixture_ids: Array.isArray(row?.fixture_ids) ? row.fixture_ids.map(Number).filter(Number.isFinite) : [],
         status,
         points_are_final: status === 'FINAL',
-        minutes: visible ? asNumber(row.minutes) : null,
+        played: hasPlayed ? true : status === 'FINAL' ? false : null,
+        minutes,
         total_points: visible ? asNumber(row.total_points) : null,
         goals: visible ? asNumber(row.goals) : null,
         assists: visible ? asNumber(row.assists) : null,
@@ -170,6 +196,8 @@ Deno.serve(async (req: Request) => {
         xgi: visible ? asNumber(row.xgi) : null,
         xgc: visible ? asNumber(row.xgc) : null,
         clean_sheets: visible ? asNumber(row.clean_sheets) : null,
+        yellow_cards: yellowCards,
+        red_cards: redCards,
       };
     });
 
@@ -201,7 +229,8 @@ Deno.serve(async (req: Request) => {
         engine_recommendation_is_never_used_as_actual: true,
         provisional_live_points_are_not_final: true,
         only_full_11_plus_4_actual_is_verified: true,
-        scoring_scope: 'RAW_FPL_PLAYER_POINTS_NO_AUTO_SUBS_OR_CAPTAIN_MULTIPLIER',
+        scoring_scope: 'RAW_FPL_PLAYER_POINTS_FOR_ENGINE_AND_ACTUAL_SCENARIO_SCORING',
+        player_scope: 'UNION_ENGINE_RECOMMENDATION_AND_VERIFIED_ACTUAL_SQUADS',
       },
     }), { headers: cors });
   } catch (error) {

@@ -4,6 +4,9 @@ import { gw4ActualLiveFixture, gw4ActualUnverifiedFixture } from './fixtures/gw4
 import { gw4WorkspaceFixture } from './fixtures/gw4Workspace';
 
 async function loadWorkspace(page: Page, actual = gw4ActualLiveFixture) {
+  await page.route('**/gameweek-status-api**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, live_gameweek: 4, latest_intelligence_gameweek: 5 }) });
+  });
   await page.route('**/fpl-v3-workspace-api**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(gw4WorkspaceFixture) });
   });

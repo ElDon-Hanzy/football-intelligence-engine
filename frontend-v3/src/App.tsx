@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
+import { fetchForwardIntelligence } from './api/forwardIntelligence';
 import { fetchFplWorkspace } from './api/fplWorkspace';
 import { FplLiveWorkspace } from './components/FplLiveWorkspace';
+import { ForwardFplPage, ForwardHomePage, ForwardInsightsPage } from './components/ForwardPages';
 import { HistoryPage } from './components/HistoryPage';
 import { MarketsPage } from './components/MarketsPage';
 import { MatchesIntelligencePage } from './components/MatchesIntelligencePage';
@@ -22,6 +24,8 @@ export function App() {
   const [active, setActive] = useState<ProductView>(viewFromLocation);
   const [selectedGameweek, setSelectedGameweek] = useState<number>(gameweekFromLocation);
   const [currentGameweek, setCurrentGameweek] = useState<number | null>(null);
+  const [latestIntelligenceGameweek, setLatestIntelligenceGameweek] = useState<number | null>(null);
+  const [catalogReady, setCatalogReady] = useState(false);
 
   useEffect(() => {
     const onHashChange = () => { setActive(viewFromLocation()); window.scrollTo({ top: 0, behavior: 'auto' }); };
@@ -33,20 +37,29 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetchFplWorkspace(0, controller.signal)
-      .then((workspace) => setCurrentGameweek(workspace.gameweek))
-      .catch(() => setCurrentGameweek(null));
+    void Promise.allSettled([
+      fetchFplWorkspace(0, controller.signal),
+      fetchForwardIntelligence(0, controller.signal),
+    ]).then(([workspaceResult, forwardResult]) => {
+      if (workspaceResult.status === 'fulfilled') setCurrentGameweek(workspaceResult.value.gameweek);
+      else setCurrentGameweek(null);
+      if (forwardResult.status === 'fulfilled') setLatestIntelligenceGameweek(forwardResult.value.gameweek);
+      else setLatestIntelligenceGameweek(null);
+      setCatalogReady(true);
+    });
     return () => controller.abort();
   }, []);
 
+  const latestAvailableGameweek = Math.max(currentGameweek ?? 0, latestIntelligenceGameweek ?? 0);
+
   useEffect(() => {
-    if (currentGameweek == null || selectedGameweek === 0 || selectedGameweek <= currentGameweek) return;
+    if (!catalogReady || selectedGameweek === 0 || latestAvailableGameweek === 0 || selectedGameweek <= latestAvailableGameweek) return;
     setSelectedGameweek(0);
     updateGameweekUrl(0);
-  }, [currentGameweek, selectedGameweek]);
+  }, [catalogReady, latestAvailableGameweek, selectedGameweek]);
 
-  const visibleGameweek = selectedGameweek || currentGameweek || 0;
-  const availableGameweeks = useMemo(() => currentGameweek == null ? [] : Array.from({ length: currentGameweek }, (_, index) => index + 1), [currentGameweek]);
+  const visibleGameweek = selectedGameweek || currentGameweek || latestIntelligenceGameweek || 0;
+  const availableGameweeks = useMemo(() => latestAvailableGameweek > 0 ? Array.from({ length: latestAvailableGameweek }, (_, index) => index + 1) : [], [latestAvailableGameweek]);
 
   const changeGameweek = (gameweek: number) => {
     const normalized = currentGameweek != null && gameweek === currentGameweek ? 0 : gameweek;
@@ -55,12 +68,13 @@ export function App() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   };
 
+  const isForwardGameweek = selectedGameweek > 0 && currentGameweek != null && selectedGameweek > currentGameweek;
   let content;
-  if (active === 'home') content = <HomePage onNavigate={navigate} gameweek={selectedGameweek} />;
-  else if (active === 'fpl') content = <FplLiveWorkspace gameweek={selectedGameweek} />;
+  if (active === 'home') content = isForwardGameweek ? <ForwardHomePage onNavigate={navigate} gameweek={selectedGameweek} /> : <HomePage onNavigate={navigate} gameweek={selectedGameweek} />;
+  else if (active === 'fpl') content = isForwardGameweek && currentGameweek != null ? <ForwardFplPage gameweek={selectedGameweek} activeGameweek={currentGameweek} /> : <FplLiveWorkspace gameweek={selectedGameweek} />;
   else if (active === 'matches') content = <MatchesIntelligencePage gameweek={selectedGameweek} />;
   else if (active === 'markets') content = <MarketsPage gameweek={selectedGameweek} />;
-  else if (active === 'insights') content = <InsightsPage gameweek={selectedGameweek} />;
+  else if (active === 'insights') content = isForwardGameweek ? <ForwardInsightsPage gameweek={selectedGameweek} /> : <InsightsPage gameweek={selectedGameweek} />;
   else content = <HistoryPage gameweek={selectedGameweek} />;
 
   return <div className="v3-app-shell">
@@ -71,7 +85,7 @@ export function App() {
         <label className="v3-gw-switcher">
           <span>Gameweek</span>
           <select aria-label="Select Gameweek" value={visibleGameweek || ''} onChange={(event) => changeGameweek(Number(event.target.value))} disabled={!availableGameweeks.length}>
-            {!availableGameweeks.length ? <option value="">GW…</option> : availableGameweeks.map((gameweek) => <option key={gameweek} value={gameweek}>{`GW${gameweek}${gameweek === currentGameweek ? ' · Current' : ''}`}</option>)}
+            {!availableGameweeks.length ? <option value="">GW…</option> : availableGameweeks.map((gameweek) => <option key={gameweek} value={gameweek}>{gameweekLabel(gameweek, currentGameweek, latestIntelligenceGameweek)}</option>)}
           </select>
         </label>
       </div>
@@ -79,6 +93,12 @@ export function App() {
     <main className="v3-page" id={active} data-active-view={active} data-gameweek={visibleGameweek || undefined}>{content}</main>
     <nav className="v3-mobile-nav" aria-label="Mobile navigation">{navItems.map((item) => <a key={item.view} href={`#${item.view}`} aria-current={item.view === active ? 'page' : undefined}><span aria-hidden="true">•</span>{item.label}</a>)}</nav>
   </div>;
+}
+
+function gameweekLabel(gameweek: number, currentGameweek: number | null, latestIntelligenceGameweek: number | null): string {
+  if (gameweek === currentGameweek) return `GW${gameweek} · Live`;
+  if (currentGameweek != null && gameweek > currentGameweek && latestIntelligenceGameweek != null && gameweek <= latestIntelligenceGameweek) return `GW${gameweek} · Upcoming`;
+  return `GW${gameweek}`;
 }
 
 function updateGameweekUrl(gameweek: number) {

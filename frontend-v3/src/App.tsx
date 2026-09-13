@@ -76,7 +76,7 @@ export function App() {
   else if (active === 'matches') content = <MatchesIntelligencePage gameweek={visibleGameweek} />;
   else if (active === 'markets') content = <MarketsPage gameweek={visibleGameweek} />;
   else if (active === 'insights') content = isForwardGameweek ? <ForwardInsightsPage gameweek={selectedGameweek} /> : <InsightsPage gameweek={selectedGameweek} />;
-  else content = <HistoryPage gameweek={visibleGameweek} />;
+  else content = visibleGameweek > 0 ? <HistoryPage gameweek={visibleGameweek} /> : <PageLoading />;
 
   return <div className="v3-app-shell">
     <header className="v3-topbar">
@@ -95,6 +95,8 @@ export function App() {
     <nav className="v3-mobile-nav" aria-label="Mobile navigation">{navItems.map((item) => <a key={item.view} href={`#${item.view}`} aria-current={item.view === active ? 'page' : undefined}><span aria-hidden="true">•</span>{item.label}</a>)}</nav>
   </div>;
 }
+
+function PageLoading() { return <section className="v3-product-page" aria-busy="true"><div className="v3-surface v3-skeleton-panel" /></section>; }
 
 function gameweekLabel(gameweek: number, currentGameweek: number | null, latestIntelligenceGameweek: number | null): string {
   if (gameweek === currentGameweek) return `GW${gameweek} · Live`;

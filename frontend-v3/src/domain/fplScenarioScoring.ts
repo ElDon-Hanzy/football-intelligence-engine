@@ -184,15 +184,20 @@ export function scoreFplScenario(selection: FplScenarioSelection, players: FplSc
   const captainAppliedTo = captainTarget(selection, byId);
   const projected = projectedTotal(settled.ids, captainAppliedTo, captainAppliedTo == null ? 1 : multiplier, byId);
   const realized = realizedTotal(settled.ids, captainAppliedTo, captainAppliedTo == null ? 1 : multiplier, byId);
-  const allScenarioPlayersFinal = [...selection.startingXi, ...selection.benchOrder]
-    .every((id) => byId.get(id)?.status === 'FINAL');
+  const allScenarioEvidenceSettled = [...selection.startingXi, ...selection.benchOrder].every((id) => {
+    const player = byId.get(id);
+    return player?.status === 'FINAL'
+      && typeof player.actualPoints === 'number'
+      && Number.isFinite(player.actualPoints)
+      && typeof player.played === 'boolean';
+  });
 
   return {
     realizedPoints: realized.total,
     frozenXpts: projected.total,
     actualCoverage: realized.coverage,
     projectionCoverage: projected.coverage,
-    settled: allScenarioPlayersFinal,
+    settled: allScenarioEvidenceSettled,
     scoringPlayerIds: settled.ids,
     autosubbedIn: settled.autosubbedIn,
     autosubbedOut: settled.autosubbedOut,

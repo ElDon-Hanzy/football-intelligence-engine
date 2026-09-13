@@ -7,10 +7,19 @@ const workspaceSource = await readFile(resolve(here, '../src/api/fplWorkspace.ts
 const actualSource = await readFile(resolve(here, '../src/api/actualLive.ts'), 'utf8');
 const workspaceEndpoint = workspaceSource.match(/V3_WORKSPACE_ENDPOINT\s*=\s*\n?\s*'([^']+)'/)?.[1];
 const anonJwt = workspaceSource.match(/PUBLIC_SUPABASE_ANON_JWT\s*=\s*\n?\s*'([^']+)'/)?.[1];
+const actualAnonJwt = actualSource.match(/PUBLIC_SUPABASE_ANON_JWT\s*=\s*\n?\s*'([^']+)'/)?.[1];
 const apiRoot = actualSource.match(/API_ROOT\s*=\s*'([^']+)'/)?.[1];
 
-if (!workspaceEndpoint || !anonJwt || !apiRoot) {
+if (!workspaceEndpoint || !anonJwt || !actualAnonJwt || !apiRoot) {
   throw new Error('Could not resolve V3 public endpoint/auth configuration from shipped clients');
+}
+if (actualAnonJwt !== anonJwt) {
+  throw new Error('V3 public auth drift: workspace and actual-live clients do not ship the same anon credential');
+}
+const authPayload = JSON.parse(Buffer.from(anonJwt.split('.')[1] ?? '', 'base64url').toString('utf8'));
+const projectRef = new URL(apiRoot).hostname.split('.')[0];
+if (authPayload?.iss !== 'supabase' || authPayload?.ref !== projectRef || authPayload?.role !== 'anon') {
+  throw new Error(`V3 public auth claims invalid: iss=${authPayload?.iss ?? 'missing'} ref=${authPayload?.ref ?? 'missing'} role=${authPayload?.role ?? 'missing'}`);
 }
 
 const headers = { Accept: 'application/json', Authorization: `Bearer ${anonJwt}`, apikey: anonJwt };

@@ -41,8 +41,8 @@ test('all six V3 navigation destinations render compact card surfaces', async ({
 
 test('markets show large result stamps without probability or xG', async ({ page }) => {
   await mockProductApis(page); await page.goto('/#markets');
-  await expect(page.getByRole('img', { name: 'Correct prediction' })).toHaveCount(1);
-  await expect(page.getByRole('img', { name: 'Incorrect prediction' })).toHaveCount(1);
+  await expect(page.getByRole('img', { name: 'Correct prediction', exact: true })).toHaveCount(1);
+  await expect(page.getByRole('img', { name: 'Incorrect prediction', exact: true })).toHaveCount(1);
   await expect(page.getByText('Aligned', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Different', { exact: true })).toHaveCount(0);
   await expect(page.getByText(/xG/i)).toHaveCount(0);

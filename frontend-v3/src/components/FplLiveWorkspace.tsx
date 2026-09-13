@@ -218,11 +218,12 @@ function WorkspaceContent({
 }
 
 function FplScorecard({ score, actualVerified, note = 'Raw submitted-XI comparison. Captain multiplier and automatic substitutions are not applied here.' }: { score: XiScoreComparison; actualVerified: boolean; note?: string }) {
-  const completeComparison = score.projectedPoints != null && score.actualCoverage === 11;
-  const difference = completeComparison && score.actualPoints != null ? score.actualPoints - score.projectedPoints : null;
+  const projectedPoints = score.projectedPoints;
+  const actualPoints = score.actualPoints;
+  const difference = projectedPoints != null && actualPoints != null && score.actualCoverage === 11 ? actualPoints - projectedPoints : null;
   return <section className="v3-fpl-scorecard v3-surface" aria-label="Projected xPTS versus Actual PTS">
-    <div className="v3-fpl-scoremetric" data-metric="xpts"><span>XI xPTS</span><strong>{score.projectedPoints == null ? '—' : score.projectedPoints.toFixed(1)}</strong><small>{score.projectedPoints == null ? `${score.projectedCoverage}/11 projections captured` : 'Frozen pre-deadline projection'}</small></div>
-    <div className="v3-fpl-scoremetric" data-metric="actual"><span>Actual PTS</span><strong>{!actualVerified || score.actualPoints == null ? '—' : String(score.actualPoints)}</strong><small>{!actualVerified ? 'Actual points unavailable' : `${score.actualCoverage}/11 players reported`}</small></div>
+    <div className="v3-fpl-scoremetric" data-metric="xpts"><span>XI xPTS</span><strong>{projectedPoints == null ? '—' : projectedPoints.toFixed(1)}</strong><small>{projectedPoints == null ? `${score.projectedCoverage}/11 projections captured` : 'Frozen pre-deadline projection'}</small></div>
+    <div className="v3-fpl-scoremetric" data-metric="actual"><span>Actual PTS</span><strong>{!actualVerified || actualPoints == null ? '—' : String(actualPoints)}</strong><small>{!actualVerified ? 'Actual points unavailable' : `${score.actualCoverage}/11 players reported`}</small></div>
     <div className="v3-fpl-scoremetric" data-metric="delta"><span>vs xPTS</span><strong>{difference == null ? '—' : `${difference >= 0 ? '+' : ''}${difference.toFixed(1)}`}</strong><small>{difference == null ? 'Shown when all XI points are available' : 'Actual minus projected'}</small></div>
     <p>{note}</p>
   </section>;

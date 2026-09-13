@@ -80,7 +80,7 @@ function projectedTotal(ids: number[], captainId: number | null, captainMultipli
   const values = ids.map((id) => byId.get(id)?.expectedPoints ?? null);
   const captured = values.filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
   if (captured.length !== ids.length) return { total: null, coverage: captured.length };
-  let total = captured.reduce((sum, value) => sum + value, 0);
+  let total = captured.reduce<number>((sum, value) => sum + value, 0);
   if (captainId != null && captainMultiplier > 1) {
     const captainExpected = byId.get(captainId)?.expectedPoints;
     if (typeof captainExpected !== 'number' || !Number.isFinite(captainExpected)) return { total: null, coverage: captured.length };
@@ -93,7 +93,7 @@ function realizedTotal(ids: number[], captainId: number | null, captainMultiplie
   const visible = ids.map((id) => byId.get(id)?.actualPoints ?? null);
   const captured = visible.filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
   if (captured.length === 0) return { total: null, coverage: 0 };
-  let total = visible.reduce((sum, value) => sum + (typeof value === 'number' && Number.isFinite(value) ? value : 0), 0);
+  let total = visible.reduce<number>((sum, value) => sum + (typeof value === 'number' && Number.isFinite(value) ? value : 0), 0);
   if (captainId != null && captainMultiplier > 1) {
     const captainPoints = byId.get(captainId)?.actualPoints;
     if (typeof captainPoints === 'number' && Number.isFinite(captainPoints)) total += captainPoints * (captainMultiplier - 1);
@@ -127,10 +127,11 @@ function settleScoringIds(selection: FplScenarioSelection, byId: Map<number, Fpl
   const usedBench = new Set<number>();
 
   const startingGkIndex = active.findIndex((id) => byId.get(id)?.position === 'GKP');
-  if (startingGkIndex >= 0 && appearance(byId.get(active[startingGkIndex])) === 'NO_SHOW') {
+  const startingGkId = startingGkIndex >= 0 ? active[startingGkIndex] : undefined;
+  if (startingGkId != null && appearance(byId.get(startingGkId)) === 'NO_SHOW') {
     const benchGk = selection.benchOrder.find((id) => byId.get(id)?.position === 'GKP' && appearance(byId.get(id)) === 'PLAYED');
     if (benchGk != null) {
-      autosubbedOut.push(active[startingGkIndex]);
+      autosubbedOut.push(startingGkId);
       autosubbedIn.push(benchGk);
       usedBench.add(benchGk);
       active[startingGkIndex] = benchGk;
@@ -139,6 +140,7 @@ function settleScoringIds(selection: FplScenarioSelection, byId: Map<number, Fpl
 
   for (let index = 0; index < active.length; index += 1) {
     const starterId = active[index];
+    if (starterId == null) continue;
     const starter = byId.get(starterId);
     if (!starter || starter.position === 'GKP' || appearance(starter) !== 'NO_SHOW') continue;
 

@@ -1,3 +1,5 @@
+import { fetchJsonCached } from './requestCache';
+
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
 const PUBLIC_SUPABASE_ANON_JWT =
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub29pd2V6enN4Y3dodGp0ZGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzY0MjQsImV4cCI6MjEwMjkxMjQyNH0.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
@@ -89,13 +91,11 @@ export type HistoricalFplPayload = {
 
 export async function fetchHistoricalFpl(gameweek = 0, signal?: AbortSignal): Promise<HistoricalFplPayload> {
   const url = gameweek > 0 ? `${API_ROOT}/fpl-api?gw=${gameweek}` : `${API_ROOT}/fpl-api`;
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json', Authorization: `Bearer ${PUBLIC_SUPABASE_ANON_JWT}`, apikey: PUBLIC_SUPABASE_ANON_JWT },
-    cache: 'no-store',
-    ...(signal ? { signal } : {}),
+  const payload = await fetchJsonCached(url, {
+    headers: { Authorization: `Bearer ${PUBLIC_SUPABASE_ANON_JWT}`, apikey: PUBLIC_SUPABASE_ANON_JWT },
+    ttlMs: 30_000,
+    signal,
   });
-  if (!response.ok) throw new Error(`Historical FPL API returned HTTP ${response.status}`);
-  const payload = await response.json() as unknown;
   if (!isHistoricalPayload(payload)) throw new Error('Historical FPL contract mismatch');
   return payload;
 }

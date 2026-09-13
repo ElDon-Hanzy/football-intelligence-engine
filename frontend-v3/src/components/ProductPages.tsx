@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchActualLive, type ActualLiveApi } from '../api/actualLive';
 import { fetchFplWorkspace, type FplWorkspaceApi, type PlayerEvidence, type WorkspaceFixture } from '../api/fplWorkspace';
 import { PlayerIntelligenceModal } from './PlayerIntelligenceModal';
 
 export type ProductView = 'home' | 'fpl' | 'matches' | 'markets' | 'insights' | 'history';
 type Navigate = (view: ProductView) => void;
-
 type WorkspaceLoad = { data: FplWorkspaceApi | null; loading: boolean; error: string | null; reload: () => void };
 
 function useWorkspace(gameweek = 0): WorkspaceLoad {
@@ -62,14 +61,14 @@ export function HomePage({ onNavigate }: { onNavigate: Navigate }) {
       <button type="button" onClick={() => onNavigate('markets')}><span>Markets</span><strong>4 core calls</strong></button>
     </section>
 
-    <section className="v3-surface v3-dense-card" aria-labelledby="home-fixtures-heading">
-      <div className="v3-dense-card-head"><div><span className="v3-kicker">Gameweek fixtures</span><h2 id="home-fixtures-heading">All matches</h2></div><button type="button" className="v3-text-action" onClick={() => onNavigate('matches')}>Match intelligence →</button></div>
-      <div className="v3-fixture-list">{fixtures.map((fixture) => <HomeFixtureRow key={fixture.match_id} fixture={fixture} />)}</div>
+    <section aria-labelledby="home-fixtures-heading">
+      <div className="v3-section-head"><div><span className="v3-kicker">Gameweek fixtures</span><h2 id="home-fixtures-heading">All matches</h2></div><button type="button" className="v3-text-action" onClick={() => onNavigate('matches')}>Match intelligence →</button></div>
+      <div className="v3-card-grid v3-card-grid--fixtures">{fixtures.map((fixture) => <HomeFixtureCard key={fixture.match_id} fixture={fixture} />)}</div>
     </section>
 
-    <section className="v3-surface v3-dense-card" aria-labelledby="home-upside-heading">
-      <div className="v3-dense-card-head"><div><span className="v3-kicker">Decision-time ceiling</span><h2 id="home-upside-heading">Top P10+ signals</h2></div><button type="button" className="v3-text-action" onClick={() => onNavigate('insights')}>Full player table →</button></div>
-      <div className="v3-player-list">{topUpside.map(({ playerId, evidence }, index) => <div className="v3-player-list-row" key={playerId}><b>{index + 1}</b><PlayerButton id={playerId} name={playerName(workspace, playerId) ?? `Player ${playerId}`} onClick={setSelectedPlayerId} /><span>{formatNumber(captured(evidence, 'expected_points'), 1)} xPts</span><strong>{formatPercent(captured(evidence, 'p_10_plus'))}</strong></div>)}</div>
+    <section aria-labelledby="home-upside-heading">
+      <div className="v3-section-head"><div><span className="v3-kicker">Decision-time ceiling</span><h2 id="home-upside-heading">Top P10+ signals</h2></div><button type="button" className="v3-text-action" onClick={() => onNavigate('insights')}>Player intelligence →</button></div>
+      <div className="v3-card-grid v3-card-grid--signals">{topUpside.map(({ playerId, evidence }, index) => <button type="button" className="v3-compact-card v3-player-summary-card" key={playerId} onClick={() => setSelectedPlayerId(playerId)} aria-label={`Open ${playerName(workspace, playerId) ?? `Player ${playerId}`} intelligence`}><span className="v3-card-rank">#{index + 1}</span><strong>{playerName(workspace, playerId) ?? `Player ${playerId}`}</strong><small>{formatNumber(captured(evidence, 'expected_points'), 1)} xPts</small><b>{formatPercent(captured(evidence, 'p_10_plus'))} P10+</b></button>)}</div>
     </section>
 
     {selectedPlayerId != null && live ? <PlayerIntelligenceModal open onClose={() => setSelectedPlayerId(null)} playerId={selectedPlayerId} workspace={workspace} live={live} /> : null}
@@ -94,14 +93,9 @@ export function InsightsPage() {
       <small>{capturedCount}/{players.length} players with frozen evidence</small>
     </header>
 
-    <section className="v3-surface v3-dense-card" aria-labelledby="insights-table-heading">
-      <div className="v3-dense-card-head"><div><span className="v3-kicker">Full recommended squad</span><h2 id="insights-table-heading">Decision-time projection matrix</h2></div><small>Missing = —, never zero</small></div>
-      <div className="v3-table-scroll">
-        <table className="v3-data-table v3-player-data-table">
-          <thead><tr><th>Player</th><th>Pos</th><th>xPts</th><th>xMin</th><th>Start</th><th>Blank</th><th>5+</th><th>10+</th><th>15+</th><th>20+</th><th>Goal</th><th>Assist</th><th>CS</th><th>DC</th><th>Bonus</th></tr></thead>
-          <tbody>{players.map((player) => <InsightRow key={player.player_id} workspace={workspace} playerId={player.player_id} position={player.position ?? '—'} evidence={evidenceById.get(player.player_id)} onPlayer={setSelectedPlayerId} />)}</tbody>
-        </table>
-      </div>
+    <section aria-labelledby="insights-cards-heading">
+      <div className="v3-section-head"><div><span className="v3-kicker">Full recommended squad</span><h2 id="insights-cards-heading">Decision-time player cards</h2></div><small>Missing = —, never zero</small></div>
+      <div className="v3-card-grid v3-card-grid--players">{players.map((player) => <InsightCard key={player.player_id} workspace={workspace} playerId={player.player_id} position={player.position ?? '—'} evidence={evidenceById.get(player.player_id)} onPlayer={setSelectedPlayerId} />)}</div>
     </section>
 
     <section className="v3-compact-note" aria-label="Projection provenance"><strong>Frozen at decision time.</strong><span>These probabilities explain the recommendation and are not recalculated from post-kickoff outcomes.</span></section>
@@ -109,15 +103,27 @@ export function InsightsPage() {
   </div>;
 }
 
-function InsightRow({ workspace, playerId, position, evidence, onPlayer }: { workspace: FplWorkspaceApi; playerId: number; position: string; evidence: PlayerEvidence | undefined; onPlayer: (id: number) => void }) {
-  return <tr><td><PlayerButton id={playerId} name={playerName(workspace, playerId) ?? `Player ${playerId}`} onClick={onPlayer} /></td><td>{position}</td><td>{formatNumber(captured(evidence, 'expected_points'), 1)}</td><td>{formatNumber(captured(evidence, 'expected_minutes'), 0)}</td><td>{formatPercent(captured(evidence, 'p_start'))}</td><td>{formatPercent(captured(evidence, 'p_blank'))}</td><td>{formatPercent(captured(evidence, 'p_5_plus'))}</td><td><strong>{formatPercent(captured(evidence, 'p_10_plus'))}</strong></td><td>{formatPercent(captured(evidence, 'p_15_plus'))}</td><td>{formatPercent(captured(evidence, 'p_20_plus'))}</td><td>{formatPercent(captured(evidence, 'p_goal'))}</td><td>{formatPercent(captured(evidence, 'p_assist'))}</td><td>{formatPercent(captured(evidence, 'p_clean_sheet'))}</td><td>{formatPercent(captured(evidence, 'p_dc'))}</td><td>{formatPercent(captured(evidence, 'p_bonus'))}</td></tr>;
+function InsightCard({ workspace, playerId, position, evidence, onPlayer }: { workspace: FplWorkspaceApi; playerId: number; position: string; evidence: PlayerEvidence | undefined; onPlayer: (id: number) => void }) {
+  const name = playerName(workspace, playerId) ?? `Player ${playerId}`;
+  const metrics = [
+    ['xPts', formatNumber(captured(evidence, 'expected_points'), 1)], ['xMin', formatNumber(captured(evidence, 'expected_minutes'), 0)], ['Start', formatPercent(captured(evidence, 'p_start'))], ['Blank', formatPercent(captured(evidence, 'p_blank'))],
+    ['10+', formatPercent(captured(evidence, 'p_10_plus'))], ['15+', formatPercent(captured(evidence, 'p_15_plus'))], ['20+', formatPercent(captured(evidence, 'p_20_plus'))], ['Goal', formatPercent(captured(evidence, 'p_goal'))],
+    ['Assist', formatPercent(captured(evidence, 'p_assist'))], ['CS', formatPercent(captured(evidence, 'p_clean_sheet'))], ['DC', formatPercent(captured(evidence, 'p_dc'))], ['Bonus', formatPercent(captured(evidence, 'p_bonus'))],
+  ];
+  return <button type="button" className="v3-compact-card v3-player-intel-card" onClick={() => onPlayer(playerId)} aria-label={`Open ${name} intelligence`}>
+    <span className="v3-card-meta"><b>{position}</b><small>{evidence?.status === 'CAPTURED' ? 'Frozen' : 'Missing evidence'}</small></span>
+    <strong className="v3-card-player-name">{name}</strong>
+    <span className="v3-metric-cluster">{metrics.map(([label, value]) => <span key={label}><small>{label}</small><b>{value}</b></span>)}</span>
+  </button>;
 }
 
-function HomeFixtureRow({ fixture }: { fixture: WorkspaceFixture }) {
-  return <div className="v3-fixture-row" data-phase={fixture.phase}><time>{formatKickoff(fixture.kickoff_at)}</time><span className="v3-phase-dot">{phaseLabel(fixture.phase)}</span><strong>{fixture.home_team ?? 'Home'}</strong><b>{fixture.phase === 'FUTURE' ? 'vs' : `${fixture.home_score ?? '–'}–${fixture.away_score ?? '–'}`}</b><strong>{fixture.away_team ?? 'Away'}</strong></div>;
+function HomeFixtureCard({ fixture }: { fixture: WorkspaceFixture }) {
+  return <article className="v3-compact-card v3-fixture-mini-card" data-phase={fixture.phase}>
+    <div className="v3-card-meta"><time>{formatKickoff(fixture.kickoff_at)}</time><span className="v3-phase-text" data-phase={fixture.phase}>{phaseLabel(fixture.phase)}</span></div>
+    <div className="v3-fixture-teams"><strong>{fixture.home_team ?? 'Home'}</strong><b>{fixture.phase === 'FUTURE' ? 'vs' : `${fixture.home_score ?? '–'}–${fixture.away_score ?? '–'}`}</b><strong>{fixture.away_team ?? 'Away'}</strong></div>
+  </article>;
 }
 
-function PlayerButton({ id, name, onClick }: { id: number; name: string; onClick: (id: number) => void }) { return <button type="button" className="v3-player-link" onClick={() => onClick(id)}>{name}</button>; }
 function rankedEvidence(workspace: FplWorkspaceApi) { return (workspace.decision_snapshot?.player_evidence ?? []).filter((row) => row.status === 'CAPTURED').map((evidence) => ({ playerId: evidence.player_id, evidence })).sort((a, b) => (captured(b.evidence, 'p_10_plus') ?? -1) - (captured(a.evidence, 'p_10_plus') ?? -1)); }
 function playerName(workspace: FplWorkspaceApi, id: number | null): string | null { if (id == null) return null; return workspace.players.find((player) => player.player_id === id)?.name ?? workspace.recommendation?.squad.find((player) => player.player_id === id)?.name ?? null; }
 function captured(evidence: PlayerEvidence | undefined, key: keyof PlayerEvidence): number | null { if (!evidence || evidence.status !== 'CAPTURED') return null; const value = evidence[key]; return typeof value === 'number' && Number.isFinite(value) ? value : null; }

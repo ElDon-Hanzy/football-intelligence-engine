@@ -13,6 +13,27 @@ export type HistoricalPlayer = {
   p20?: number | null;
 };
 
+export type HistoricalPlayerOutcome = {
+  player_id?: number;
+  total_points?: number | null;
+  minutes?: number | null;
+  goals?: number | null;
+  assists?: number | null;
+  bonus?: number | null;
+};
+
+export type HistoricalPrediction = {
+  id: number;
+  name?: string | null;
+  team?: string | null;
+  position?: string | null;
+  expected_points?: number | null;
+  expected_minutes?: number | null;
+  p_10_plus?: number | null;
+  actual?: HistoricalPlayerOutcome | null;
+  actual_status?: string | null;
+};
+
 export type HistoricalFixture = {
   match_id: number;
   kickoff_time: string;
@@ -48,6 +69,7 @@ export type HistoricalFplPayload = {
     bench?: HistoricalPlayer[];
     recommendations?: Record<string, unknown> | null;
   } | null;
+  all_predictions?: HistoricalPrediction[];
   fixture_results?: HistoricalFixture[];
 };
 

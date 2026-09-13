@@ -5,12 +5,13 @@ import { fetchFplWorkspace } from '../api/fplWorkspace';
 
 type LoadState = { calls: CoreMarketsPayload | null; fixtures: MatchFixture[]; loading: boolean; error: string | null };
 
-export function MarketsPage() {
+export function MarketsPage({ gameweek = 0 }: { gameweek?: number }) {
   const [state, setState] = useState<LoadState>({ calls: null, fixtures: [], loading: true, error: null });
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetchFplWorkspace(0, controller.signal)
+    setState({ calls: null, fixtures: [], loading: true, error: null });
+    void fetchFplWorkspace(gameweek, controller.signal)
       .then(async (workspace) => {
         const [calls, matches] = await Promise.all([
           fetchCoreMarkets(workspace.gameweek, controller.signal),
@@ -23,7 +24,7 @@ export function MarketsPage() {
         setState({ calls: null, fixtures: [], loading: false, error: reason instanceof Error ? reason.message : String(reason) });
       });
     return () => controller.abort();
-  }, []);
+  }, [gameweek]);
 
   const fixtureById = useMemo(() => new Map(state.fixtures.map((fixture) => [fixture.match_id, fixture])), [state.fixtures]);
 
@@ -32,7 +33,7 @@ export function MarketsPage() {
 
   return <div className="v3-product-page v3-dense-page" data-page="markets">
     <header className="v3-compact-header">
-      <div><span className="v3-kicker">GW{state.calls.gameweek} · frozen run #{state.calls.prediction_run_id}</span><h1>Four core market predictions</h1></div>
+      <div><span className="v3-kicker">Gameweek {state.calls.gameweek} · frozen predictions</span><h1>Four core market predictions</h1></div>
       <small>{formatTimestamp(state.calls.generated_at)}</small>
     </header>
 

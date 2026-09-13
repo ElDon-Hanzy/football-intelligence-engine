@@ -16,7 +16,7 @@ export type PitchPlayer = {
   vice: boolean;
 };
 
-export type PitchMetricMode = 'projection' | 'realized';
+export type PitchMetricMode = 'projection' | 'comparison';
 export type PlayerSelect = ((player: PitchPlayer) => void) | undefined;
 
 const positionOrder = ['GKP', 'DEF', 'MID', 'FWD'] as const;
@@ -224,22 +224,25 @@ function CaptainMarkers({ player }: { player: PitchPlayer }) {
 }
 
 function metricPrimary(player: PitchPlayer, metricMode: PitchMetricMode): string {
-  if (metricMode === 'realized') {
-    if (player.actualStatus === 'FINAL' && player.actualPoints != null) return `${player.actualPoints} pts`;
-    if (player.actualStatus === 'LIVE' && player.actualPoints != null) return `${player.actualPoints} pts`;
-    if (player.actualStatus === 'PARTIAL' && player.actualPoints != null) return `${player.actualPoints} pts`;
+  if (metricMode === 'comparison') {
+    if (player.actualPoints != null) return `${player.actualPoints} pts`;
     if (player.actualStatus === 'LIVE' || player.fixturePhase === 'LIVE') return 'LIVE';
-    return 'Pending';
+    return '— pts';
   }
   return player.expectedPoints == null ? '— xPts' : `${player.expectedPoints.toFixed(1)} xPts`;
 }
 
 function metricSecondary(player: PitchPlayer, metricMode: PitchMetricMode): string {
-  if (metricMode === 'realized') {
-    if (player.actualStatus === 'FINAL') return 'Final FPL points';
-    if (player.actualStatus === 'LIVE') return 'Live · provisional';
-    if (player.actualStatus === 'PARTIAL') return 'Partial · provisional';
-    return 'Fixture not played';
+  if (metricMode === 'comparison') {
+    const projection = player.expectedPoints == null ? 'xPts —' : `${player.expectedPoints.toFixed(1)} xPts`;
+    if (player.actualPoints != null && player.expectedPoints != null) {
+      const delta = player.actualPoints - player.expectedPoints;
+      return `${projection} · ${delta >= 0 ? '+' : ''}${delta.toFixed(1)}`;
+    }
+    if (player.actualStatus === 'FINAL') return `${projection} · final`;
+    if (player.actualStatus === 'LIVE') return `${projection} · live`;
+    if (player.actualStatus === 'PARTIAL') return `${projection} · partial`;
+    return `${projection} · pending`;
   }
 
   const minutes = player.expectedMinutes == null ? 'xMin —' : `${Math.round(player.expectedMinutes)} xMin`;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchHistoricalFpl, type HistoricalFixture, type HistoricalFplPayload, type HistoricalPlayer } from '../api/historicalFpl';
 import { V3Dialog } from './V3Dialog';
 
@@ -11,29 +11,25 @@ function useHistorical(gameweek: number): LoadState {
   return { data, loading, error, reload: () => setNonce((value) => value + 1) };
 }
 
-export function HistoryPage() {
-  const metadata = useHistorical(0);
-  const available = useMemo(() => (metadata.data?.available_gameweeks ?? []).filter((item) => item.historical_projection_valid && item.gameweek < (metadata.data?.gameweek ?? 99)).sort((a, b) => a.gameweek - b.gameweek), [metadata.data]);
-  const [selectedGameweek, setSelectedGameweek] = useState(0); const [selectedPlayer, setSelectedPlayer] = useState<HistoricalPlayer | null>(null);
-  useEffect(() => { if (selectedGameweek === 0 && available.length) setSelectedGameweek(available[available.length - 1]!.gameweek); }, [available, selectedGameweek]);
-  const history = useHistorical(selectedGameweek);
-  if (metadata.loading || selectedGameweek === 0) return <HistorySkeleton />;
-  if (metadata.error || !metadata.data) return <HistoryError title="History index unavailable" message={metadata.error} retry={metadata.reload} />;
+export function HistoryPage({ gameweek = 0 }: { gameweek?: number }) {
+  const history = useHistorical(gameweek);
+  const [selectedPlayer, setSelectedPlayer] = useState<HistoricalPlayer | null>(null);
+  useEffect(() => setSelectedPlayer(null), [gameweek]);
   if (history.loading) return <HistorySkeleton />;
-  if (history.error || !history.data) return <HistoryError title={`GW${selectedGameweek} history unavailable`} message={history.error} retry={history.reload} />;
+  if (history.error || !history.data) return <HistoryError title={`${gameweek > 0 ? `GW${gameweek}` : 'Gameweek'} history unavailable`} message={history.error} retry={history.reload} />;
 
   const data = history.data; const xi = data.decision?.starting_xi ?? []; const bench = data.decision?.bench ?? []; const squad = [...xi, ...bench];
   const calls = evaluateFixtureCalls(data.fixture_results ?? []); const captain = squad.find((player) => player.id === data.decision?.captain_player_id) ?? null;
   const capturedXpts = xi.map((player) => nullableNumber(player.xPts)); const completeXpts = xi.length > 0 && capturedXpts.every((value) => value != null); const totalXpts = completeXpts ? capturedXpts.reduce((sum, value) => sum + (value ?? 0), 0) : null;
+  const fixtures = data.fixture_results ?? []; const finalFixtures = fixtures.filter((fixture) => fixture.finished).length;
 
   return <div className="v3-product-page v3-dense-page" data-page="history">
-    <header className="v3-compact-header"><div><span className="v3-kicker">Frozen decision journal</span><h1>History</h1></div><small>GW{data.gameweek} · {data.snapshot_stage ?? 'Historical'}</small></header>
-    <div className="v3-history-gw" aria-label="Select historical Gameweek">{available.map((item) => <button key={item.gameweek} type="button" className={item.gameweek === selectedGameweek ? 'is-active' : ''} onClick={() => setSelectedGameweek(item.gameweek)}>GW{item.gameweek}</button>)}</div>
+    <header className="v3-compact-header"><div><span className="v3-kicker">Gameweek {data.gameweek} review</span><h1>History</h1></div><small>{data.snapshot_stage ?? 'Decision snapshot'}</small></header>
 
-    <section className="v3-compact-stats" aria-label="Historical summary">
-      <div><span>Frozen run</span><strong>#{data.prediction_run_id ?? '—'}</strong></div>
+    <section className="v3-compact-stats" aria-label="Gameweek history summary">
       <div><span>XI xPts</span><strong>{totalXpts == null ? '—' : totalXpts.toFixed(1)}</strong></div>
       <div><span>Captain</span><strong>{captain?.name ?? '—'}</strong></div>
+      <div><span>Fixtures</span><strong>{finalFixtures}/{fixtures.length} final</strong></div>
       <div><span>1X2 audit</span><strong>{calls.assessed ? `${calls.aligned}/${calls.assessed}` : '—'}</strong></div>
     </section>
 
@@ -44,11 +40,12 @@ export function HistoryPage() {
 
     <section aria-labelledby="history-fixtures-heading">
       <div className="v3-section-head"><div><span className="v3-kicker">Fixture audit</span><h2 id="history-fixtures-heading">Frozen calls vs final results</h2></div><small>No-edge is displayed as DRAW</small></div>
-      <div className="v3-card-grid v3-card-grid--history-matches">{(data.fixture_results ?? []).map((fixture) => <HistoricalMatchCard key={fixture.match_id} fixture={fixture} />)}</div>
+      <div className="v3-card-grid v3-card-grid--history-matches">{fixtures.map((fixture) => <HistoricalMatchCard key={fixture.match_id} fixture={fixture} />)}</div>
     </section>
 
     {!data.historical_projection_valid ? <aside className="v3-compact-note" role="note"><strong>Audit only.</strong><span>This snapshot is excluded from historical forward evaluation.</span></aside> : null}
-    {selectedPlayer ? <HistoricalPlayerModal player={selectedPlayer} open onClose={() => setSelectedPlayer(null)} gameweek={data.gameweek} runId={data.prediction_run_id ?? null} /> : null}
+    <details className="v3-data-details v3-surface"><summary>Data details</summary><div className="v3-data-details-grid"><div><span>Projection run</span><strong>#{data.prediction_run_id ?? '—'}</strong></div><div><span>Snapshot stage</span><strong>{data.snapshot_stage ?? '—'}</strong></div><div><span>Projection validity</span><strong>{data.historical_projection_valid ? 'Valid' : 'Audit only'}</strong></div></div><p>Historical evidence remains chronology-safe. Current player metadata is not backfilled into past decisions.</p></details>
+    {selectedPlayer ? <HistoricalPlayerModal player={selectedPlayer} open onClose={() => setSelectedPlayer(null)} gameweek={data.gameweek} /> : null}
   </div>;
 }
 
@@ -71,7 +68,7 @@ function HistoricalMatchCard({ fixture }: { fixture: HistoricalFixture }) {
   </article>;
 }
 
-function HistoricalPlayerModal({ player, open, onClose, gameweek, runId }: { player: HistoricalPlayer; open: boolean; onClose: () => void; gameweek: number; runId: number | null }) { return <V3Dialog open={open} onClose={onClose} title={player.name} eyebrow={`GW${gameweek} · ${player.team ?? '—'} · ${player.position ?? '—'}`}><section className="v3-modal-section"><div className="v3-modal-section-head"><span className="v3-kicker">Frozen historical projection</span><small>{runId ? `Run #${runId}` : 'Run unavailable'}</small></div><div className="v3-modal-metric-grid"><Metric label="xPts" value={formatNumber(nullableNumber(player.xPts), 1)} /><Metric label="P10+" value={formatPercent(nullableProbability(player.p10))} /><Metric label="P15+" value={formatPercent(nullableProbability(player.p15))} /><Metric label="P20+" value={formatPercent(nullableProbability(player.p20))} /></div><p className="v3-modal-note">Only evidence captured in the historical contract is shown. Current player metadata is not backfilled.</p></section></V3Dialog>; }
+function HistoricalPlayerModal({ player, open, onClose, gameweek }: { player: HistoricalPlayer; open: boolean; onClose: () => void; gameweek: number }) { return <V3Dialog open={open} onClose={onClose} title={player.name} eyebrow={`GW${gameweek} · ${player.team ?? '—'} · ${player.position ?? '—'}`}><section className="v3-modal-section"><div className="v3-modal-section-head"><span className="v3-kicker">Frozen historical projection</span><small>Decision-time evidence</small></div><div className="v3-modal-metric-grid"><Metric label="xPts" value={formatNumber(nullableNumber(player.xPts), 1)} /><Metric label="P10+" value={formatPercent(nullableProbability(player.p10))} /><Metric label="P15+" value={formatPercent(nullableProbability(player.p15))} /><Metric label="P20+" value={formatPercent(nullableProbability(player.p20))} /></div><p className="v3-modal-note">Only evidence captured in the historical contract is shown. Current player metadata is not backfilled.</p></section></V3Dialog>; }
 function Metric({ label, value }: { label: string; value: string }) { return <div><span>{label}</span><strong>{value}</strong></div>; }
 function evaluateFixtureCalls(fixtures: HistoricalFixture[]) { let assessed = 0; let aligned = 0; for (const fixture of fixtures) { const call = fixtureCall(fixture); const actual = actualOutcome(fixture); if (!call || !actual) continue; assessed += 1; if (call.code === actual) aligned += 1; } return { assessed, aligned }; }
 function fixtureCall(fixture: HistoricalFixture): HistoricalCall | null { const markets = fixture.prediction?.markets; const h = nullableProbability(markets?.home_win); const d = nullableProbability(markets?.draw); const a = nullableProbability(markets?.away_win); if (h == null || d == null || a == null) return null; const rows = [{ code: 'H' as const, probability: h }, { code: 'D' as const, probability: d }, { code: 'A' as const, probability: a }].sort((x, y) => y.probability - x.probability); const top = rows[0]!; const second = rows[1]!; const margin = top.probability - second.probability; const noEdge = !((top.probability >= 0.5 && margin >= 0.08) || (top.probability >= 0.4 && margin >= 0.04)); if (noEdge) return { code: 'D', label: 'DRAW', probability: d, state: 'no-edge' }; return { code: top.code, label: top.code === 'H' ? `${fixture.home_team ?? 'Home'} win` : top.code === 'A' ? `${fixture.away_team ?? 'Away'} win` : 'DRAW', probability: top.probability, state: 'edge' }; }

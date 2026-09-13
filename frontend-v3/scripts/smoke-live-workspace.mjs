@@ -105,6 +105,45 @@ if (failures.length) {
   process.exit(1);
 }
 
+const benchmarkSchedule = async (mode, run) => {
+  const nonce = `c0268-${mode}-${run}-${Date.now()}`;
+  const started = performance.now();
+  const catalogPromise = timedFetch(`${apiRoot}/gameweek-status-api?bench=${nonce}`);
+  const workspacePromise = timedFetch(`${workspaceEndpoint}?bench=${nonce}`);
+
+  if (mode === 'new') {
+    const actualPromise = timedFetch(`${apiRoot}/fpl-v3-actual-live-api?bench=${nonce}`);
+    const [catalog, workspace, actual] = await Promise.all([catalogPromise, workspacePromise, actualPromise]);
+    const gw = Number(catalog.payload?.live_gameweek);
+    if (!catalog.response.ok || !workspace.response.ok || !actual.response.ok) throw new Error(`C0268 new-schedule benchmark HTTP failure on run ${run}`);
+    if (workspace.payload?.gameweek !== gw || actual.payload?.gameweek !== gw) throw new Error(`C0268 new-schedule benchmark Gameweek mismatch on run ${run}`);
+    return Math.round(performance.now() - started);
+  }
+
+  const catalog = await catalogPromise;
+  if (!catalog.response.ok) throw new Error(`C0268 old-schedule benchmark catalog failure on run ${run}`);
+  const gw = Number(catalog.payload?.live_gameweek);
+  const actualPromise = timedFetch(`${apiRoot}/fpl-v3-actual-live-api?gw=${gw}&bench=${nonce}`);
+  const [workspace, actual] = await Promise.all([workspacePromise, actualPromise]);
+  if (!workspace.response.ok || !actual.response.ok) throw new Error(`C0268 old-schedule benchmark HTTP failure on run ${run}`);
+  if (workspace.payload?.gameweek !== gw || actual.payload?.gameweek !== gw) throw new Error(`C0268 old-schedule benchmark Gameweek mismatch on run ${run}`);
+  return Math.round(performance.now() - started);
+};
+
+const benchmarkSequence = ['old', 'new', 'new', 'old'];
+const scheduleSamples = { old: [], new: [] };
+for (let index = 0; index < benchmarkSequence.length; index += 1) {
+  const mode = benchmarkSequence[index];
+  scheduleSamples[mode].push(await benchmarkSchedule(mode, index + 1));
+}
+const median = (values) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[middle] : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
+};
+const oldScheduleMedian = median(scheduleSamples.old);
+const newScheduleMedian = median(scheduleSamples.new);
+
 const phaseCounts = Object.fromEntries(['FUTURE', 'LIVE', 'FINISHED'].map((phase) => [phase, fixtures.filter((fixture) => fixture.phase === phase).length]));
 const resultCounts = Object.fromEntries(['FINAL', 'LIVE', 'PARTIAL', 'PENDING'].map((status) => [status, actualRows.filter((row) => row.status === status).length]));
 console.log('C0257 live public-client truth smoke: PASS');
@@ -132,6 +171,13 @@ console.log(JSON.stringify({
     actual_headers: Math.round(actualCall.headersMs),
     actual_total: Math.round(actualCall.totalMs),
     catalog_plus_parallel_live_total: Math.round(endToEndMs),
+    c0268_schedule_ab: {
+      old_samples: scheduleSamples.old,
+      new_samples: scheduleSamples.new,
+      old_median: oldScheduleMedian,
+      new_median: newScheduleMedian,
+      delta_ms: newScheduleMedian - oldScheduleMedian,
+    },
   },
   historical_forecasts_rewritten: payload.semantics.historical_forecasts_rewritten,
 }));

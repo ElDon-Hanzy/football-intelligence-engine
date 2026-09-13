@@ -1,10 +1,11 @@
+import { peekGameweekCatalog } from './gameweekCatalog';
 import { fetchJsonCached } from './requestCache';
 
 export const V3_WORKSPACE_ENDPOINT =
   'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1/fpl-v3-workspace-api';
 
 const PUBLIC_SUPABASE_ANON_JWT =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub29pd2V6enN4Y3dodGp0ZGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzY0MjQsImV4cCI6MjEwMjkxMjQyNH0.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBiYXNlIiwicmVmIjoia25vb2l3ZXp6c3hjd2h0anRkYXAiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4NzMzNjQyNCwiZXhwIjoyMTAyOTEyNDI0fQ.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
 
 export type WorkspaceLifecycle = 'PRE_DEADLINE' | 'POST_DEADLINE_ACTIVE' | 'GW_COMPLETE' | 'UNKNOWN';
 export type WorkspaceFixturePhase = 'FUTURE' | 'LIVE' | 'FINISHED';
@@ -211,7 +212,8 @@ function isWorkspacePayload(value: unknown): value is FplWorkspaceApi {
 }
 
 export async function fetchFplWorkspace(gameweek = 0, signal?: AbortSignal): Promise<FplWorkspaceApi> {
-  const endpoint = gameweek > 0 ? `${V3_WORKSPACE_ENDPOINT}?gw=${gameweek}` : V3_WORKSPACE_ENDPOINT;
+  const resolvedGameweek = gameweek > 0 ? gameweek : peekGameweekCatalog()?.currentGameweek ?? 0;
+  const endpoint = resolvedGameweek > 0 ? `${V3_WORKSPACE_ENDPOINT}?gw=${resolvedGameweek}` : V3_WORKSPACE_ENDPOINT;
   const payload = await fetchJsonCached(endpoint, {
     headers: {
       Authorization: `Bearer ${PUBLIC_SUPABASE_ANON_JWT}`,

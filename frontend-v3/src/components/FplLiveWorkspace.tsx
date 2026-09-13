@@ -8,7 +8,14 @@ import { PlayerIntelligenceModal } from './PlayerIntelligenceModal';
 type StateMode = 'recommendation' | 'actual' | 'live';
 type ViewMode = 'pitch' | 'list';
 
-export function FplLiveWorkspace() {
+type XiScoreComparison = {
+  projectedPoints: number | null;
+  projectedCoverage: number;
+  actualPoints: number | null;
+  actualCoverage: number;
+};
+
+export function FplLiveWorkspace({ gameweek = 0 }: { gameweek?: number }) {
   const [workspace, setWorkspace] = useState<FplWorkspaceApi | null>(null);
   const [live, setLive] = useState<ActualLiveApi | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,7 +28,8 @@ export function FplLiveWorkspace() {
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    void fetchFplWorkspace(0, controller.signal)
+    setSelectedPlayerId(null);
+    void fetchFplWorkspace(gameweek, controller.signal)
       .then(async (current) => {
         const actual = await fetchActualLive(current.gameweek, controller.signal);
         setWorkspace(current);
@@ -34,11 +42,11 @@ export function FplLiveWorkspace() {
         setLoading(false);
       });
     return () => controller.abort();
-  }, []);
+  }, [gameweek]);
 
   if (loading) return <WorkspaceSkeleton />;
   if (error || !workspace || !live) {
-    return <section className="v3-surface v3-workspace-error" aria-live="polite"><span className="v3-kicker">V3 truth gate</span><h1>FPL workspace is unavailable.</h1><p>{error ?? 'The actual/live contract could not be resolved.'}</p><p>No engine squad will be substituted for missing submitted-team evidence.</p></section>;
+    return <section className="v3-surface v3-workspace-error" aria-live="polite"><span className="v3-kicker">FPL</span><h1>FPL workspace is unavailable.</h1><p>{error ?? 'The actual/live contract could not be resolved.'}</p><p>No engine squad will be substituted for missing submitted-team evidence.</p></section>;
   }
 
   return <WorkspaceContent
@@ -75,6 +83,7 @@ function WorkspaceContent({
   const recommendation = workspace.recommendation;
   const actualVerified = live.actual.verification_status === 'VERIFIED';
   const isActualLane = stateMode === 'actual' || stateMode === 'live';
+  const score = useMemo(() => buildXiScoreComparison(workspace, live), [workspace, live]);
 
   const resolved = useMemo(() => {
     if (isActualLane) {
@@ -91,39 +100,34 @@ function WorkspaceContent({
     };
   }, [isActualLane, live, recommendation, workspace]);
 
-  const metricMode: PitchMetricMode = stateMode === 'live' ? 'realized' : 'projection';
-  const stateTitle = stateMode === 'recommendation' ? 'Engine recommendation' : stateMode === 'actual' ? 'Actual submitted team' : 'Live actual squad';
+  const metricMode: PitchMetricMode = isActualLane ? 'comparison' : 'projection';
+  const stateTitle = stateMode === 'recommendation' ? 'Engine recommendation' : stateMode === 'actual' ? 'My submitted team' : 'Live team';
   const stateDescription = stateMode === 'recommendation'
-    ? recommendation ? `Frozen publication #${recommendation.publication_id}. This is decision intelligence, not proof of execution.` : 'No current recommendation is available.'
+    ? recommendation ? 'The engine’s frozen pre-deadline recommendation.' : 'No engine recommendation is available for this Gameweek.'
     : stateMode === 'actual'
-      ? actualVerified ? 'Automatically verified from the public FPL picks endpoint after Gameweek lock.' : 'Actual submitted team not verified'
-      : actualVerified ? 'Realized FPL results for the actual submitted XI and bench. Engine-selected players are not substituted here.' : 'Actual submitted team not verified';
+      ? actualVerified ? 'The team submitted to FPL at the Gameweek lock.' : 'Actual submitted team not verified'
+      : actualVerified ? 'Your submitted team with realized points compared against its frozen xPts.' : 'Actual submitted team not verified';
 
   return (
     <div className="v3-fpl-workspace">
       <section className="v3-fpl-hero">
         <div>
-          <span className="v3-kicker">Gameweek {workspace.gameweek} · {lifecycleLabel(workspace.lifecycle)}</span>
-          <h1 className="v3-display">Pick the state. Read the pitch.</h1>
+          <span className="v3-kicker">Gameweek {workspace.gameweek}</span>
+          <h1 className="v3-display">Your Gameweek</h1>
           <p>{stateDescription}</p>
         </div>
         <div className="v3-fpl-hero-status">
-          <span className="v3-status" data-tone={actualVerified ? 'positive' : 'neutral'}>{actualVerified ? 'Actual team verified from FPL' : 'Actual team not verified'}</span>
-          <span className="v3-status" data-tone={recommendation?.execution_authorized ? 'positive' : 'warning'}>{recommendation?.execution_authorized ? 'Execution authorized' : 'Engine call not execution-authorized'}</span>
+          <span className="v3-status" data-tone={actualVerified ? 'positive' : 'neutral'}>{actualVerified ? 'Submitted team verified' : 'Team not verified'}</span>
+          <span className="v3-status" data-tone={workspace.lifecycle === 'POST_DEADLINE_ACTIVE' ? 'intelligence' : 'neutral'}>{lifecycleLabel(workspace.lifecycle)}</span>
         </div>
       </section>
 
-      <section className="v3-lifecycle-strip" aria-label="Gameweek state">
-        <div><span>Lifecycle</span><strong>{lifecycleLabel(workspace.lifecycle)}</strong></div>
-        <div><span>Actual source</span><strong>{actualVerified ? 'FPL locked picks' : 'Not verified'}</strong></div>
-        <div><span>Result snapshot</span><strong>{live.result_snapshot?.observed_at ? formatTimestamp(live.result_snapshot.observed_at) : 'Unavailable'}</strong></div>
-        <div><span>Projection snapshot</span><strong>{workspace.decision_snapshot ? `Run #${workspace.decision_snapshot.prediction_run_id}` : 'Unavailable'}</strong></div>
-      </section>
+      <FplScorecard score={score} actualVerified={actualVerified} />
 
       <div className="v3-fpl-controls">
         <div className="v3-state-tabs" role="tablist" aria-label="FPL state">
           <Tab active={stateMode === 'recommendation'} onClick={() => setStateMode('recommendation')}>Engine</Tab>
-          <Tab active={stateMode === 'actual'} onClick={() => setStateMode('actual')}>Actual</Tab>
+          <Tab active={stateMode === 'actual'} onClick={() => setStateMode('actual')}>My team</Tab>
           <Tab active={stateMode === 'live'} onClick={() => setStateMode('live')}>Live</Tab>
         </div>
         <div className="v3-view-toggle" aria-label="Squad view">
@@ -134,12 +138,11 @@ function WorkspaceContent({
 
       <section className="v3-surface v3-squad-stage" aria-labelledby="v3-state-title">
         <div className="v3-squad-stage-head">
-          <div><span className="v3-kicker">{stateMode === 'live' ? 'Actual submitted squad · realized FPL evidence' : 'Selection'}</span><h2 id="v3-state-title">{stateTitle}</h2></div>
-          {stateMode === 'recommendation' && recommendation ? <span className="v3-authorization" data-authorized={recommendation.execution_authorized}>{recommendation.authorization_label.replaceAll('_', ' ')}</span> : null}
+          <div><span className="v3-kicker">{stateMode === 'live' ? 'xPts vs actual points' : 'Selection'}</span><h2 id="v3-state-title">{stateTitle}</h2></div>
         </div>
 
         {isActualLane && !actualVerified ? (
-          <div className="v3-actual-unverified" role="status"><span className="v3-unverified-icon" aria-hidden="true">?</span><div><span className="v3-kicker">Truth boundary</span><h3>Actual submitted team not verified</h3><p>The engine recommendation is intentionally not substituted into Actual or Live.</p></div></div>
+          <div className="v3-actual-unverified" role="status"><span className="v3-unverified-icon" aria-hidden="true">?</span><div><span className="v3-kicker">Submitted team</span><h3>Actual submitted team not verified</h3><p>The engine recommendation is intentionally not substituted into My team or Live.</p></div></div>
         ) : resolved.starters.length === 0 ? (
           <div className="v3-empty-state"><strong>No complete selection is available for this state.</strong><span>Missing players are not reconstructed from another lane.</span></div>
         ) : viewMode === 'pitch' ? (
@@ -152,23 +155,45 @@ function WorkspaceContent({
       {stateMode === 'recommendation' && recommendation ? <EngineSummary workspace={workspace} /> : null}
       {stateMode === 'live' && actualVerified ? <LiveTruthStrip live={live} /> : null}
       <FixtureRail workspace={workspace} />
-
-      <section className="v3-provenance-note">
-        <div><span>State separation</span><strong>Engine ≠ Actual ≠ Live result</strong></div>
-        <p>Actual is pulled only after FPL lock. Live uses only that verified submitted squad. Frozen xPts remain decision-time evidence and are never relabelled as live probabilities.</p>
-      </section>
+      <DataDetails workspace={workspace} live={live} actualVerified={actualVerified} />
 
       <PlayerIntelligenceModal open={selectedPlayerId != null} onClose={() => setSelectedPlayerId(null)} playerId={selectedPlayerId} workspace={workspace} live={live} />
     </div>
   );
 }
 
+function FplScorecard({ score, actualVerified }: { score: XiScoreComparison; actualVerified: boolean }) {
+  const completeComparison = score.projectedPoints != null && score.actualCoverage === 11;
+  const difference = completeComparison && score.actualPoints != null ? score.actualPoints - score.projectedPoints! : null;
+  return <section className="v3-fpl-scorecard v3-surface" aria-label="Projected xPTS versus Actual PTS">
+    <div className="v3-fpl-scoremetric" data-metric="xpts"><span>XI xPTS</span><strong>{score.projectedPoints == null ? '—' : score.projectedPoints.toFixed(1)}</strong><small>{score.projectedPoints == null ? `${score.projectedCoverage}/11 projections captured` : 'Frozen pre-deadline projection'}</small></div>
+    <div className="v3-fpl-scoremetric" data-metric="actual"><span>Actual PTS</span><strong>{!actualVerified || score.actualPoints == null ? '—' : String(score.actualPoints)}</strong><small>{!actualVerified ? 'Submitted team not verified' : `${score.actualCoverage}/11 players reported`}</small></div>
+    <div className="v3-fpl-scoremetric" data-metric="delta"><span>vs xPTS</span><strong>{difference == null ? '—' : `${difference >= 0 ? '+' : ''}${difference.toFixed(1)}`}</strong><small>{difference == null ? 'Shown when all XI points are available' : 'Actual minus projected'}</small></div>
+    <p>Raw submitted-XI comparison. Captain multiplier and automatic substitutions are not applied here.</p>
+  </section>;
+}
+
+function DataDetails({ workspace, live, actualVerified }: { workspace: FplWorkspaceApi; live: ActualLiveApi; actualVerified: boolean }) {
+  return <details className="v3-data-details v3-surface">
+    <summary>Data details</summary>
+    <div className="v3-data-details-grid">
+      <div><span>Lifecycle</span><strong>{lifecycleLabel(workspace.lifecycle)}</strong></div>
+      <div><span>Actual source</span><strong>{actualVerified ? 'FPL locked picks' : 'Not verified'}</strong></div>
+      <div><span>Result snapshot</span><strong>{live.result_snapshot?.observed_at ? formatTimestamp(live.result_snapshot.observed_at) : 'Unavailable'}</strong></div>
+      <div><span>Projection snapshot</span><strong>{workspace.decision_snapshot ? `Run #${workspace.decision_snapshot.prediction_run_id}` : 'Unavailable'}</strong></div>
+      <div><span>Engine execution</span><strong>{workspace.recommendation?.execution_authorized ? 'Authorized' : 'Not execution-authorized'}</strong></div>
+    </div>
+    <p>Engine recommendation, submitted team and live result remain separate. Frozen xPts stay decision-time evidence and are never rewritten after kickoff.</p>
+  </details>;
+}
+
 function EngineSummary({ workspace }: { workspace: FplWorkspaceApi }) {
   const recommendation = workspace.recommendation;
   if (!recommendation) return null;
+  const captain = playerName(workspace, recommendation.captain_player_id);
   return <section className="v3-recommendation-grid" aria-label="Engine recommendation details">
     <article className="v3-surface v3-summary-card"><span className="v3-kicker">Recommended action</span><h3>{recommendation.transfers.length ? `${recommendation.transfers.length} transfers` : 'ROLL / no transfer'}</h3><div className="v3-transfer-list">{recommendation.transfers.length ? recommendation.transfers.map((transfer, index) => <div key={index}><span>{readString(transfer.out_name) ?? `Player ${readNumber(transfer.out_player_id) ?? '—'}`}</span><b aria-hidden="true">→</b><strong>{readString(transfer.in_name) ?? `Player ${readNumber(transfer.in_player_id) ?? '—'}`}</strong></div>) : <p>No transfer attached.</p>}</div></article>
-    <article className="v3-surface v3-summary-card"><span className="v3-kicker">Engine post-action state</span><div className="v3-number-grid"><Summary label="FT" value={recommendation.manager_economy?.free_transfers == null ? '—' : String(recommendation.manager_economy.free_transfers)} /><Summary label="Bank" value={recommendation.manager_economy?.bank_tenths == null ? '—' : `£${(recommendation.manager_economy.bank_tenths / 10).toFixed(1)}m`} /><Summary label="Chip" value={recommendation.chip && recommendation.chip !== 'NONE' ? recommendation.chip : 'None'} /><Summary label="Publication" value={`#${recommendation.publication_id}`} /></div></article>
+    <article className="v3-surface v3-summary-card"><span className="v3-kicker">After recommended action</span><div className="v3-number-grid"><Summary label="FT" value={recommendation.manager_economy?.free_transfers == null ? '—' : String(recommendation.manager_economy.free_transfers)} /><Summary label="Bank" value={recommendation.manager_economy?.bank_tenths == null ? '—' : `£${(recommendation.manager_economy.bank_tenths / 10).toFixed(1)}m`} /><Summary label="Chip" value={recommendation.chip && recommendation.chip !== 'NONE' ? recommendation.chip : 'None'} /><Summary label="Captain" value={captain ?? '—'} /></div></article>
   </section>;
 }
 
@@ -176,12 +201,27 @@ function LiveTruthStrip({ live }: { live: ActualLiveApi }) {
   const final = live.player_actuals.filter((item) => item.status === 'FINAL').length;
   const provisional = live.player_actuals.filter((item) => item.status === 'LIVE' || item.status === 'PARTIAL').length;
   const pending = live.player_actuals.filter((item) => item.status === 'PENDING').length;
-  return <section className="v3-surface v3-live-truth-strip" aria-label="Actual squad result state"><div><span>Final player fixtures</span><strong>{final}</strong></div><div><span>Live / partial</span><strong>{provisional}</strong></div><div><span>Pending</span><strong>{pending}</strong></div><p>Points shown are raw player FPL points. Captain multipliers and automatic substitutions are not applied in this audit view.</p></section>;
+  return <section className="v3-surface v3-live-truth-strip" aria-label="Actual squad result state"><div><span>Final</span><strong>{final}</strong></div><div><span>Live / partial</span><strong>{provisional}</strong></div><div><span>Pending</span><strong>{pending}</strong></div><p>Player cards show Actual PTS against the frozen xPts for the same player.</p></section>;
 }
 
 function FixtureRail({ workspace }: { workspace: FplWorkspaceApi }) {
   const fixtures = [...workspace.realized.fixtures].sort((a, b) => new Date(a.kickoff_at).getTime() - new Date(b.kickoff_at).getTime());
-  return <section className="v3-fixture-section" aria-labelledby="fixture-state-heading"><div className="v3-section-heading"><div><span className="v3-kicker">Gameweek pulse</span><h2 id="fixture-state-heading">Future, live and finished are different states.</h2></div><small>Open Matches for model calls and matchup intelligence.</small></div><div className="v3-fixture-rail">{fixtures.map((fixture) => <article className="v3-fixture-card" data-phase={fixture.phase} key={fixture.match_id}><div className="v3-fixture-card-top"><span>{fixture.phase === 'FUTURE' ? 'Upcoming' : fixture.phase === 'LIVE' ? 'Live' : 'Finished'}</span><time>{formatKickoff(fixture.kickoff_at)}</time></div><strong>{fixture.home_team ?? 'Home'} <b>{fixture.phase === 'FUTURE' ? 'vs' : `${fixture.home_score ?? '–'} : ${fixture.away_score ?? '–'}`}</b> {fixture.away_team ?? 'Away'}</strong></article>)}</div></section>;
+  return <section className="v3-fixture-section" aria-labelledby="fixture-state-heading"><div className="v3-section-heading"><div><span className="v3-kicker">Gameweek pulse</span><h2 id="fixture-state-heading">Fixtures</h2></div><small>Open Matches for predictions and matchup intelligence.</small></div><div className="v3-fixture-rail">{fixtures.map((fixture) => <article className="v3-fixture-card" data-phase={fixture.phase} key={fixture.match_id}><div className="v3-fixture-card-top"><span>{fixture.phase === 'FUTURE' ? 'Upcoming' : fixture.phase === 'LIVE' ? 'Live' : 'Finished'}</span><time>{formatKickoff(fixture.kickoff_at)}</time></div><strong>{fixture.home_team ?? 'Home'} <b>{fixture.phase === 'FUTURE' ? 'vs' : `${fixture.home_score ?? '–'} : ${fixture.away_score ?? '–'}`}</b> {fixture.away_team ?? 'Away'}</strong></article>)}</div></section>;
+}
+
+function buildXiScoreComparison(workspace: FplWorkspaceApi, live: ActualLiveApi): XiScoreComparison {
+  if (live.actual.verification_status !== 'VERIFIED') return { projectedPoints: null, projectedCoverage: 0, actualPoints: null, actualCoverage: 0 };
+  const xi = live.actual.starting_xi;
+  const evidenceById = new Map((workspace.decision_snapshot?.player_evidence ?? []).map((row) => [row.player_id, row]));
+  const actualById = new Map(live.player_actuals.map((row) => [row.player_id, row]));
+  const projections = xi.map((id) => captured(evidenceById.get(id), 'expected_points')).filter((value): value is number => value != null);
+  const actuals = xi.map((id) => actualById.get(id)?.total_points ?? null).filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+  return {
+    projectedPoints: projections.length === xi.length ? projections.reduce((sum, value) => sum + value, 0) : null,
+    projectedCoverage: projections.length,
+    actualPoints: actuals.length ? actuals.reduce((sum, value) => sum + value, 0) : null,
+    actualCoverage: actuals.length,
+  };
 }
 
 function resolveEnginePitchPlayers(ids: number[], workspace: FplWorkspaceApi, captainId: number | null, viceId: number | null): PitchPlayer[] {
@@ -220,6 +260,11 @@ function captured(evidence: PlayerEvidence | undefined, key: keyof Pick<PlayerEv
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+function playerName(workspace: FplWorkspaceApi, id: number | null): string | null {
+  if (id == null) return null;
+  return workspace.players.find((player) => player.player_id === id)?.name ?? workspace.recommendation?.squad.find((player) => player.player_id === id)?.name ?? null;
+}
+
 function Tab({ active, onClick, children }: { active: boolean; onClick: () => void; children: string }) {
   return <button className={active ? 'is-active' : ''} type="button" role="tab" aria-selected={active} onClick={onClick}>{children}</button>;
 }
@@ -232,5 +277,5 @@ function formatTimestamp(value: string): string { return new Intl.DateTimeFormat
 function formatKickoff(value: string): string { return new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value)); }
 
 function WorkspaceSkeleton() {
-  return <div className="v3-fpl-workspace" aria-busy="true" aria-label="Loading FPL workspace"><section className="v3-fpl-hero"><div><span className="v3-kicker">FPL workspace</span><h1 className="v3-display">Loading submitted-team truth…</h1></div></section><div className="v3-surface v3-skeleton-panel" /></div>;
+  return <div className="v3-fpl-workspace" aria-busy="true" aria-label="Loading FPL workspace"><section className="v3-fpl-hero"><div><span className="v3-kicker">FPL</span><h1 className="v3-display">Loading Gameweek…</h1></div></section><div className="v3-surface v3-skeleton-panel" /></div>;
 }

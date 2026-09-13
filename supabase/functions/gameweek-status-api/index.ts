@@ -27,15 +27,17 @@ Deno.serve(async (req) => {
     if (!serviceKey) throw new Error('Missing Supabase service credential');
 
     const sb = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey, { auth: { persistSession: false } });
-    const [{ data, error }, { data: teams, error: teamsError }] = await Promise.all([
+    const [scheduleResult, teamsResult, intelligenceResult] = await Promise.all([
       sb.from('matches').select('gameweek,kickoff_time,finished').eq('source', 'fpl').gte('gameweek', 1).lte('gameweek', 38).order('gameweek').order('kickoff_time'),
       sb.from('teams').select('id,fpl_team_id,name,short_name,team_code').not('fpl_team_id', 'is', null).order('fpl_team_id'),
+      sb.from('gameweek_prediction_runs').select('gameweek').eq('frozen', true).gte('gameweek', 1).lte('gameweek', 38).order('gameweek', { ascending: false }).limit(1).maybeSingle(),
     ]);
-    if (error) throw error;
-    if (teamsError) throw teamsError;
+    if (scheduleResult.error) throw scheduleResult.error;
+    if (teamsResult.error) throw teamsResult.error;
+    if (intelligenceResult.error) throw intelligenceResult.error;
 
     const groups = new Map<number, FixtureRow[]>();
-    for (const row of (data ?? []) as FixtureRow[]) {
+    for (const row of (scheduleResult.data ?? []) as FixtureRow[]) {
       const rows = groups.get(row.gameweek) ?? [];
       rows.push(row);
       groups.set(row.gameweek, rows);
@@ -65,16 +67,19 @@ Deno.serve(async (req) => {
     const reason = activeOrNext
       ? (new Date(activeOrNext.first_kickoff).getTime() > now ? 'NEXT_UNFINISHED_GAMEWEEK' : 'ACTIVE_UNFINISHED_GAMEWEEK')
       : nextFuture ? 'NEXT_SCHEDULED_GAMEWEEK' : 'LATEST_SCHEDULED_GAMEWEEK';
+    const latestIntelligenceGameweek = Number(intelligenceResult.data?.gameweek || 0) || resolved.gameweek;
 
     return new Response(JSON.stringify({
       ok: true,
       live_gameweek: resolved.gameweek,
+      latest_intelligence_gameweek: latestIntelligenceGameweek,
       reason,
       as_of: new Date(now).toISOString(),
       schedule,
-      teams: teams ?? [],
+      teams: teamsResult.data ?? [],
       semantics: {
         live_gameweek: 'earliest unfinished league gameweek whose fixture window has not elapsed; otherwise next scheduled gameweek',
+        latest_intelligence_gameweek: 'highest Gameweek with a frozen prediction run; this does not imply a manager plan exists',
         frozen_projection_runs_do_not_define_live_gameweek: true,
         team_badge_key: 'public.teams.team_code',
       },

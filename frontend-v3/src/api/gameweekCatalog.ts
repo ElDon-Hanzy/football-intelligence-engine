@@ -2,12 +2,18 @@ import { fetchJsonCached } from './requestCache';
 
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
 const PUBLIC_SUPABASE_ANON_JWT =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub29pd2V6enN4Y3dodGp0ZGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzY0MjQsImV4cCI6MjEwMjkxMjQyNH0.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXAiLCJyZWYiOiJrbm9vaXdlenpzeGN3aHRqdGRhcCIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzg3MzM2NDI0LCJleHAiOjIxMDI5MTI0MjR9.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
 
 export type GameweekCatalog = {
   currentGameweek: number;
   latestIntelligenceGameweek: number;
 };
+
+let resolvedCatalog: GameweekCatalog | null = null;
+
+export function peekGameweekCatalog(): GameweekCatalog | null {
+  return resolvedCatalog;
+}
 
 export async function fetchGameweekCatalog(signal?: AbortSignal): Promise<GameweekCatalog> {
   const raw = await fetchJsonCached(`${API_ROOT}/gameweek-status-api`, {
@@ -23,7 +29,8 @@ export async function fetchGameweekCatalog(signal?: AbortSignal): Promise<Gamewe
   const current = finiteGameweek(payload.live_gameweek);
   const latest = finiteGameweek(payload.latest_intelligence_gameweek) ?? current;
   if (payload.ok !== true || current == null || latest == null) throw new Error('Gameweek catalog contract mismatch');
-  return { currentGameweek: current, latestIntelligenceGameweek: Math.max(current, latest) };
+  resolvedCatalog = { currentGameweek: current, latestIntelligenceGameweek: Math.max(current, latest) };
+  return resolvedCatalog;
 }
 
 function finiteGameweek(value: unknown): number | null {

@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-13 (Dubai) — after C0268 production verification_
+_Last updated: 2026-09-14 (Dubai) — after C0269 production verification_
 
 ## 1. Mission and immutable rules
 
@@ -10,7 +10,7 @@ Immutable rules: historical forecasts are append-only; completed evidence may ch
 
 Sources of truth: Supabase `knooiwezzsxcwhtjtdap`; GitHub `ElDon-Hanzy/football-intelligence-engine`; FPL entry `3559923`; engineering ledger `public.change_tracker_working`; C0213 architecture/governance surfaces.
 
-C0266–C0268 changed product serving/reliability only. The football/FPL forecast core and historical predictions were not changed.
+C0266–C0269 changed product serving/reliability only. The football/FPL forecast core and historical predictions were not changed.
 
 ## 2. Current decision architecture
 
@@ -33,7 +33,7 @@ C0248 remains the canonical sequential selector. C0240 is an adversarial benchma
 
 ## 3. Current GW4 lifecycle
 
-GW4 is **POST_DEADLINE_ACTIVE**. Current live fixture truth at this update:
+At the latest verified production smoke, GW4 was **POST_DEADLINE_ACTIVE**:
 
 - 10 fixtures total;
 - 9 finished;
@@ -66,7 +66,7 @@ Current GW4 publication:
 
 ### Verified actual submitted team
 
-C0257 subsequently captured the locked public FPL submission for GW4:
+C0257 captured the locked public FPL submission for GW4:
 
 - actual-decision id **2**;
 - source `public_fpl_api_locked_picks_c0257`;
@@ -130,7 +130,7 @@ Permanent invariants:
 
 ## 8. Current serving/runtime parity
 
-Verified live Supabase Edge Functions:
+Verified live Supabase Edge Functions from the C0267/C0269 serving baseline:
 
 - `gameweek-status-api`: **v8**, ACTIVE, custom public-client authorization in handler, `verify_jwt=false`;
 - `fpl-v3-workspace-api`: **v3**, ACTIVE, `verify_jwt=true`, bundle `88548930feebaf42b45d23cb155bf731659b5eb0ce758a791cd6dc8e13e11273`;
@@ -149,72 +149,94 @@ C0266 restored the public catalog contract. C0267 reconciled the live-proven wor
 
 Permanent lesson: browser public credentials must not be hand-edited or independently copied without parity/claim validation.
 
-## 10. C0268 verified latency optimization
+## 10. C0268 historical latency experiment — superseded in production
 
-C0268 resumed performance work from clean C0267 state rather than reviving C0264.
+C0268 resumed performance work from clean C0267 state rather than reviving C0264. It parallelized the current-page catalog, default workspace and default actual/live requests and retained strict Gameweek equality/fallback semantics.
 
-Change:
+Controlled same-run schedule A/B showed a median improvement of about **206 ms (~15%)**. C0268 passed its original PR and production acceptance gates and therefore remains historically `Completed / Verified`.
 
-- start default actual/live truth at page start alongside the current workspace/catalog;
-- reuse default actual/live only when its returned Gameweek matches the workspace Gameweek;
-- on mismatch, fetch actual/live explicitly for the workspace Gameweek;
-- keep all existing semantic/auth/history/V2 gates.
+However, post-closeout red-team revalidation later exposed a reliability regression under the simultaneous three-Edge cold-start burst:
 
-Controlled same-run schedule A/B:
+- one unchanged run returned HTTP 500 from default workspace;
+- another unchanged run returned HTTP 500 from the Gameweek catalog;
+- failures occurred from different runner regions while the underlying GW4 database dependencies remained healthy.
 
-- old: 1450 ms, 1297 ms → median **1374 ms**;
-- new: 1124 ms, 1212 ms → median **1168 ms**;
-- median improvement: **206 ms (~15%)**.
+Therefore the C0268 scheduling behavior is no longer the production baseline. Its useful credential-parity/decoded-claims protection remains active.
 
-A red-team review caught an intermediate copied-JWT issuer typo before merge. It never reached production. C0268 therefore added a permanent public-auth parity/claims gate requiring the workspace and actual-live clients to ship the same credential and decode to `iss=supabase`, the correct project ref and `role=anon`.
+## 11. C0269 active production scheduling baseline
 
-## 11. C0268 production acceptance
+C0269 supersedes the C0268 three-way cold-start behavior.
 
-PR #24 merged as:
+Production rule:
 
-`4b16fd6364d78e26af1430bed05aa8178ea736e5`
+- **maximum two cold Edge requests concurrently** on the current V3 FPL page;
+- Gameweek catalog and default workspace may start together;
+- actual/live is requested explicitly only after workspace/catalog Gameweek identity is established;
+- explicit actual/live Gameweek mismatch remains fail-closed;
+- no retry masking;
+- no auth relaxation;
+- V2 remains untouched.
 
-Final PR run: `34775557312` — PASS.
+PR #25: `C0269: rollback unsafe V3 cold-start concurrency`
 
-Production Pages run: `34775635944` — **SUCCESS**.
+PR CI run: `34777906940` — **PASS**.
 
-Production verification passed:
+Merged production commit:
 
-- V2/V3 deterministic build/typecheck;
+`1a7fffa39bb600173bd83f7d45c5e12b167546bb`
+
+Production Pages run:
+
+`34778026055` — **SUCCESS**.
+
+Every production gate passed:
+
+- V2 typecheck, unit tests, build and bundle budget;
 - V3 semantic contract;
+- V3 typecheck/build;
 - serving parity;
 - live public-client auth/contract smoke;
 - V2 E2E/accessibility;
-- V3 75-test responsive E2E/accessibility suite;
-- matching-default actual/live reuse test;
-- mismatched-default Gameweek fallback test;
-- Pages artifact isolation;
-- deployed legacy root + `/v2/` + `/v3/` HTML/JS integrity.
+- V3 responsive semantic E2E/accessibility;
+- Pages artifact verification and V2 rollback isolation;
+- GitHub Pages deployment;
+- deployed legacy root, `/v2/` and `/v3/` entrypoint verification.
 
-Production smoke during deployment confirmed GW4 `POST_DEADLINE_ACTIVE`, actual `VERIFIED`, 11 XI + 4 bench, `execution_authorized=false`, 20 recommendation evidence rows, 9 finished + 1 future fixture, 15 finalized actual rows, and `historical_forecasts_rewritten=false`.
+C0269 tracker state is **Completed / Verified**.
 
-C0268 tracker state is **Completed / Verified**.
+## 12. Performance policy from C0269 onward
 
-## 12. Performance status and next optimization boundary
+Reliability outranks small latency gains. A positive latency A/B alone is insufficient for promotion when a networked change alters concurrency or cold-start behavior.
 
-C0268 removed a client scheduling waterfall but does not prove that latency optimization is exhausted. Absolute network timings vary materially by runner region/cold state; do not compare unrelated runs as if they were controlled experiments.
+Future latency work must:
 
-Any further latency work must:
-
+- begin from the C0269 bounded-concurrency baseline;
 - use a new change ID from current `main`;
-- establish same-run or otherwise controlled evidence;
-- preserve auth and semantic gates;
-- compare against no-change baseline;
-- reject changes whose advantage is inside measurement noise;
+- compare against ROLL/no-change;
+- use same-run or otherwise controlled evidence;
+- include repeated realistic cold/concurrent availability checks;
+- preserve auth, chronology, semantic and V2 rollback gates;
+- reject any change whose benefit is inside measurement noise or whose availability behavior is not robust;
 - never reuse the C0264 branch.
 
 ## 13. Governance status
 
 - C0264: **Blocked**, PR #20 closed unmerged.
 - C0267: **Completed / Verified**.
-- C0268: **Completed / Verified**.
+- C0268: **Completed / Verified**, historical optimization superseded by C0269.
+- C0269: **Completed / Verified**, active production scheduling baseline.
 - V2 fallback: untouched operational rollback surface.
-- No model promotion, historical rewrite or retrospective authorization occurred in C0266–C0268.
+- No model promotion, historical rewrite or retrospective authorization occurred in C0266–C0269.
+
+Latest tracker governance after C0269 closeout:
+
+- `ok=true`;
+- bad change IDs: 0;
+- completed-not-verified: 0;
+- completed-without-refs: 0;
+- decision rows without refs: 0;
+- consumption-contract violations: 0;
+- cached GW4 diagnostics governance: `ok=true`.
 
 ## 14. Canonical references
 
@@ -229,3 +251,4 @@ Any further latency work must:
 - `project-management/C0263_V3_PERFORMANCE_GW_ROUTING_20260913.md`
 - `project-management/C0268_V3_INITIAL_LOAD_LATENCY_PRODUCTION_CLOSEOUT_20260913.md`
 - `project-management/C0268_DECISIONS_AND_HISTORY_ADDENDUM_20260913.md`
+- `project-management/C0269_V3_RELIABILITY_ROLLBACK_PRODUCTION_CLOSEOUT_20260914.md`

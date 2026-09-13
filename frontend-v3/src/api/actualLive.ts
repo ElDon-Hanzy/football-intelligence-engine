@@ -31,6 +31,7 @@ export type ActualLivePlayerResult = {
   fixture_ids: number[];
   status: ActualLiveStatus;
   points_are_final: boolean;
+  played: boolean | null;
   minutes: number | null;
   total_points: number | null;
   goals: number | null;
@@ -43,6 +44,8 @@ export type ActualLivePlayerResult = {
   xgi: number | null;
   xgc: number | null;
   clean_sheets: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
 };
 
 type NotVerifiedActual = {
@@ -80,7 +83,8 @@ export type ActualLiveApi = {
     engine_recommendation_is_never_used_as_actual: true;
     provisional_live_points_are_not_final: true;
     only_full_11_plus_4_actual_is_verified?: true;
-    scoring_scope: 'RAW_FPL_PLAYER_POINTS_NO_AUTO_SUBS_OR_CAPTAIN_MULTIPLIER';
+    scoring_scope: 'RAW_FPL_PLAYER_POINTS_FOR_ENGINE_AND_ACTUAL_SCENARIO_SCORING';
+    player_scope?: 'UNION_ENGINE_RECOMMENDATION_AND_VERIFIED_ACTUAL_SQUADS' | 'VERIFIED_ACTUAL_REQUIRED_FOR_COMPARISON';
   };
 };
 

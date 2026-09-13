@@ -91,22 +91,52 @@ const actualXi = actualPayload?.actual?.starting_xi;
 const actualBench = actualPayload?.actual?.bench_order;
 if (!Array.isArray(actualXi) || actualXi.length !== 11) failures.push(`expected actual XI=11, got ${Array.isArray(actualXi) ? actualXi.length : 'missing'}`);
 if (!Array.isArray(actualBench) || actualBench.length !== 4) failures.push(`expected actual bench=4, got ${Array.isArray(actualBench) ? actualBench.length : 'missing'}`);
-if (Array.isArray(actualXi) && Array.isArray(actualBench) && new Set([...actualXi, ...actualBench].map(Number)).size !== 15) failures.push('actual submitted squad is not 15 unique players');
+const actualSquad = Array.isArray(actualXi) && Array.isArray(actualBench) ? [...actualXi, ...actualBench].map(Number) : [];
+if (actualSquad.length === 15 && new Set(actualSquad).size !== 15) failures.push('actual submitted squad is not 15 unique players');
 if (actualPayload?.semantics?.engine_recommendation_is_never_used_as_actual !== true) failures.push('actual-live endpoint does not explicitly forbid engine substitution');
 if (actualPayload?.semantics?.provisional_live_points_are_not_final !== true) failures.push('actual-live endpoint does not distinguish provisional from final points');
+if (actualPayload?.semantics?.scoring_scope !== 'RAW_FPL_PLAYER_POINTS_FOR_ENGINE_AND_ACTUAL_SCENARIO_SCORING') failures.push(`unexpected scoring_scope=${actualPayload?.semantics?.scoring_scope ?? 'missing'}`);
+if (actualPayload?.semantics?.player_scope !== 'ACTUAL_PRIMARY_PLUS_ENGINE_ACTUAL_SCENARIO_UNION') failures.push(`unexpected player_scope=${actualPayload?.semantics?.player_scope ?? 'missing'}`);
+
+const actualPlayers = actualPayload?.players;
 const actualRows = actualPayload?.player_actuals;
-if (!Array.isArray(actualRows) || actualRows.length !== 15) failures.push(`expected 15 actual result rows, got ${Array.isArray(actualRows) ? actualRows.length : 'missing'}`);
-if (Array.isArray(actualRows) && actualRows.some((row) => !['FINAL', 'LIVE', 'PARTIAL', 'PENDING'].includes(row?.status))) failures.push('actual result row has invalid status');
+if (!Array.isArray(actualPlayers) || actualPlayers.length !== 15) failures.push(`expected 15 primary actual players, got ${Array.isArray(actualPlayers) ? actualPlayers.length : 'missing'}`);
+if (!Array.isArray(actualRows) || actualRows.length !== 15) failures.push(`expected 15 primary actual result rows, got ${Array.isArray(actualRows) ? actualRows.length : 'missing'}`);
+if (Array.isArray(actualPlayers) && actualSquad.length === 15) {
+  const primaryIds = new Set(actualPlayers.map((row) => Number(row?.player_id)));
+  if (actualSquad.some((id) => !primaryIds.has(id)) || primaryIds.size !== 15) failures.push('primary players are not exactly the verified submitted squad');
+}
+if (Array.isArray(actualRows) && actualRows.some((row) => !['FINAL', 'LIVE', 'PARTIAL', 'PENDING'].includes(row?.status))) failures.push('primary actual result row has invalid status');
+
+const scenarioPlayers = actualPayload?.scenario_players;
+const scenarioRows = actualPayload?.scenario_player_actuals;
+if (!Array.isArray(scenarioPlayers) || scenarioPlayers.length < 15) failures.push(`expected scenario player union >=15, got ${Array.isArray(scenarioPlayers) ? scenarioPlayers.length : 'missing'}`);
+if (!Array.isArray(scenarioRows) || scenarioRows.length < 15) failures.push(`expected scenario actual union >=15, got ${Array.isArray(scenarioRows) ? scenarioRows.length : 'missing'}`);
+if (Array.isArray(scenarioRows) && scenarioRows.some((row) => !['FINAL', 'LIVE', 'PARTIAL', 'PENDING'].includes(row?.status))) failures.push('scenario result row has invalid status');
+if (Array.isArray(scenarioPlayers) && Array.isArray(recommendationSquad) && actualSquad.length === 15) {
+  const scenarioIds = new Set(scenarioPlayers.map((row) => Number(row?.player_id)));
+  const engineIds = recommendationSquad.map((player) => Number(player?.player_id));
+  if (actualSquad.some((id) => !scenarioIds.has(id))) failures.push('scenario union does not cover every actual submitted player');
+  if (engineIds.some((id) => !scenarioIds.has(id))) failures.push('scenario union does not cover every engine recommendation player');
+  const expectedUnionSize = new Set([...actualSquad, ...engineIds]).size;
+  if (scenarioIds.size !== expectedUnionSize) failures.push(`scenario union size ${scenarioIds.size} does not match expected engine+actual union ${expectedUnionSize}`);
+}
+if (Array.isArray(scenarioPlayers) && Array.isArray(scenarioRows)) {
+  const scenarioPlayerIds = new Set(scenarioPlayers.map((row) => Number(row?.player_id)));
+  const scenarioRowIds = new Set(scenarioRows.map((row) => Number(row?.player_id)));
+  if (scenarioPlayerIds.size !== scenarioRowIds.size || [...scenarioPlayerIds].some((id) => !scenarioRowIds.has(id))) failures.push('scenario player metadata/result unions do not match');
+}
 
 if (failures.length) {
-  console.error('C0257 live public-client truth smoke: BLOCKED');
+  console.error('C0271 live public-client scenario smoke: BLOCKED');
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
 
 const phaseCounts = Object.fromEntries(['FUTURE', 'LIVE', 'FINISHED'].map((phase) => [phase, fixtures.filter((fixture) => fixture.phase === phase).length]));
 const resultCounts = Object.fromEntries(['FINAL', 'LIVE', 'PARTIAL', 'PENDING'].map((status) => [status, actualRows.filter((row) => row.status === status).length]));
-console.log('C0257 live public-client truth smoke: PASS');
+const scenarioResultCounts = Object.fromEntries(['FINAL', 'LIVE', 'PARTIAL', 'PENDING'].map((status) => [status, scenarioRows.filter((row) => row.status === status).length]));
+console.log('C0271 live public-client scenario smoke: PASS');
 console.log(JSON.stringify({
   gameweek: payload.gameweek,
   lifecycle: payload.lifecycle,
@@ -115,10 +145,13 @@ console.log(JSON.stringify({
   actual_source: actualPayload.actual.source,
   actual_xi: actualXi.length,
   actual_bench: actualBench.length,
+  primary_actual_players: actualPlayers.length,
+  scenario_union_players: scenarioPlayers.length,
   execution_authorized: payload.recommendation?.execution_authorized ?? null,
   recommendation_evidence_rows: evidence.length,
   fixture_phases: phaseCounts,
   actual_result_states: resultCounts,
+  scenario_result_states: scenarioResultCounts,
   latency_ms: {
     catalog_total: Math.round(catalogCall.totalMs),
     workspace_total: Math.round(workspaceCall.totalMs),

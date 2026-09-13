@@ -85,6 +85,8 @@ export const gw4WorkspaceFixture = {
       [98, 4.98, 85.59, 0.103], [29, 4.94, 68.99, 0.082], [436, 4.30, 88.09, 0.056],
       [170, 5.51, 84.69, 0.145], [417, 5.11, 74.64, 0.128], [60, 0.26, 9.32, 0.00001],
       [461, 2.90, 66.43, 0.02], [188, 2.35, 64.22, 0.005], [290, 0.65, 12.03, 0.002],
+      [8, 4.50, 82.00, 0.08], [116, 3.80, 78.00, 0.05], [437, 5.20, 64.57, 0.09],
+      [161, 6.00, 88.00, 0.16], [426, 3.00, 60.00, 0.03],
     ].map(([player_id, expected_points, expected_minutes, p_10_plus]) => ({
       player_id,
       status: 'CAPTURED',
@@ -125,6 +127,11 @@ export const gw4WorkspaceFixture = {
     [417, 'Isak', 'FWD', 14, 'LIV', 'FUL', 'H', 'FINISHED'],
     [60, 'Forster', 'GKP', 3, 'BOU', 'BRE', 'H', 'FINISHED'],
     [290, 'Kusi-Asare', 'FWD', 10, 'FUL', 'LIV', 'A', 'FINISHED'],
+    [8, 'Calafiori', 'DEF', 1, 'ARS', 'SUN', 'A', 'FINISHED'],
+    [116, 'De Cuyper', 'DEF', 5, 'BHA', 'COV', 'A', 'FUTURE'],
+    [437, 'Foden', 'MID', 15, 'MCI', 'MUN', 'A', 'FUTURE'],
+    [161, 'Palmer', 'MID', 6, 'CHE', 'HUL', 'H', 'FINISHED'],
+    [426, "O'Reilly", 'DEF', 15, 'MCI', 'MUN', 'A', 'FUTURE'],
   ].map(([player_id, name, position, team_id, team_short, opponent_short, venue, phase]) => ({
     player_id,
     name,

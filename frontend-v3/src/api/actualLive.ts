@@ -31,6 +31,7 @@ export type ActualLivePlayerResult = {
   fixture_ids: number[];
   status: ActualLiveStatus;
   points_are_final: boolean;
+  played: boolean | null;
   minutes: number | null;
   total_points: number | null;
   goals: number | null;
@@ -43,6 +44,8 @@ export type ActualLivePlayerResult = {
   xgi: number | null;
   xgc: number | null;
   clean_sheets: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
 };
 
 type NotVerifiedActual = {
@@ -76,11 +79,14 @@ export type ActualLiveApi = {
   } | null;
   players: ActualLivePlayer[];
   player_actuals: ActualLivePlayerResult[];
+  scenario_players?: ActualLivePlayer[];
+  scenario_player_actuals?: ActualLivePlayerResult[];
   semantics: {
     engine_recommendation_is_never_used_as_actual: true;
     provisional_live_points_are_not_final: true;
     only_full_11_plus_4_actual_is_verified?: true;
-    scoring_scope: 'RAW_FPL_PLAYER_POINTS_NO_AUTO_SUBS_OR_CAPTAIN_MULTIPLIER';
+    scoring_scope: 'RAW_FPL_PLAYER_POINTS_FOR_ENGINE_AND_ACTUAL_SCENARIO_SCORING';
+    player_scope?: 'ACTUAL_PRIMARY_PLUS_ENGINE_ACTUAL_SCENARIO_UNION' | 'VERIFIED_ACTUAL_REQUIRED_FOR_COMPARISON' | 'UNION_ENGINE_RECOMMENDATION_AND_VERIFIED_ACTUAL_SQUADS';
   };
 };
 
@@ -100,7 +106,18 @@ function isActualLiveApi(value: unknown): value is ActualLiveApi {
     && typeof payload.gameweek === 'number'
     && typeof payload.actual === 'object'
     && Array.isArray(payload.players)
-    && Array.isArray(payload.player_actuals);
+    && Array.isArray(payload.player_actuals)
+    && (payload.scenario_players == null || Array.isArray(payload.scenario_players))
+    && (payload.scenario_player_actuals == null || Array.isArray(payload.scenario_player_actuals));
+}
+
+function comparisonHydrated(payload: ActualLiveApi): ActualLiveApi {
+  if (!payload.scenario_players?.length || !payload.scenario_player_actuals?.length) return payload;
+  return {
+    ...payload,
+    players: payload.scenario_players,
+    player_actuals: payload.scenario_player_actuals,
+  };
 }
 
 function cachedCurrentActual(): ActualLiveApi | null {
@@ -125,8 +142,9 @@ function fetchCurrentActualLive(): Promise<ActualLiveApi> {
     ttlMs: CURRENT_ACTUAL_REUSE_MS,
   }).then((payload) => {
     if (!isActualLiveApi(payload)) throw new Error('Actual-live contract mismatch');
-    currentActualCache = { value: payload, expiresAt: Date.now() + CURRENT_ACTUAL_REUSE_MS };
-    return payload;
+    const hydrated = comparisonHydrated(payload);
+    currentActualCache = { value: hydrated, expiresAt: Date.now() + CURRENT_ACTUAL_REUSE_MS };
+    return hydrated;
   }).finally(() => {
     if (currentActualPending === pending) currentActualPending = null;
   });
@@ -165,7 +183,7 @@ export async function fetchActualLive(gameweek = 0, signal?: AbortSignal): Promi
   if (payload.gameweek !== gameweek) {
     throw new Error(`Actual-live Gameweek mismatch: requested GW${gameweek}, received GW${payload.gameweek}`);
   }
-  return payload;
+  return comparisonHydrated(payload);
 }
 
 function awaitWithAbort<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {

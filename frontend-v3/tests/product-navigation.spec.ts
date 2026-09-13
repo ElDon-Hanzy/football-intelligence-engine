@@ -16,7 +16,7 @@ const historicalGw3 = {
   fixture_results: [{ match_id: 21, kickoff_time: '2026-09-04T19:00:00+00:00', home_team: 'Ipswich Town', away_team: 'Liverpool', finished: true, home_score: 0, away_score: 2, prediction: { markets: { home_win: .2225, draw: .2192, away_win: .5573 }, headline_score: '0-2' } }, { match_id: 22, kickoff_time: '2026-09-05T11:30:00+00:00', home_team: 'Newcastle', away_team: 'Bournemouth', finished: true, home_score: 2, away_score: 2, prediction: { markets: { home_win: .3882, draw: .2278, away_win: .3832 }, headline_score: '1-1' } }],
 };
 const fixtureFacts = { ok: true, gameweek: 4, facts_available: true, evidence_source: 'test', snapshot_run: { id: 1, as_of_gameweek: 4 }, fixtures: currentFixtures.map((fixture) => ({ match_id: fixture.match_id, gameweek: 4, kickoff_time: fixture.kickoff_time, alignment_basis: { snapshot_id: fixture.prediction.snapshot_id, captured_at: fixture.prediction.captured_at, source_change_id: fixture.prediction.source_change_id }, modal_facts: [{ id: fixture.match_id * 10 + 1, fact_type: 'FORM', usefulness_score: .9, alignment: 'SUPPORTS', one_liner: 'Recent attacking process supports the leading side.' }, { id: fixture.match_id * 10 + 2, fact_type: 'RISK', usefulness_score: .8, alignment: 'CONTRADICTS', one_liner: 'Transition exposure remains a credible counterpoint.' }] })) };
-const coreMarkets = { ok: true, gameweek: 4, prediction_run_id: 1365, model_version: '0.3', generated_at: '2026-09-12T12:00:00Z', betting_recommendations: [{ type: 'Correct score', match_id: 1, fixture: 'Chelsea vs Hull City', selection: '2-1', probability: .12, home_lambda: 1.8, away_lambda: 1.1 }, { type: '1X2', match_id: 2, fixture: 'Sunderland vs Arsenal', selection: 'Arsenal win', probability: .59, home_lambda: .9, away_lambda: 1.7 }, { type: 'O/U 2.5', match_id: 2, fixture: 'Sunderland vs Arsenal', selection: 'Over 2.5', probability: .63, home_lambda: .9, away_lambda: 1.7 }, { type: 'BTTS', match_id: 3, fixture: 'Man Utd vs Man City', selection: 'BTTS Yes', probability: .66, home_lambda: 1.5, away_lambda: 1.6 }] };
+const coreMarkets = { ok: true, gameweek: 4, prediction_run_id: 1365, model_version: '0.3', generated_at: '2026-09-12T12:00:00Z', betting_recommendations: [{ type: 'Correct score', match_id: 1, fixture: 'Chelsea vs Hull City', selection: '2-1', probability: .12, home_lambda: 1.8, away_lambda: 1.1 }, { type: '1X2', match_id: 1, fixture: 'Chelsea vs Hull City', selection: 'Draw', probability: .25, home_lambda: 1.8, away_lambda: 1.1 }, { type: 'O/U 2.5', match_id: 2, fixture: 'Sunderland vs Arsenal', selection: 'Over 2.5', probability: .63, home_lambda: .9, away_lambda: 1.7 }, { type: 'BTTS', match_id: 3, fixture: 'Man Utd vs Man City', selection: 'BTTS Yes', probability: .66, home_lambda: 1.5, away_lambda: 1.6 }] };
 
 async function mockProductApis(page: Page) {
   await page.route('**/fpl-v3-workspace-api**', async (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(gw4WorkspaceFixture) }));
@@ -37,6 +37,18 @@ test('all six V3 navigation destinations render compact card surfaces', async ({
   await nav(page, 'insights'); await expect(page.getByRole('heading', { name: 'Player intelligence' })).toBeVisible(); await expect(page.locator('.v3-player-intel-card')).toHaveCount(gw4WorkspaceFixture.recommendation?.squad.length ?? 0); await expect(page.locator('.v3-data-table')).toHaveCount(0);
   await nav(page, 'history'); await expect(page.getByRole('heading', { name: 'History' })).toBeVisible(); await expect(page.getByText('GW3 · HISTORICAL_FROZEN')).toBeVisible(); await expect(page.locator('.v3-history-player-card')).toHaveCount(3); await expect(page.locator('.v3-history-match-card')).toHaveCount(2); await expect(page.locator('.v3-data-table')).toHaveCount(0);
   await nav(page, 'fpl'); await expect(page.getByRole('heading', { name: 'Pick the state. Read the pitch.' })).toBeVisible();
+});
+
+test('markets show large result stamps without probability or xG', async ({ page }) => {
+  await mockProductApis(page); await page.goto('/#markets');
+  await expect(page.getByRole('img', { name: 'Correct prediction' })).toHaveCount(1);
+  await expect(page.getByRole('img', { name: 'Incorrect prediction' })).toHaveCount(1);
+  await expect(page.getByText('Aligned', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Different', { exact: true })).toHaveCount(0);
+  await expect(page.getByText(/xG/i)).toHaveCount(0);
+  await expect(page.getByText(/\b(12\.0|25\.0|63\.0|66\.0)%\b/)).toHaveCount(0);
+  await expect(page.getByText('2-2', { exact: true })).toBeVisible();
+  await expect(page.getByText('Draw', { exact: true })).toBeVisible();
 });
 
 test('no-edge fixture is consumer-labelled DRAW and finished audit is understated', async ({ page }) => {

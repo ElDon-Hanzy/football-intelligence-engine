@@ -3,6 +3,7 @@ import { fetchActualLive, type ActualLiveApi, type ActualLivePlayer } from '../a
 import { fetchFplWorkspace, type FplWorkspaceApi, type PlayerEvidence, type WorkspacePlayer } from '../api/fplWorkspace';
 import { fetchHistoricalFpl, type HistoricalFplPayload, type HistoricalPlayer } from '../api/historicalFpl';
 import { dominantFixturePhase } from '../domain/fplPresentation';
+import { scoreFplScenario, type FplScenarioPlayer, type FplScenarioScore } from '../domain/fplScenarioScoring';
 import { BenchStrip, FplPitch, SquadList, type PitchMetricMode, type PitchPlayer } from './FplPitch';
 import { PlayerIntelligenceModal } from './PlayerIntelligenceModal';
 
@@ -14,6 +15,13 @@ type XiScoreComparison = {
   projectedCoverage: number;
   actualPoints: number | null;
   actualCoverage: number;
+};
+
+type ScenarioScoreComparison = {
+  engine: FplScenarioScore | null;
+  actual: FplScenarioScore | null;
+  pointsGap: number | null;
+  xptsGap: number | null;
 };
 
 export function FplLiveWorkspace({ gameweek = 0 }: { gameweek?: number }) {
@@ -100,7 +108,7 @@ function HistoricalFplReview({ gameweek }: { gameweek: number }) {
       <div className="v3-fpl-hero-status"><span className="v3-status" data-tone="neutral">Historical review</span><span className="v3-status" data-tone={data.historical_projection_valid ? 'positive' : 'neutral'}>{data.historical_projection_valid ? 'Valid frozen projection' : 'Audit only'}</span></div>
     </section>
 
-    <FplScorecard score={score} actualVerified={hasOutcomeEvidence} note="Frozen engine-XI comparison. Captain multiplier and automatic substitutions are not applied." />
+    <HistoricalXiScorecard score={score} actualVerified={hasOutcomeEvidence} />
 
     <div className="v3-fpl-controls">
       <div><span className="v3-kicker">Historical state</span><strong>Frozen engine XI</strong></div>
@@ -138,7 +146,7 @@ function WorkspaceContent({
   const recommendation = workspace.recommendation;
   const actualVerified = live.actual.verification_status === 'VERIFIED';
   const isActualLane = stateMode === 'actual' || stateMode === 'live';
-  const score = useMemo(() => buildXiScoreComparison(workspace, live), [workspace, live]);
+  const score = useMemo(() => buildScenarioScoreComparison(workspace, live), [workspace, live]);
 
   const resolved = useMemo(() => {
     if (isActualLane) {
@@ -177,7 +185,7 @@ function WorkspaceContent({
         </div>
       </section>
 
-      <FplScorecard score={score} actualVerified={actualVerified} />
+      <CurrentFplScorecard score={score} actualVerified={actualVerified} />
 
       <div className="v3-fpl-controls">
         <div className="v3-state-tabs" role="tablist" aria-label="FPL state">
@@ -217,15 +225,38 @@ function WorkspaceContent({
   );
 }
 
-function FplScorecard({ score, actualVerified, note = 'Raw submitted-XI comparison. Captain multiplier and automatic substitutions are not applied here.' }: { score: XiScoreComparison; actualVerified: boolean; note?: string }) {
+function CurrentFplScorecard({ score, actualVerified }: { score: ScenarioScoreComparison; actualVerified: boolean }) {
+  const engine = score.engine;
+  const actual = score.actual;
+  return <section className="v3-fpl-scorecard v3-surface" aria-label="Engine versus actual Gameweek scoring">
+    <div className="v3-fpl-scoremetric" data-metric="xpts">
+      <span>Engine total</span>
+      <strong>{formatWholeScore(engine?.realizedPoints ?? null)}</strong>
+      <small>{engine?.frozenXpts == null ? 'Frozen xPts unavailable' : `xPts ${engine.frozenXpts.toFixed(1)} · ${engine.settled ? 'Settled' : 'Provisional'}`}</small>
+    </div>
+    <div className="v3-fpl-scoremetric" data-metric="actual">
+      <span>Actual total</span>
+      <strong>{!actualVerified ? '—' : formatWholeScore(actual?.realizedPoints ?? null)}</strong>
+      <small>{!actualVerified ? 'Actual submitted team not verified' : actual?.frozenXpts == null ? 'Frozen xPts unavailable' : `xPts ${actual.frozenXpts.toFixed(1)} · ${actual.settled ? 'Settled' : 'Provisional'}`}</small>
+    </div>
+    <div className="v3-fpl-scoremetric" data-metric="delta">
+      <span>vs engine</span>
+      <strong>{formatSignedScore(score.pointsGap)}</strong>
+      <small>{score.xptsGap == null ? 'Engine is the baseline' : `xPts gap ${formatSignedDecimal(score.xptsGap)} · actual minus engine`}</small>
+    </div>
+    <p>Captain multiplier and automatic substitutions are applied in both scenarios, including Bench Boost or Triple Captain when active. Frozen xPts values are never rewritten; live totals remain provisional until the Gameweek settles.</p>
+  </section>;
+}
+
+function HistoricalXiScorecard({ score, actualVerified }: { score: XiScoreComparison; actualVerified: boolean }) {
   const projectedPoints = score.projectedPoints;
   const actualPoints = score.actualPoints;
   const difference = projectedPoints != null && actualPoints != null && score.actualCoverage === 11 ? actualPoints - projectedPoints : null;
-  return <section className="v3-fpl-scorecard v3-surface" aria-label="Projected xPTS versus Actual PTS">
+  return <section className="v3-fpl-scorecard v3-surface" aria-label="Historical projected xPTS versus Actual PTS">
     <div className="v3-fpl-scoremetric" data-metric="xpts"><span>XI xPTS</span><strong>{projectedPoints == null ? '—' : projectedPoints.toFixed(1)}</strong><small>{projectedPoints == null ? `${score.projectedCoverage}/11 projections captured` : 'Frozen pre-deadline projection'}</small></div>
     <div className="v3-fpl-scoremetric" data-metric="actual"><span>Actual PTS</span><strong>{!actualVerified || actualPoints == null ? '—' : String(actualPoints)}</strong><small>{!actualVerified ? 'Actual points unavailable' : `${score.actualCoverage}/11 players reported`}</small></div>
     <div className="v3-fpl-scoremetric" data-metric="delta"><span>vs xPTS</span><strong>{difference == null ? '—' : `${difference >= 0 ? '+' : ''}${difference.toFixed(1)}`}</strong><small>{difference == null ? 'Shown when all XI points are available' : 'Actual minus projected'}</small></div>
-    <p>{note}</p>
+    <p>Historical raw-XI review retains its original chronology-safe contract; the current Gameweek comparison uses full FPL scenario scoring.</p>
   </section>;
 }
 
@@ -254,9 +285,11 @@ function EngineSummary({ workspace }: { workspace: FplWorkspaceApi }) {
 }
 
 function LiveTruthStrip({ live }: { live: ActualLiveApi }) {
-  const final = live.player_actuals.filter((item) => item.status === 'FINAL').length;
-  const provisional = live.player_actuals.filter((item) => item.status === 'LIVE' || item.status === 'PARTIAL').length;
-  const pending = live.player_actuals.filter((item) => item.status === 'PENDING').length;
+  const actualIds = live.actual.verification_status === 'VERIFIED' ? new Set(live.actual.squad) : new Set<number>();
+  const actualRows = live.player_actuals.filter((item) => actualIds.has(item.player_id));
+  const final = actualRows.filter((item) => item.status === 'FINAL').length;
+  const provisional = actualRows.filter((item) => item.status === 'LIVE' || item.status === 'PARTIAL').length;
+  const pending = actualRows.filter((item) => item.status === 'PENDING').length;
   return <section className="v3-surface v3-live-truth-strip" aria-label="Actual squad result state"><div><span>Final</span><strong>{final}</strong></div><div><span>Live / partial</span><strong>{provisional}</strong></div><div><span>Pending</span><strong>{pending}</strong></div><p>Player cards show Actual PTS against the frozen xPts for the same player.</p></section>;
 }
 
@@ -265,14 +298,66 @@ function FixtureRail({ workspace }: { workspace: FplWorkspaceApi }) {
   return <section className="v3-fixture-section" aria-labelledby="fixture-state-heading"><div className="v3-section-heading"><div><span className="v3-kicker">Gameweek pulse</span><h2 id="fixture-state-heading">Fixtures</h2></div><small>Open Matches for predictions and matchup intelligence.</small></div><div className="v3-fixture-rail">{fixtures.map((fixture) => <article className="v3-fixture-card" data-phase={fixture.phase} key={fixture.match_id}><div className="v3-fixture-card-top"><span>{fixture.phase === 'FUTURE' ? 'Upcoming' : fixture.phase === 'LIVE' ? 'Live' : 'Finished'}</span><time>{formatKickoff(fixture.kickoff_at)}</time></div><strong>{fixture.home_team ?? 'Home'} <b>{fixture.phase === 'FUTURE' ? 'vs' : `${fixture.home_score ?? '–'} : ${fixture.away_score ?? '–'}`}</b> {fixture.away_team ?? 'Away'}</strong></article>)}</div></section>;
 }
 
-function buildXiScoreComparison(workspace: FplWorkspaceApi, live: ActualLiveApi): XiScoreComparison {
-  if (live.actual.verification_status !== 'VERIFIED') return { projectedPoints: null, projectedCoverage: 0, actualPoints: null, actualCoverage: 0 };
-  const xi = live.actual.starting_xi;
+function buildScenarioScoreComparison(workspace: FplWorkspaceApi, live: ActualLiveApi): ScenarioScoreComparison {
+  const recommendation = workspace.recommendation;
   const evidenceById = new Map((workspace.decision_snapshot?.player_evidence ?? []).map((row) => [row.player_id, row]));
-  const actualById = new Map(live.player_actuals.map((row) => [row.player_id, row]));
-  const projections = xi.map((id) => captured(evidenceById.get(id), 'expected_points')).filter((value): value is number => value != null);
-  const actuals = xi.map((id) => actualById.get(id)?.total_points ?? null).filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
-  return { projectedPoints: projections.length === xi.length ? projections.reduce((sum, value) => sum + value, 0) : null, projectedCoverage: projections.length, actualPoints: actuals.length ? actuals.reduce((sum, value) => sum + value, 0) : null, actualCoverage: actuals.length };
+  const liveActualById = new Map(live.player_actuals.map((row) => [row.player_id, row]));
+  const frozenActualById = new Map(workspace.realized.player_actuals.map((row) => [row.player_id, row]));
+  const livePlayerById = new Map(live.players.map((row) => [row.player_id, row]));
+  const workspacePlayerById = new Map(workspace.players.map((row) => [row.player_id, row]));
+  const recommendationPlayerById = new Map((recommendation?.squad ?? []).map((row) => [row.player_id, row]));
+
+  const scenarioIds = new Set<number>();
+  if (recommendation) [...recommendation.starting_xi, ...recommendation.bench_order].forEach((id) => scenarioIds.add(id));
+  if (live.actual.verification_status === 'VERIFIED') [...live.actual.starting_xi, ...live.actual.bench_order].forEach((id) => scenarioIds.add(id));
+
+  const facts: FplScenarioPlayer[] = [...scenarioIds].map((id) => {
+    const liveResult = liveActualById.get(id);
+    const frozenResult = frozenActualById.get(id);
+    const result = liveResult ?? frozenResult;
+    const liveMetadata = livePlayerById.get(id);
+    const workspaceMetadata = workspacePlayerById.get(id);
+    const recommendationMetadata = recommendationPlayerById.get(id);
+    const status = liveResult?.status ?? frozenResult?.status ?? 'PENDING';
+    const minutes = result?.minutes ?? null;
+    const played = liveResult?.played ?? (minutes != null ? minutes > 0 : status === 'FINAL' ? false : null);
+    return {
+      playerId: id,
+      position: liveMetadata?.position ?? workspaceMetadata?.position ?? recommendationMetadata?.position ?? 'UNKNOWN',
+      expectedPoints: captured(evidenceById.get(id), 'expected_points'),
+      actualPoints: result?.total_points ?? null,
+      minutes,
+      played,
+      status,
+    };
+  });
+
+  const engine = recommendation
+    ? scoreFplScenario({
+        startingXi: recommendation.starting_xi,
+        benchOrder: recommendation.bench_order,
+        captainId: recommendation.captain_player_id,
+        viceId: recommendation.vice_player_id,
+        chip: recommendation.chip,
+      }, facts)
+    : null;
+
+  const actual = live.actual.verification_status === 'VERIFIED'
+    ? scoreFplScenario({
+        startingXi: live.actual.starting_xi,
+        benchOrder: live.actual.bench_order,
+        captainId: live.actual.captain_player_id,
+        viceId: live.actual.vice_player_id,
+        chip: live.actual.chip,
+      }, facts)
+    : null;
+
+  return {
+    engine,
+    actual,
+    pointsGap: engine?.realizedPoints != null && actual?.realizedPoints != null ? actual.realizedPoints - engine.realizedPoints : null,
+    xptsGap: engine?.frozenXpts != null && actual?.frozenXpts != null ? actual.frozenXpts - engine.frozenXpts : null,
+  };
 }
 
 function buildHistoricalXiScoreComparison(xi: HistoricalPlayer[], data: HistoricalFplPayload): XiScoreComparison {
@@ -338,6 +423,9 @@ function captured(evidence: PlayerEvidence | undefined, key: keyof Pick<PlayerEv
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+function formatWholeScore(value: number | null): string { return value == null ? '—' : String(Math.round(value)); }
+function formatSignedScore(value: number | null): string { return value == null ? '—' : `${value >= 0 ? '+' : ''}${Math.round(value)}`; }
+function formatSignedDecimal(value: number): string { return `${value >= 0 ? '+' : ''}${value.toFixed(1)}`; }
 function playerName(workspace: FplWorkspaceApi, id: number | null): string | null { if (id == null) return null; return workspace.players.find((player) => player.player_id === id)?.name ?? workspace.recommendation?.squad.find((player) => player.player_id === id)?.name ?? null; }
 function teamShort(value: string | null | undefined): string { if (!value) return '—'; const tokens = value.replace(/[^A-Za-z ]/g, '').split(/\s+/).filter(Boolean); if (tokens.length > 1) return tokens.map((token) => token[0]).join('').slice(0, 3).toUpperCase(); return value.slice(0, 3).toUpperCase(); }
 function numeric(value: unknown): number | null { const parsed = Number(value); return value == null || value === '' || !Number.isFinite(parsed) ? null : parsed; }

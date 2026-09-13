@@ -169,7 +169,7 @@ Deno.serve(async (req: Request) => {
       const anyFinished = fixturePhases.some((value: string) => value === 'FINISHED');
       const status = allFinished ? 'FINAL' : anyLive ? 'LIVE' : anyFinished ? 'PARTIAL' : 'PENDING';
       const row: any = actualByPlayer.get(Number(playerId));
-      const visible = row && status !== 'PENDING';
+      const visible = Boolean(row) && status !== 'PENDING';
       const minutes = visible ? asNumber(row.minutes) : null;
       const yellowCards = visible ? asNumber(row.yellow_cards) : null;
       const redCards = visible ? asNumber(row.red_cards) : null;
@@ -182,8 +182,8 @@ Deno.serve(async (req: Request) => {
         player_id: Number(playerId),
         fixture_ids: Array.isArray(row?.fixture_ids) ? row.fixture_ids.map(Number).filter(Number.isFinite) : [],
         status,
-        points_are_final: status === 'FINAL',
-        played: hasPlayed ? true : status === 'FINAL' ? false : null,
+        points_are_final: status === 'FINAL' && Boolean(row),
+        played: !row ? null : hasPlayed ? true : status === 'FINAL' ? false : null,
         minutes,
         total_points: visible ? asNumber(row.total_points) : null,
         goals: visible ? asNumber(row.goals) : null,

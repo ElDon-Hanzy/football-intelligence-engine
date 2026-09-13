@@ -70,6 +70,7 @@ function requestedGameweek(url: string) { const value = Number(new URL(url).sear
 function workspaceFor(gameweek: number) { return { ...enrichedWorkspace, gameweek, lifecycle: gameweek === 4 ? 'POST_DEADLINE_ACTIVE' : 'GW_COMPLETE' }; }
 
 async function mockProductApis(page: Page) {
+  await page.route('**/gameweek-status-api**', async (route) => { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, live_gameweek: 4, latest_intelligence_gameweek: 5, planning_horizon_gameweek: 8 }) }); });
   await page.route('**/fpl-v3-workspace-api**', async (route) => { const gw = requestedGameweek(route.request().url()); await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(workspaceFor(gw)) }); });
   await page.route('**/fpl-v3-actual-live-api**', async (route) => { const gw = requestedGameweek(route.request().url()); await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...gw4ActualLiveFixture, gameweek: gw }) }); });
   await page.route('**/fixture-facts-api**', async (route) => { const gw = requestedGameweek(route.request().url()); await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...fixtureFacts, gameweek: gw }) }); });
@@ -94,6 +95,7 @@ test('global Gameweek switcher persists across every V3 page and uses historical
   await mockProductApis(page); await page.goto('/#home');
   const selector = page.getByLabel('Select Gameweek');
   await expect(selector).toHaveValue('4');
+  await expect(selector.locator('option[value="8"]')).toHaveCount(0);
   await selector.selectOption('3');
   await expect(page).toHaveURL(/\?gw=3#home$/);
   await expect(page.locator('main')).toHaveAttribute('data-gameweek', '3');
@@ -109,6 +111,7 @@ test('global Gameweek switcher persists across every V3 page and uses historical
   await selector.selectOption('4');
   await expect(page).toHaveURL(/#history$/);
   await expect(page.locator('main')).toHaveAttribute('data-gameweek', '4');
+  await expect(page.getByText('Gameweek 4 review', { exact: true })).toBeVisible();
 });
 
 test('FPL makes xPTS versus Actual PTS primary and demotes engineering metadata', async ({ page }) => {

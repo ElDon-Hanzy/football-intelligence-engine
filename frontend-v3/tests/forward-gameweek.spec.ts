@@ -80,6 +80,7 @@ const gw5Workspace = {
 function queryGw(url: string): number | null { const raw = new URL(url).searchParams.get('gw'); return raw == null ? null : Number(raw); }
 
 async function mockForwardApis(page: Page) {
+  await page.route('**/gameweek-status-api**', async (route) => { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, live_gameweek: 4, latest_intelligence_gameweek: 5, planning_horizon_gameweek: 8 }) }); });
   await page.route('**/fpl-v3-workspace-api**', async (route) => { const gw = queryGw(route.request().url()); await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(gw === 5 ? gw5Workspace : gw4WorkspaceFixture) }); });
   await page.route('**/human-insights-api**', async (route) => { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(forwardPayload) }); });
   await page.route('**/fpl-v3-actual-live-api**', async (route) => { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(gw4ActualLiveFixture) }); });
@@ -96,6 +97,7 @@ test('upcoming GW intelligence is selectable before the active Gameweek complete
   await expect(selector).toHaveValue('5');
   await expect(selector.locator('option[value="4"]')).toHaveText('GW4 · Live');
   await expect(selector.locator('option[value="5"]')).toHaveText('GW5 · Upcoming');
+  await expect(selector.locator('option[value="8"]')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Strongest 4 initial projections' })).toBeVisible();
   await expect(page.getByText('Mbeumo', { exact: true }).first()).toBeVisible();
 

@@ -34,11 +34,17 @@ function authorizationLabel(publicationStatus: string | null, executionAuthorize
   return 'PROVISIONAL_NOT_AUTHORIZED';
 }
 
+function timing(value: number) {
+  return Math.max(0, value).toFixed(1);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'GET') {
     return new Response(JSON.stringify({ ok: false, error: 'Method not allowed' }), { status: 405, headers: cors });
   }
+
+  const requestStarted = performance.now();
 
   try {
     const keys = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}');
@@ -49,19 +55,22 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const requested = Number(url.searchParams.get('gw') || 0);
 
-    const { data: latestPublication, error: latestPublicationError } = await sb
-      .from('current_fpl_live_plan_v01')
-      .select('gameweek')
-      .order('gameweek', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (latestPublicationError) throw latestPublicationError;
-
-    const gameweek = requested >= 1 && requested <= 38
-      ? requested
-      : asNumber(latestPublication?.gameweek);
+    const resolveStarted = performance.now();
+    let gameweek = requested >= 1 && requested <= 38 ? requested : null;
+    if (gameweek == null) {
+      const { data: latestPublication, error: latestPublicationError } = await sb
+        .from('current_fpl_live_plan_v01')
+        .select('gameweek')
+        .order('gameweek', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestPublicationError) throw latestPublicationError;
+      gameweek = asNumber(latestPublication?.gameweek);
+    }
     if (!gameweek) throw new Error('No V3 Gameweek is available');
+    const resolveMs = performance.now() - resolveStarted;
 
+    const coreStarted = performance.now();
     const [liveResult, actualResult, matchesResult, resultRunResult] = await Promise.all([
       sb.from('current_fpl_live_plan_v01')
         .select('id,gameweek,captured_at,publication_stage,publication_status,final_status,execution_authorized,prediction_run_id,manager_state_id,optimizer_run_id,autonomous_gate_run_id,plan,layer_lineage,source,historical_forecasts_rewritten')
@@ -87,6 +96,7 @@ Deno.serve(async (req: Request) => {
         .limit(1)
         .maybeSingle(),
     ]);
+    const coreMs = performance.now() - coreStarted;
 
     if (liveResult.error) throw liveResult.error;
     if (actualResult.error) throw actualResult.error;
@@ -98,32 +108,6 @@ Deno.serve(async (req: Request) => {
     const matches = (matchesResult.data || []) as any[];
     const resultRun = resultRunResult.data as any;
     const predictionRunId = asNumber(live?.prediction_run_id);
-
-    const predictionRunResult = predictionRunId
-      ? await sb.from('gameweek_prediction_runs')
-          .select('id,gameweek,generated_at,deadline_at,run_type,frozen,excluded_from_backtest,model_version_id,metadata')
-          .eq('id', predictionRunId)
-          .maybeSingle()
-      : { data: null, error: null };
-    if (predictionRunResult.error) throw predictionRunResult.error;
-
-    const predictionRun = predictionRunResult.data as any;
-    const firstKickoff = matches.map((match) => ts(match.kickoff_time)).filter(Number.isFinite).sort((a, b) => a - b)[0];
-    const derivedDeadline = Number.isFinite(firstKickoff) ? new Date(firstKickoff - 90 * 60 * 1000).toISOString() : null;
-    const deadlineAt = predictionRun?.deadline_at || derivedDeadline;
-    const nowMs = Date.now();
-    const gameweekLifecycle = lifecycle(nowMs, deadlineAt, matches);
-
-    const priceEvidenceResult = predictionRun?.generated_at
-      ? await sb.from('fpl_prices')
-          .select('captured_at,gameweek')
-          .eq('gameweek', gameweek)
-          .lte('captured_at', predictionRun.generated_at)
-          .order('captured_at', { ascending: false })
-          .limit(1)
-          .maybeSingle()
-      : { data: null, error: null };
-    if (priceEvidenceResult.error) throw priceEvidenceResult.error;
 
     const rawPlan = (live?.plan || {}) as any;
     const selectedPath = rawPlan?.c0248_selected_path || null;
@@ -158,7 +142,14 @@ Deno.serve(async (req: Request) => {
       ...actualSquadIds,
     ])];
 
-    const [playersResult, teamsResult, projectionResult, actualsResult] = await Promise.all([
+    const detailsStarted = performance.now();
+    const [predictionRunResult, playersResult, teamsResult, projectionResult, actualsResult] = await Promise.all([
+      predictionRunId
+        ? sb.from('gameweek_prediction_runs')
+            .select('id,gameweek,generated_at,deadline_at,run_type,frozen,excluded_from_backtest,model_version_id,metadata')
+            .eq('id', predictionRunId)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
       playerIds.length
         ? sb.from('players').select('id,web_name,position,team_id').in('id', playerIds)
         : Promise.resolve({ data: [], error: null }),
@@ -176,10 +167,33 @@ Deno.serve(async (req: Request) => {
             .in('player_id', playerIds)
         : Promise.resolve({ data: [], error: null }),
     ]);
+    const detailsMs = performance.now() - detailsStarted;
+
+    if (predictionRunResult.error) throw predictionRunResult.error;
     if (playersResult.error) throw playersResult.error;
     if (teamsResult.error) throw teamsResult.error;
     if (projectionResult.error) throw projectionResult.error;
     if (actualsResult.error) throw actualsResult.error;
+
+    const predictionRun = predictionRunResult.data as any;
+    const firstKickoff = matches.map((match) => ts(match.kickoff_time)).filter(Number.isFinite).sort((a, b) => a - b)[0];
+    const derivedDeadline = Number.isFinite(firstKickoff) ? new Date(firstKickoff - 90 * 60 * 1000).toISOString() : null;
+    const deadlineAt = predictionRun?.deadline_at || derivedDeadline;
+    const nowMs = Date.now();
+    const gameweekLifecycle = lifecycle(nowMs, deadlineAt, matches);
+
+    const priceStarted = performance.now();
+    const priceEvidenceResult = predictionRun?.generated_at
+      ? await sb.from('fpl_prices')
+          .select('captured_at,gameweek')
+          .eq('gameweek', gameweek)
+          .lte('captured_at', predictionRun.generated_at)
+          .order('captured_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : { data: null, error: null };
+    const priceMs = performance.now() - priceStarted;
+    if (priceEvidenceResult.error) throw priceEvidenceResult.error;
 
     const teamById = new Map((teamsResult.data || []).map((team: any) => [Number(team.id), team]));
     const projectionByPlayer = new Map((projectionResult.data || []).map((row: any) => [Number(row.player_id), row]));
@@ -345,6 +359,18 @@ Deno.serve(async (req: Request) => {
       updated_at: match.updated_at,
     }));
 
+    const totalMs = performance.now() - requestStarted;
+    const responseHeaders = {
+      ...cors,
+      'Server-Timing': [
+        `resolve;dur=${timing(resolveMs)}`,
+        `core;dur=${timing(coreMs)}`,
+        `details;dur=${timing(detailsMs)}`,
+        `price;dur=${timing(priceMs)}`,
+        `total;dur=${timing(totalMs)}`,
+      ].join(', '),
+    };
+
     return new Response(JSON.stringify({
       ok: true,
       contract_version: 'fpl_v3_workspace_v02_player_evidence',
@@ -387,7 +413,7 @@ Deno.serve(async (req: Request) => {
         fixture_phase_is_explicit: true,
         historical_forecasts_rewritten: Boolean(live?.historical_forecasts_rewritten),
       },
-    }), { headers: cors });
+    }), { headers: responseHeaders });
   } catch (error) {
     return new Response(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }), {
       status: 500,

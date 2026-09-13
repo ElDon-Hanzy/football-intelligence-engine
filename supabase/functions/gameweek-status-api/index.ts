@@ -19,8 +19,17 @@ type GameweekSummary = {
   last_kickoff: string;
 };
 
+function hasPublicClientAuth(req: Request): boolean {
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
+  if (!anonKey) return false;
+  const authorization = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
+  const apiKey = req.headers.get('apikey') ?? '';
+  return authorization === anonKey && apiKey === anonKey;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+  if (!hasPublicClientAuth(req)) return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), { status: 401, headers: cors });
   try {
     const keys = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}');
     const serviceKey = keys.default || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');

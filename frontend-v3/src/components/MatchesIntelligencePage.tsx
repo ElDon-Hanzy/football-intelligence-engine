@@ -4,7 +4,6 @@ import { fetchFplWorkspace, type FplWorkspaceApi, type WorkspaceFixturePhase } f
 import { V3Dialog } from './V3Dialog';
 
 type Filter = 'ALL' | 'FUTURE' | 'LIVE' | 'FINISHED';
-
 type ConsumerCall = { code: OutcomeCode; label: string; probability: number } | null;
 
 export function MatchesIntelligencePage() {
@@ -41,16 +40,16 @@ export function MatchesIntelligencePage() {
 
     <div className="v3-filter-tabs v3-filter-tabs--compact" aria-label="Fixture state filter">{(['ALL', 'FUTURE', 'LIVE', 'FINISHED'] as const).map((item) => <button key={item} type="button" aria-pressed={filter === item} className={filter === item ? 'is-active' : ''} onClick={() => setFilter(item)}>{item === 'ALL' ? `All ${intelligence.fixtures.length}` : item === 'FUTURE' ? `Upcoming ${counts.FUTURE}` : item === 'LIVE' ? `Live ${counts.LIVE}` : `Final ${counts.FINISHED}`}</button>)}</div>
 
-    <section className="v3-surface v3-dense-card" aria-label="Gameweek match predictions">
-      <div className="v3-table-scroll"><table className="v3-data-table v3-match-table"><thead><tr><th>State</th><th>Fixture</th><th>Score</th><th>1X2</th><th>Prob.</th><th>Correct score</th><th>Audit</th><th></th></tr></thead><tbody>{fixtures.map((fixture) => <PredictionRow key={fixture.match_id} fixture={fixture} phase={phaseByMatch.get(fixture.match_id) ?? phaseFromFixture(fixture)} onOpen={() => setSelected(fixture.match_id)} />)}</tbody></table></div>
-      {fixtures.length === 0 ? <p className="v3-inline-warning">No fixtures in this state.</p> : null}
+    <section className="v3-card-grid v3-card-grid--matches" aria-label="Gameweek match predictions">
+      {fixtures.map((fixture) => <PredictionCard key={fixture.match_id} fixture={fixture} phase={phaseByMatch.get(fixture.match_id) ?? phaseFromFixture(fixture)} onOpen={() => setSelected(fixture.match_id)} />)}
     </section>
+    {fixtures.length === 0 ? <p className="v3-inline-warning">No fixtures in this state.</p> : null}
 
     {selectedFixture ? <MatchupDialog fixture={selectedFixture} facts={selectedFacts?.modal_facts ?? []} open onClose={() => setSelected(null)} /> : null}
   </div>;
 }
 
-function PredictionRow({ fixture, phase, onOpen }: { fixture: MatchFixture; phase: WorkspaceFixturePhase; onOpen: () => void }) {
+function PredictionCard({ fixture, phase, onOpen }: { fixture: MatchFixture; phase: WorkspaceFixturePhase; onOpen: () => void }) {
   const assessment = assessCall(fixture.prediction);
   const call = consumerCall(fixture);
   const score = scoreCall(fixture);
@@ -58,16 +57,13 @@ function PredictionRow({ fixture, phase, onOpen }: { fixture: MatchFixture; phas
   const actualScore = fixture.home_score != null && fixture.away_score != null ? `${fixture.home_score}-${fixture.away_score}` : null;
   const directionAligned = phase === 'FINISHED' && call && actual ? call.code === actual : null;
   const scoreAligned = phase === 'FINISHED' && score.value && actualScore ? score.value === actualScore : null;
-  return <tr data-phase={phase}>
-    <td><span className="v3-phase-text" data-phase={phase}>{phaseLabel(phase)}</span></td>
-    <td><strong>{fixture.home_team ?? 'Home'}</strong> <span className="v3-muted">vs</span> <strong>{fixture.away_team ?? 'Away'}</strong><small className="v3-cell-sub">{formatKickoff(fixture.kickoff_time)}</small></td>
-    <td>{phase === 'FUTURE' ? '—' : actualScore ?? '—'}</td>
-    <td><strong>{call?.label ?? '—'}</strong>{assessment.state === 'no-edge' ? <small className="v3-cell-sub">Parity/no-edge → DRAW</small> : null}</td>
-    <td>{call ? percent(call.probability) : '—'}</td>
-    <td>{score.value ?? '—'}<small className="v3-cell-sub">{score.probability == null ? '—' : percent(score.probability)}</small></td>
-    <td>{phase === 'FINISHED' ? <span className="v3-audit-text" data-result={directionAligned ? 'aligned' : 'different'}>1X2 {directionAligned ? 'aligned' : 'different'} · score {scoreAligned ? 'aligned' : 'different'}</span> : <span className="v3-muted">Pending</span>}</td>
-    <td><button type="button" className="v3-row-action" onClick={onOpen} disabled={!fixture.prediction}>Details</button></td>
-  </tr>;
+  return <article className="v3-compact-card v3-match-card" data-phase={phase}>
+    <div className="v3-card-meta"><span className="v3-phase-text" data-phase={phase}>{phaseLabel(phase)}</span><time>{formatKickoff(fixture.kickoff_time)}</time></div>
+    <div className="v3-match-card-teams"><strong>{fixture.home_team ?? 'Home'}</strong><b>{phase === 'FUTURE' ? 'vs' : actualScore ?? '—'}</b><strong>{fixture.away_team ?? 'Away'}</strong></div>
+    <div className="v3-match-card-picks"><span><small>1X2</small><strong>{call?.label ?? '—'}</strong><b>{call ? percent(call.probability) : '—'}</b></span><span><small>Correct score</small><strong>{score.value ?? '—'}</strong><b>{score.probability == null ? '—' : percent(score.probability)}</b></span></div>
+    {assessment.state === 'no-edge' ? <small className="v3-card-note">Parity/no-edge → DRAW</small> : null}
+    <div className="v3-card-footer">{phase === 'FINISHED' ? <span className="v3-audit-text" data-result={directionAligned ? 'aligned' : 'different'}>1X2 {directionAligned ? 'aligned' : 'different'} · score {scoreAligned ? 'aligned' : 'different'}</span> : <span className="v3-muted">Pending</span>}<button type="button" className="v3-row-action" onClick={onOpen} disabled={!fixture.prediction}>Details</button></div>
+  </article>;
 }
 
 function MatchupDialog({ fixture, facts, open, onClose }: { fixture: MatchFixture; facts: FixtureFact[]; open: boolean; onClose: () => void }) {

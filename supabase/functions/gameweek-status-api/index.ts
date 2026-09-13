@@ -8,6 +8,8 @@ const cors = {
   'Cache-Control': 'no-store',
 };
 
+const PUBLIC_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYXNlIiwicmVmIjoia25vb2l3ZXp6c3hjd2h0anRkYXAiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc4NzMzNjQyNCwiZXhwIjoyMTAyOTEyNDI0fQ.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
+
 type FixtureRow = { gameweek: number; kickoff_time: string; finished: boolean };
 
 type GameweekSummary = {
@@ -20,11 +22,9 @@ type GameweekSummary = {
 };
 
 function hasPublicClientAuth(req: Request): boolean {
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY');
-  if (!anonKey) return false;
   const authorization = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ?? '';
   const apiKey = req.headers.get('apikey') ?? '';
-  return authorization === anonKey && apiKey === anonKey;
+  return authorization === PUBLIC_ANON_JWT && apiKey === PUBLIC_ANON_JWT;
 }
 
 Deno.serve(async (req) => {

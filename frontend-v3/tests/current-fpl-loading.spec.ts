@@ -2,11 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { gw4ActualLiveFixture } from './fixtures/gw4ActualLive';
 import { gw4WorkspaceFixture } from './fixtures/gw4Workspace';
 
-async function routeCurrentFpl(
-  page: Page,
-  defaultActualGameweek: number,
-  counters: { defaultActual: number; explicitActual: number },
-) {
+type Counters = { defaultActual: number; explicitActual: number };
+
+async function routeCurrentFpl(page: Page, actualResponseGameweek: number, counters: Counters) {
   await page.route('**/gameweek-status-api**', async (route) => {
     await route.fulfill({
       status: 200,
@@ -29,29 +27,27 @@ async function routeCurrentFpl(
   });
 
   await page.route('**/fpl-v3-actual-live-api**', async (route) => {
-    const url = new URL(route.request().url());
-    const requested = Number(url.searchParams.get('gw') ?? 0);
-    if (requested > 0) {
-      counters.explicitActual += 1;
+    const requested = Number(new URL(route.request().url()).searchParams.get('gw') ?? 0);
+    if (requested <= 0) {
+      counters.defaultActual += 1;
       await route.fulfill({
-        status: 200,
+        status: 500,
         contentType: 'application/json',
-        body: JSON.stringify({ ...gw4ActualLiveFixture, gameweek: requested }),
+        body: JSON.stringify({ ok: false, error: 'Default actual/live must not be used by the current FPL path' }),
       });
       return;
     }
 
-    counters.defaultActual += 1;
-    await new Promise((resolve) => setTimeout(resolve, 75));
+    counters.explicitActual += 1;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ ...gw4ActualLiveFixture, gameweek: defaultActualGameweek }),
+      body: JSON.stringify({ ...gw4ActualLiveFixture, gameweek: actualResponseGameweek }),
     });
   });
 }
 
-test('current FPL reuses the matching default actual/live request instead of issuing an explicit duplicate', async ({ page }) => {
+test('current FPL resolves workspace first and requests actual/live explicitly for that Gameweek', async ({ page }) => {
   const counters = { defaultActual: 0, explicitActual: 0 };
   await routeCurrentFpl(page, 4, counters);
 
@@ -60,19 +56,18 @@ test('current FPL reuses the matching default actual/live request instead of iss
   await expect(page.locator('main')).toHaveAttribute('data-gameweek', '4');
   await expect(page.locator('.v3-fpl-hero .v3-kicker')).toContainText('Gameweek 4');
 
-  expect(counters.defaultActual).toBe(1);
-  expect(counters.explicitActual).toBe(0);
+  expect(counters.defaultActual).toBe(0);
+  expect(counters.explicitActual).toBe(1);
 });
 
-test('current FPL refuses to combine mismatched default actual/live truth with the workspace Gameweek', async ({ page }) => {
+test('current FPL fails closed when explicit actual/live returns another Gameweek', async ({ page }) => {
   const counters = { defaultActual: 0, explicitActual: 0 };
   await routeCurrentFpl(page, 5, counters);
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Your Gameweek' })).toBeVisible();
-  await expect(page.locator('main')).toHaveAttribute('data-gameweek', '4');
-  await expect(page.locator('.v3-fpl-hero .v3-kicker')).toContainText('Gameweek 4');
+  await expect(page.getByRole('heading', { name: 'FPL workspace is unavailable.' })).toBeVisible();
+  await expect(page.getByText('Actual-live Gameweek mismatch: requested GW4, received GW5')).toBeVisible();
 
-  expect(counters.defaultActual).toBe(1);
+  expect(counters.defaultActual).toBe(0);
   expect(counters.explicitActual).toBe(1);
 });

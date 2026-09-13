@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { fetchActualLive } from './api/actualLive';
 import { fetchGameweekCatalog } from './api/gameweekCatalog';
 import { FplLiveWorkspace } from './components/FplLiveWorkspace';
 import { ForwardFplPage, ForwardHomePage, ForwardInsightsPage } from './components/ForwardPages';
@@ -51,13 +50,6 @@ export function App() {
       });
     return () => controller.abort();
   }, []);
-
-  useEffect(() => {
-    if (active !== 'fpl' || selectedGameweek !== 0) return;
-    const controller = new AbortController();
-    void fetchActualLive(0, controller.signal).catch(() => undefined);
-    return () => controller.abort();
-  }, [active, selectedGameweek]);
 
   const latestAvailableGameweek = Math.max(currentGameweek ?? 0, latestIntelligenceGameweek ?? 0);
 

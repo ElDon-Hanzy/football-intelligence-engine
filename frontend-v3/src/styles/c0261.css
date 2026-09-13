@@ -146,6 +146,16 @@
   line-height: 1.5;
 }
 
+@media (max-width: 900px) {
+  .v3-mobile-nav {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .v3-page {
+    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom));
+  }
+}
+
 @media (max-width: 620px) {
   .v3-top-actions {
     display: flex;

@@ -97,5 +97,6 @@ console.log(JSON.stringify({
     actual_headers: Math.round(actualCall.headersMs),
     actual_total: Math.round(actualCall.totalMs),
   },
+  workspace_server_timing: workspaceCall.response.headers.get('server-timing'),
   historical_forecasts_rewritten: payload.semantics.historical_forecasts_rewritten,
 }));

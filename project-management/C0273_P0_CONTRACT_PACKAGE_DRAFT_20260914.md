@@ -77,6 +77,8 @@ A fact family cannot be marked `COVERED` until the exact provider, authority tie
 - `CONTRADICTED` or `MISSING` blocks final authorization;
 - no fallback to inferred `first kickoff - 90m` as final authority.
 
+Current positive evidence: live `sync-fpl-actual-decision` v2 already fetches the official FPL event and enforces `deadline_time` before reading locked picks. C0273 should generalize this authority; it should not invent a separate deadline clock.
+
 ## 3. Health-state contract
 
 Health dimensions are independent.
@@ -109,32 +111,53 @@ Health dimensions are independent.
 
 Exact numeric server-side budgets remain to be measured before implementation.
 
-## 5. Idempotency / retry work catalog — initial draft
+## 5. Idempotency / retry work catalog — evidence-backed P0 subset
 
-This table intentionally uses `AUDIT_REQUIRED` where the current implementation has not been fully inspected for autonomous retry safety.
+Detailed evidence: `C0273_CHECKPOINT_02_RETRY_IDEMPOTENCY_AUDIT_20260914.md`.
 
-| Work family | Current entrypoint evidence | Expected class | Retry policy status |
-|---|---|---|---|
-| FPL result sync | `sync-gw-results` | likely upsert/idempotent | AUDIT_REQUIRED |
-| FPL data sync | `sync-fpl-data` | likely upsert/snapshot | AUDIT_REQUIRED |
-| availability refresh | `refresh-availability-intelligence` | snapshot/upsert | AUDIT_REQUIRED |
-| current player state | `refresh-current-player-state` | snapshot/upsert | AUDIT_REQUIRED |
-| team history ingest | `ingest-team-history` | append/upsert | AUDIT_REQUIRED |
-| Understat ingest | `ingest-understat-xg` | append/upsert | AUDIT_REQUIRED |
-| competitive core | `ingest-competitive-core-stats` | append/upsert | AUDIT_REQUIRED |
-| team state refresh | DB refresh function | deterministic current-state | AUDIT_REQUIRED |
-| fixture forecast refresh | approved refresh functions | deterministic/snapshot | AUDIT_REQUIRED |
-| projection horizon cycle | C0217 | append run with signatures | likely duplicate-detectable; AUDIT_REQUIRED |
-| full-pool optimizer | C0213 orchestrator/Edge | append run/input signature | likely duplicate-detectable; AUDIT_REQUIRED |
-| C0248 sequential planner | Edge + run table | append/input signature | existing deterministic evidence; formal retry audit required |
-| C0248 promotion | DB deterministic promotion | signature guarded | candidate for retry-safe after formal audit |
-| C0234 autonomous gate | append/input signature | duplicate-detectable | candidate for retry-safe after audit |
-| C0237 publication | input-signature conflict guard | idempotent by signature | candidate for retry-safe after audit |
-| actual submission sync | `sync-fpl-actual-decision` | append/verified identity | AUDIT_REQUIRED |
-| realized role ingest | Edge / append observations | append duplicate-detectable expected | AUDIT_REQUIRED |
-| shadow evaluator | experiment-specific | varies | must be declared per experiment |
+| Work family | Evidence-backed class | Current planning disposition |
+|---|---|---|
+| FPL result sync `sync-gw-results` v5 | **RECONCILE_BEFORE_RETRY — P0** | Parent result run can exist before all player rows; matching latest payload can then short-circuit a repair. Do not blind retry. |
+| FPL data sync `sync-fpl-data` v3 | **OBSERVATION_APPEND** | Current player/team dimensions upsert safely, but price history and source-sync runs intentionally append with new timestamps. Retry only when a new observation is still required. |
+| availability refresh v4 | **RETRY_SAFE_BY_KEY / RECOVERABLE_APPEND** | Semantic availability rows are keyed by `(match_id,player_id,observation_hash)`. Strong candidate for bounded controller retry. |
+| current player state v8 | **RECONCILE_BEFORE_RETRY — P0** | Latest-evidence check plus timestamped append is race/partial-batch sensitive; no semantic evidence-hash uniqueness. |
+| actual submission sync v2 | **SINGLE_WRITER_REQUIRED — P0** | Official deadline semantics are strong, but table lacks unique Gameweek/entry/signature first-write constraint; concurrent first writers can race. |
+| C0248 sequential planner v6 | **RETRY_SAFE_BY_KEY with unique-conflict reconciliation** | `UNIQUE(input_signature)` is strong; simultaneous identical inserts may still surface one duplicate-key error to the losing worker. Reconcile winner. |
+| C0248 verified promotion | **RETRY_SAFE_BY_KEY candidate** | Keep deterministic promotion contract; wrap with generation/fencing. |
+| C0234 autonomous gate | **RETRY_SAFE_BY_KEY** | `UNIQUE(input_signature)` plus existing lookup/insert dedupe. |
+| C0237 publication | **RETRY_SAFE_BY_KEY** | `UNIQUE(input_signature)` plus conflict-safe lookup/insert. Canonical supersession remains separate. |
+| team history ingest | append/upsert | AUDIT_REQUIRED |
+| Understat ingest | append/upsert | AUDIT_REQUIRED |
+| competitive core | append/upsert | AUDIT_REQUIRED |
+| team state refresh | deterministic current-state | AUDIT_REQUIRED |
+| fixture forecast refresh | deterministic/snapshot | AUDIT_REQUIRED |
+| projection horizon cycle | append runs/signatures | AUDIT_REQUIRED |
+| full-pool optimizer | append run/signature expected | AUDIT_REQUIRED |
+| realized role ingest | append observations | AUDIT_REQUIRED |
+| shadow evaluator | experiment-specific | must be declared per experiment |
 
-No `AUDIT_REQUIRED` work may become autonomous-retry production dispatch merely because it is currently cron-scheduled.
+### Autonomous work contract
+
+No work family may be dispatchable until it declares:
+
+- stable `work_key`;
+- immutable `input_lineage`;
+- `generation_id` where decision/finalization relevant;
+- fencing token/lease epoch for mutating completion;
+- queryable `completion_invariant`;
+- retry classification;
+- deterministic reconcile procedure after timeout/ambiguous failure;
+- canonicalization rule;
+- deadline commit guard where relevant;
+- supersession rule.
+
+A run row, matching input hash or HTTP success alone is not proof of complete work unless the work-family contract explicitly defines it as such.
+
+### Required retry algorithm
+
+`failure/timeout → reconcile durable state → prove COMPLETE / INCOMPLETE / CONTRADICTED → retry only if policy permits → accept completion only under current generation + fencing token`.
+
+There must be no generic blind “retry failed job” primitive in the future control plane.
 
 ## 6. Materiality / invalidation map — draft
 
@@ -207,7 +230,15 @@ A read-only reconciler must be able to consume recorded/current state and emit e
 ### Golden failure cases
 
 - duplicate event;
+- result-sync parent created but zero child player rows;
+- result-sync partial player batches then worker crash;
+- equal-payload concurrent result-sync workers;
+- player-state partial batch failure then retry;
+- concurrent identical player-state refreshes;
+- actual-decision concurrent first writers;
+- sequential-planner same-signature concurrent inserts;
 - worker crash after external work succeeded but before completion record;
+- upstream payload changes between observation retries;
 - 429 + Retry-After;
 - provider timeout;
 - stale P0 injury/XI source;
@@ -223,7 +254,8 @@ A read-only reconciler must be able to consume recorded/current state and emit e
 - public API failure while engine healthy;
 - GitHub Actions outage while data APIs healthy;
 - research workload spike during final window;
-- actual submitted team unavailable.
+- actual submitted team unavailable;
+- stale worker completes after finalization-generation invalidation.
 
 ### Pass criteria
 
@@ -233,7 +265,9 @@ A read-only reconciler must be able to consume recorded/current state and emit e
 - last-valid behavior correct;
 - no historical rewrite;
 - no mixed-lineage decision;
-- no research-to-production leak.
+- no research-to-production leak;
+- incomplete parent/run markers cannot masquerade as completed work;
+- stale/fenced workers cannot make canonical state current.
 
 ## 10. Scope decision
 
@@ -244,12 +278,13 @@ C0273 Phase 1 targets **one canonical FPL manager/entry**. Public football intel
 1. Independently audit exact providers/coverage inside availability, expected-XI and late team-news pipelines.
 2. Identify a provenance-safe automated manager press-conference/team-news source or formally declare the gap.
 3. Audit current manager-state refresh cadence/source.
-4. Audit retry/idempotency semantics for each candidate controller-dispatched work family.
+4. Complete retry/idempotency audit for remaining controller-dispatched families and define exact completeness invariants for the three P0 unsafe families found in Checkpoint 02.
 5. Measure safe server-side concurrency/resource budgets.
 6. Define FPL points settlement/correction criterion.
-7. Confirm official deadline source is already stored/available and map current consumers that infer from kickoff.
+7. Map every current consumer that still infers deadline from kickoff; official FPL deadline is already proven in the locked-picks path.
 8. Choose public health contract versioning strategy.
 9. Define external alert channel for SEV0/SEV1 once implementation is authorized.
+10. Finalize publication canonical-pointer/supersession semantics.
 
 ## 12. Planning-only notice
 

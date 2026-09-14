@@ -14,7 +14,6 @@ Reviewed:
 - `PROJECT_STATE.md`;
 - `SYSTEM_ARCHITECTURE.md`;
 - `WEEKLY_DATA_PIPELINE.md`;
-- `PROJECT_DESCRIPTION.md`;
 - C0248 sequential planner plan;
 - C0272 post-audit consolidation;
 - live active cron inventory (29 active jobs at audit time).
@@ -107,12 +106,43 @@ Most important principle added: **a durable run marker or matching input signatu
 
 No runtime, schema, cron, Edge Function or model was changed.
 
+### Batch 6 — P0 information-source autonomy audit
+
+Produced:
+
+- `C0273_CHECKPOINT_03_P0_INFORMATION_SOURCE_AUTONOMY_AUDIT_20260914.md`.
+
+Key evidence-backed findings:
+
+- current availability/injury/suspension evidence is primarily official FPL bootstrap `status`, `chance_of_playing_next_round` and `news`, refreshed every four hours;
+- availability observations record fetch time but explicitly have `source_item_timestamp_available=false`, so provider-publication time is not known;
+- current expected XI is an **internal inference**, not an independent external lineup feed: it selects highest internal start probabilities under legal FPL formation constraints and explicitly marks the shape as non-tactical;
+- no dedicated manager press-conference / club-team-news structured source, table, Edge Function or cron was proven;
+- penalty order is production-consumed from official FPL hierarchy; direct-FK/corner hierarchy is stored but general production consumption was not proven;
+- transfer/event provenance exists, but a continuously automated completeness contract was not proven;
+- complete non-Premier-League congestion coverage for Europe/domestic cups is not proven as a rotation/xMins autonomy input;
+- tactical/realized-role automation is strong, but its cadence is not a substitute for late team-news evidence;
+- **new P0 orchestration gap:** manager-state snapshots exist but no active cron invoking `sync-fpl-manager-state` was found. Inspected snapshots are sparse and stop at GW4, so current squad/free-transfers/bank/purchase-price lineage cannot yet be assumed autonomous for GW5+.
+
+New design requirements:
+
+- first-class Source Readiness Registry;
+- evidence-independence tags (`MODEL_XI` must not count as independent confirmation of itself);
+- qualitative team-news adapter contract;
+- manager-state capture contract as a prerequisite to optimizer/decision work;
+- congestion schedule contract;
+- set-piece consumption map;
+- per-fact-family final-window freshness budgets;
+- explicit degraded modes rather than manufactured confidence.
+
+No provider was selected and no source/runtime behavior changed.
+
 ## Current recommended architecture
 
 ```text
 Sources / Official Clock / Results
         ↓
-Causal Event Ledger
+Source Readiness Registry + Causal Event Ledger
         ↓
 Restartable Scheduler / Reconciler
         ↓
@@ -139,16 +169,18 @@ The control plane orchestrates existing intelligence. It does not duplicate mode
 
 Before implementation approval, resolve/audit the P0 planning items:
 
-1. exact automated coverage/providers for availability, predicted XI, expected minutes, press conferences/team news, transfers, set pieces and congestion;
-2. official FPL deadline data path and every current consumer that infers deadline from first kickoff;
-3. retry/idempotency class for remaining dispatchable work families and exact completeness invariants for result sync/current-player-state/actual-decision;
-4. fencing/state-version/finalization-generation contracts for distributed control;
-5. safe server-side concurrency/resource budgets;
-6. official points settlement/correction criterion;
-7. public status API versioning/contract and publication supersession semantics;
-8. final deadline change-freeze duration and commit-time deadline guard;
-9. alert channel for SEV0/SEV1;
-10. digital-twin/replay evidence plan and soak duration, including split-brain, partial-write and stale-worker cases.
+1. choose/prove provenance-safe automated coverage for manager press conferences/team news and decide whether independent external predicted XI is mandatory or confidence-enhancing;
+2. define manager-state autonomous capture/freshness/completeness/single-writer contract;
+3. define complete cup/Europe congestion schedule coverage and conservative materiality semantics;
+4. map every current consumer that still infers deadline from kickoff; official FPL deadline must become universal authority;
+5. complete retry/idempotency audit for remaining controller-dispatched work families and exact completeness invariants for result sync/current-player-state/actual-decision;
+6. finalize fencing/state-version/finalization-generation contracts for distributed control;
+7. measure safe server-side concurrency/resource budgets;
+8. define official FPL points settlement/correction criterion;
+9. finalize public status API versioning and publication supersession/canonical-pointer semantics;
+10. finalize deadline change-freeze duration and commit-time deadline guard;
+11. choose an alert channel for SEV0/SEV1;
+12. complete digital-twin/replay evidence plan and soak duration, including split-brain, partial-write, stale-worker and source-degradation cases.
 
 ## Explicit non-changes
 
@@ -157,6 +189,7 @@ C0273 planning has not:
 - created controller/state/queue schema;
 - changed any cron;
 - changed any Edge Function;
+- changed any source provider/ingestion;
 - changed C0234/C0237/C0248;
 - changed projection/model numerics;
 - promoted/killed any shadow model;
@@ -170,13 +203,14 @@ C0273 planning has not:
 If a chat/tool/session fails, resume by reading in this order:
 
 1. this checkpoint;
-2. `C0273_CHECKPOINT_02_RETRY_IDEMPOTENCY_AUDIT_20260914.md`;
-3. `C0273_CHECKPOINT_01_DISTRIBUTED_CONTROL_SAFETY_20260914.md`;
-4. `C0273_AUTONOMOUS_WEBSITE_MASTER_PLAN_V02_20260914.md`;
-5. `C0273_AUTONOMOUS_WEBSITE_OPERATING_PROCEDURES_V02_20260914.md`;
-6. `C0273_P0_CONTRACT_PACKAGE_DRAFT_20260914.md`;
-7. `C0273_EXTERNAL_SENIOR_ANALYST_REVIEW_20260914.md`;
-8. live `public.change_tracker_working` row `C0273`;
-9. live Supabase/runtime state before any future implementation.
+2. `C0273_CHECKPOINT_03_P0_INFORMATION_SOURCE_AUTONOMY_AUDIT_20260914.md`;
+3. `C0273_CHECKPOINT_02_RETRY_IDEMPOTENCY_AUDIT_20260914.md`;
+4. `C0273_CHECKPOINT_01_DISTRIBUTED_CONTROL_SAFETY_20260914.md`;
+5. `C0273_AUTONOMOUS_WEBSITE_MASTER_PLAN_V02_20260914.md`;
+6. `C0273_AUTONOMOUS_WEBSITE_OPERATING_PROCEDURES_V02_20260914.md`;
+7. `C0273_P0_CONTRACT_PACKAGE_DRAFT_20260914.md`;
+8. `C0273_EXTERNAL_SENIOR_ANALYST_REVIEW_20260914.md`;
+9. live `public.change_tracker_working` row `C0273`;
+10. live Supabase/runtime state before any future implementation.
 
 Production changes remain approval-gated even if planning automation continues unattended.

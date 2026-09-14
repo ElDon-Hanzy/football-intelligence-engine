@@ -65,6 +65,26 @@ The contract package includes:
 - public/internal API boundary;
 - digital-twin acceptance scenarios.
 
+### Batch 4 — distributed-control safety red-team
+
+Produced:
+
+- `C0273_CHECKPOINT_01_DISTRIBUTED_CONTROL_SAFETY_20260914.md`.
+
+New P0 design requirements identified:
+
+- leases/idempotency alone are insufficient; mutating work needs a fencing token / lease epoch so a stale worker cannot commit after takeover;
+- Gameweek lifecycle transitions need monotonic state-version compare-and-swap semantics;
+- final-window lineage needs an explicit `finalization_generation` / cycle ID, incremented when material P0 evidence invalidates the current cycle;
+- recovery after ambiguous worker failure must reconcile deterministic output before retry rather than blindly replaying side effects;
+- event ordering needs provider-specific source revision / effective-at semantics in addition to known-at/observed-at;
+- final authority requires a commit-time official-deadline check, not merely an enqueue-time check;
+- immutable publications need an explicit predeadline supersession/canonical-pointer contract;
+- autonomy needs audited PAUSE / DRAIN / EMERGENCY_BLOCKED controls that can never bypass C0234;
+- digital-twin tests must include split-brain reconcilers, expired-lease stale completion, generation invalidation mid-run, ambiguous database outcomes and predeadline-start/postdeadline-finish races.
+
+These are planning findings only; nothing was implemented.
+
 ## Current recommended architecture
 
 ```text
@@ -76,9 +96,11 @@ Restartable Scheduler / Reconciler
         ↓
 Readiness + Policy Contracts
         ↓
-Priority Work Queue + Leases + Backpressure
+Priority Work Queue + Leases + Fencing + Backpressure
         ↓
 Bounded Existing Workers / Engine Components
+        ↓
+Generation-bound canonical lineage
         ↓
 C0248 → C0234 → C0237
         ↓
@@ -98,12 +120,13 @@ Before implementation approval, resolve/audit the P0 planning items:
 1. exact automated coverage/providers for availability, predicted XI, expected minutes, press conferences/team news, transfers, set pieces and congestion;
 2. official FPL deadline data path and every current consumer that infers deadline from first kickoff;
 3. retry/idempotency class for each dispatchable work family;
-4. safe server-side concurrency/resource budgets;
-5. official points settlement/correction criterion;
-6. public status API versioning/contract;
-7. final deadline change-freeze duration;
-8. alert channel for SEV0/SEV1;
-9. digital-twin/replay evidence plan and soak duration.
+4. fencing/state-version/finalization-generation contracts for distributed control;
+5. safe server-side concurrency/resource budgets;
+6. official points settlement/correction criterion;
+7. public status API versioning/contract and publication supersession semantics;
+8. final deadline change-freeze duration and commit-time deadline guard;
+9. alert channel for SEV0/SEV1;
+10. digital-twin/replay evidence plan and soak duration, including split-brain and stale-worker cases.
 
 ## Explicit non-changes
 
@@ -125,11 +148,12 @@ C0273 planning has not:
 If a chat/tool/session fails, resume by reading in this order:
 
 1. this checkpoint;
-2. `C0273_AUTONOMOUS_WEBSITE_MASTER_PLAN_V02_20260914.md`;
-3. `C0273_AUTONOMOUS_WEBSITE_OPERATING_PROCEDURES_V02_20260914.md`;
-4. `C0273_P0_CONTRACT_PACKAGE_DRAFT_20260914.md`;
-5. `C0273_EXTERNAL_SENIOR_ANALYST_REVIEW_20260914.md`;
-6. live `public.change_tracker_working` row `C0273`;
-7. live Supabase/runtime state before any future implementation.
+2. `C0273_CHECKPOINT_01_DISTRIBUTED_CONTROL_SAFETY_20260914.md`;
+3. `C0273_AUTONOMOUS_WEBSITE_MASTER_PLAN_V02_20260914.md`;
+4. `C0273_AUTONOMOUS_WEBSITE_OPERATING_PROCEDURES_V02_20260914.md`;
+5. `C0273_P0_CONTRACT_PACKAGE_DRAFT_20260914.md`;
+6. `C0273_EXTERNAL_SENIOR_ANALYST_REVIEW_20260914.md`;
+7. live `public.change_tracker_working` row `C0273`;
+8. live Supabase/runtime state before any future implementation.
 
 Production changes remain approval-gated even if planning automation continues unattended.

@@ -39,27 +39,41 @@ Current evidence is based on the live 2026-09-14 scheduler/architecture inventor
 
 A fact family cannot be marked `COVERED` until the exact provider, authority tier, known-at field, freshness budget, fallback and failure effect are documented and tested.
 
-## 2. Deadline Authority Contract — draft
+## 2. Deadline Authority Contract — hardened after Checkpoint 04
 
-### Inputs
+Detailed evidence: `C0273_CHECKPOINT_04_DEADLINE_AUTHORITY_AUDIT_20260914.md`.
+
+### Current contradiction
+
+- `sync-fpl-actual-decision` v2 correctly uses official FPL `events[].deadline_time`.
+- `private.generate_upcoming_fpl_projection_core_v01`, `private.c0217_projection_horizon_cycle_v01`, `private.c0235_capture_prefinal_snapshot_v01`, and `fpl-autonomous-gate` v7 still derive deadline as first kickoff minus 90 minutes.
+- `private.c0272_final_promotion_watch_v01` inherits `gameweek_prediction_runs.deadline_at`, which is currently created from that derived clock.
+
+Therefore current stored equality between official expectation and derived timestamps is not sufficient for full autonomy.
+
+### Canonical inputs
 
 - target FPL Gameweek ID;
 - official FPL event row / `deadline_time`;
-- current fixture calendar for cross-check;
-- database/server current UTC timestamp.
+- current fixture calendar for diagnostic cross-check only;
+- database/server UTC timestamp;
+- deadline evidence version/hash;
+- current `finalization_generation`.
 
-### Output
+### Canonical output
 
 ```json
 {
   "ok": true,
   "gameweek": 5,
   "official_deadline_at": "...Z",
+  "deadline_evidence_version": "...",
   "crosscheck_first_kickoff_at": "...Z",
   "crosscheck_expected_deadline_at": "...Z",
   "crosscheck_delta_seconds": 0,
   "authority": "OFFICIAL_FPL_EVENT",
   "state": "VERIFIED",
+  "finalization_generation": 1,
   "blockers": []
 }
 ```
@@ -67,17 +81,49 @@ A fact family cannot be marked `COVERED` until the exact provider, authority tie
 ### States
 
 - `VERIFIED` — official deadline present and calendar cross-check plausible.
-- `OFFICIAL_ONLY` — official deadline present but fixture cross-check unavailable; may be acceptable depending fixture state.
+- `OFFICIAL_ONLY` — official deadline present but fixture cross-check unavailable/incomplete.
 - `CONTRADICTED` — official deadline materially conflicts with calendar expectation.
 - `MISSING` — official deadline unavailable.
+- `CHANGED` — official deadline differs from the previously canonical observed value; deadline-bound work must be invalidated/rescheduled.
 
-### Policy
+### Authority policy
 
-- only `VERIFIED`/approved `OFFICIAL_ONLY` may enter autonomous final-window progression;
-- `CONTRADICTED` or `MISSING` blocks final authorization;
-- no fallback to inferred `first kickoff - 90m` as final authority.
+1. Official FPL event `deadline_time` is the **sole final authority**.
+2. Fixture calendar / first kickoff is a diagnostic cross-check.
+3. `first kickoff - 90m` may remain telemetry only; it may never become an autonomous fallback authority.
+4. `MISSING` blocks deadline-sensitive final authorization/mutation.
+5. `CONTRADICTED` preserves the official deadline as authority but raises degraded/incident state pending fixture reconciliation.
+6. `CHANGED` increments `finalization_generation`, invalidates pending deadline-bound work, and replans the final window.
 
-Current positive evidence: live `sync-fpl-actual-decision` v2 already fetches the official FPL event and enforces `deadline_time` before reading locked picks. C0273 should generalize this authority; it should not invent a separate deadline clock.
+### Commit-time deadline rule
+
+Deadline-sensitive canonical mutation must revalidate the **current official deadline and generation at commit time**, not only at enqueue/start time.
+
+Applies at minimum to:
+
+- final projection acceptance;
+- C0248 production promotion;
+- C0234 final authorization;
+- C0237 canonical final publication;
+- any future external execution adapter.
+
+A task that starts before deadline and completes after deadline cannot become a newly executable/canonical predeadline decision.
+
+### Deadline lineage rule
+
+Final-window work identity/signatures must include:
+
+`official_deadline_at + deadline_evidence_version/hash + finalization_generation`.
+
+Planner, gate and publication must agree on the same deadline identity. Mixed deadline generations fail closed.
+
+### Historical rule
+
+Existing frozen prediction rows keep their original `deadline_at`/`deadline_source`. C0273 must not rewrite them. Future official-deadline evidence should be additive and joinable for audit.
+
+### Current positive evidence
+
+Live `sync-fpl-actual-decision` v2 already fetches official FPL event data and enforces `deadline_time` before reading locked picks. C0273 should reuse/generalize that authority rather than invent a separate clock.
 
 ## 3. Health-state contract
 
@@ -163,7 +209,7 @@ There must be no generic blind “retry failed job” primitive in the future co
 
 | Event | Materiality | Invalidate / rerun | Must not invalidate |
 |---|---|---|---|
-| official deadline change | CRITICAL | lifecycle, final-window schedule, current decision timing | frozen prior historical publication |
+| official deadline change | CRITICAL | deadline fact version, finalization generation, lifecycle, final-window schedule, current decision timing, deadline-bound work | frozen prior historical publication |
 | fixture postponement/reschedule | CRITICAL | affected fixture state, horizon projections, decision | unrelated finished-GW evidence |
 | player ruled out/suspended | HIGH | availability/xMins, affected projections, decision | unrelated research |
 | predicted-XI material change | HIGH | xMins/role, affected projections, decision | immutable past forecasts |
@@ -178,7 +224,8 @@ There must be no generic blind “retry failed job” primitive in the future co
 
 ## 7. Deployment freeze contract — draft
 
-- Proposed ordinary change freeze: T−6h to official deadline.
+- Proposed ordinary change freeze: T−6h to **official FPL deadline**.
+- If the official deadline changes, freeze boundaries move immediately with the canonical deadline fact.
 - Applies to: production code, schema, model, critical control configuration.
 - Does not apply to: documentation-only branch work, zero-runtime research documentation.
 - Emergency exception requires incident record + explicit approval.
@@ -222,7 +269,7 @@ A read-only reconciler must be able to consume recorded/current state and emit e
 - ordinary rolling refresh;
 - unchanged inputs => no rerun;
 - projection changed => decision rerun;
-- final T−2 progression;
+- final T−2 progression using official deadline identity;
 - valid final publication;
 - post-deadline actual capture;
 - clean settlement.
@@ -244,8 +291,13 @@ A read-only reconciler must be able to consume recorded/current state and emit e
 - stale P0 injury/XI source;
 - manager state mismatch;
 - mixed prediction lineage;
-- deadline missing;
-- deadline/calendar contradiction;
+- official deadline missing;
+- official deadline/calendar contradiction;
+- official deadline moves earlier;
+- official deadline moves later;
+- deadline changes during an in-flight finalization cycle;
+- planner/gate/publication disagree on deadline evidence generation;
+- worker starts predeadline and finishes postdeadline;
 - final cross-beam disagreement;
 - fixture postponement;
 - DGW/BGW;
@@ -264,10 +316,11 @@ A read-only reconciler must be able to consume recorded/current state and emit e
 - correct health dimension;
 - last-valid behavior correct;
 - no historical rewrite;
-- no mixed-lineage decision;
+- no mixed-lineage or mixed-deadline-generation decision;
 - no research-to-production leak;
 - incomplete parent/run markers cannot masquerade as completed work;
-- stale/fenced workers cannot make canonical state current.
+- stale/fenced workers cannot make canonical state current;
+- no derived deadline can override official FPL event authority.
 
 ## 10. Scope decision
 
@@ -281,10 +334,11 @@ C0273 Phase 1 targets **one canonical FPL manager/entry**. Public football intel
 4. Complete retry/idempotency audit for remaining controller-dispatched families and define exact completeness invariants for the three P0 unsafe families found in Checkpoint 02.
 5. Measure safe server-side concurrency/resource budgets.
 6. Define FPL points settlement/correction criterion.
-7. Map every current consumer that still infers deadline from kickoff; official FPL deadline is already proven in the locked-picks path.
+7. Decide policy for `OFFICIAL_ONLY` deadline state and the contradiction/degraded threshold; deadline consumer map itself is now audited in Checkpoint 04.
 8. Choose public health contract versioning strategy.
 9. Define external alert channel for SEV0/SEV1 once implementation is authorized.
 10. Finalize publication canonical-pointer/supersession semantics.
+11. Approve or revise the proposed T−6h production freeze.
 
 ## 12. Planning-only notice
 

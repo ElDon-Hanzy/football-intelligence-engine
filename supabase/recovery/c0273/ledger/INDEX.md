@@ -1,0 +1,61 @@
+# A1 Direct Migration Ledger Index
+
+> **NOT ORIGINAL GIT DEPLOYMENT COMMIT — DO NOT REPLAY BLINDLY INTO PRODUCTION**
+
+Frozen query contract: migration names beginning `c0234_`, `c0237_`, `c0240_`, or `c0248_`, ordered by migration version. Count = 51; each had exactly one statement entry at A0.
+
+The exact ledger statements were captured read-only from `supabase_migrations.schema_migrations` during A1. They are authoritative forensic evidence; prose reconstruction is forbidden. This index records the frozen identity sequence. Individual statement materialization must preserve byte-equivalent statement content and its MD5.
+
+1. 20260908213853 c0234_c0213_readiness_bridge
+2. 20260909173747 c0237_always_live_fpl_plan_publication_v01
+3. 20260909174251 c0237_require_complete_layer_lineage_v02
+4. 20260910214124 c0240_final_adversarial_evidence_v01
+5. 20260910214830 c0240_distributed_adversarial_queue_v01
+6. 20260910215539 c0240_same_horizon_path_role_gate_v02
+7. 20260910215616 c0240_incremental_orchestrator_v01
+8. 20260910215911 c0240_exact_slot_and_path_search_v03
+9. 20260910224617 c0240_register_path_evaluator
+10. 20260910224822 c0240_route_path_tasks_to_dedicated_evaluator
+11. 20260910225021 c0240_finalize_v04_path_contract
+12. 20260910225227 c0237_require_c0240_lineage
+13. 20260910225325 c0240_prediction_lineage_enrichment
+14. 20260910230002 c0237_render_c0240_survivor
+15. 20260910230248 c0240_consumption_contract_and_behavioral_proofs
+16. 20260911003757 c0240_optimizer_policy_signature
+17. 20260911004039 c0240_break_publication_cycle
+18. 20260911004718 c0240_adversarial_repeat_status
+19. 20260911004835 c0240_repeat_cycle_orchestration
+20. 20260911005044 c0240_legal_slot_challenger_repair
+21. 20260911080741 c0240_closeout_regression_contract_v2
+22. 20260911132737 c0248_sequential_planner_storage_and_status
+23. 20260911132946 c0248_dispatch_allowlist
+24. 20260911134409 c0248_price_predictor_snapshot_storage
+25. 20260911134507 c0248_price_timing_evaluator
+26. 20260911134652 c0248_chip_timing_exact_horizon
+27. 20260911134825 c0248_wildcard_same_utility_benchmark
+28. 20260911134856 c0248_wildcard_same_utility_benchmark_alias_fix
+29. 20260911135140 c0248_terminal_state_option_value_gate
+30. 20260911135445 c0248_current_chip_action_status
+31. 20260911135522 c0248_free_hit_opportunity_sensitivity_fix
+32. 20260911135555 c0248_decision_control_status
+33. 20260911135858 c0248_live_publication_integration
+34. 20260911142534 c0248_c0244_structural_chip_window_guard
+35. 20260911142605 c0248_c0245_terminal_option_guard_v02
+36. 20260911144813 c0248_c0245_empirical_ft_option_calibration
+37. 20260911144842 c0248_c0245_option_value_status
+38. 20260911145807 c0248_c0245_future_information_optionality_v01
+39. 20260911145942 c0248_c0245_future_information_optionality_v02
+40. 20260911150034 c0248_integrate_mature_c0245_option_value
+41. 20260911151816 c0248_c0244_mature_first_half_chip_control
+42. 20260911154010 c0248_same_lineage_chip_price_fh_repair
+43. 20260911155935 c0248_v06_cutover_candidate_consumers
+44. 20260911160046 c0248_v06_expose_selected_chip_roots
+45. 20260911160226 c0248_c0237_selected_path_publication_cutover
+46. 20260911160347 c0248_verified_candidate_promotion_contract
+47. 20260911160418 c0248_production_promotion_fail_closed_bridge
+48. 20260912124034 c0237_current_projection_lineage_fix
+49. 20260912124250 c0237_publish_contested_when_c0248_not_promoted
+50. 20260912162507 c0248_decouple_selector_and_post_deadline_chip_closure
+51. 20260912162810 c0237_post_deadline_final_closure_publication
+
+Cross-family dependency evidence deliberately excluded from this direct 51 count: `c0229_c0234_autonomy_run_storage`, `c0241_c0240_reuse_optimizer_horizon_guard`, `c025x_c0240_infeasible_structure_semantics_fix`.

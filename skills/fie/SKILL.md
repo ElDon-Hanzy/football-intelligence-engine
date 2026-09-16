@@ -18,6 +18,20 @@ Before meaningful FPL implementation/recommendation:
 - verify current-GW inputs are fresh;
 - inspect C0276 cycle health and current final/publication governance.
 
+## Whole-engine reconciliation rule — C0278
+Before beginning a new architecture/model program after a long implementation chain, reconcile the **whole engine**, not only the proposed change. The canonical current audit is `project-management/C0278_FULL_ENGINE_STATE_AUDIT_RECONCILIATION_20260916.md`.
+
+At minimum:
+- compare live Supabase runtime/registry/tracker against canonical GitHub docs and source;
+- audit every active cron for ownership, purpose, lifecycle/tracker reference and completion semantics;
+- verify authority-relevant deployed runtime/source parity before rebuild/redeploy;
+- preserve intentional blocked/deferred/monitoring/research states rather than mass-closing old rows;
+- update canonical docs when architecture authority changes materially;
+- rerun C0213 architecture, behavioral, provenance, retirement and storage governance after reconciliation;
+- do not begin the next feature program while a newly discovered P0 integrity/source-of-truth contradiction is unresolved.
+
+Current C0278 audit findings to re-check live, not assume permanently: C0213 behavioral proof was 13/14 because projection-core definition hash was stale; a live C0274 GW6 hard-reprojection function/cron existed without tracker/GitHub reconciliation; canonical docs were behind C0248/C0276; C0273 full authority-relevant runtime/source parity remained open.
+
 ## Decision rules
 Optimize the whole legal XV but score points entering the XI correctly. Captaincy is separate. Always compare ROLL. Hits need a robust edge after FT inventory, flexibility, timing and uncertainty. Sequential planning must model bank, selling value, FT carry/accrual and future information. Bench value under normal rules is legal expected autosub/resilience, not a flat percentage; Bench Boost uses full bench value. Chip timing compares current use to retained future option value. Structural future fixture evidence may be used without inventing player precision. Price affects feasibility/timing only, never xPts. Serious challengers remain until explicitly resolved. Options inside model error are `NO_MEANINGFUL_EDGE`. Unpromoted research cannot acquire numeric production effect.
 
@@ -39,7 +53,7 @@ Before adding a layer ask whether it fixes a demonstrated decision failure, dupl
 → C0237/publication
 → external execution only if separately authorized.
 
-C0276 is the bounded autonomy/control plane around this chain. It must preserve dependency lineage, bounded retries, event invalidation, deadline governance, historical immutability and no external transfer/chip execution.
+C0276 is the bounded autonomy control plane around this chain. It must preserve dependency lineage, bounded retries, event invalidation, deadline governance, historical immutability and no external transfer/chip execution.
 
 ## C0248 invariants
 C0248 remains the sole selected-path authority. Resolve its current production/candidate run IDs live rather than from this skill.
@@ -65,7 +79,7 @@ Permanent C0277 rules:
 - only `ROBUST_PLAY`, after existing final gates, may support a production chip recommendation;
 - C0248 remains sole selected-path authority; C0276/C0234 remain fail closed; no external execution.
 
-Audited baseline at C0277 creation (2026-09-16): exact numerical chip coverage GW5-GW8; structural-only GW9-GW19; `season_best_chip_weeks_resolved=false`; current timing input `V06_PLANNER_RUN_MISSING`; C0276 bounded option value `BOUNDED_OPTION_INPUT_NOT_READY`. Latest audit also found C0213 behavioral consumption 13/14 because `P4_PROJECTION_CORE_OUTPUT_LINEAGE` has stale definition-hash proof. These are P0 inputs, not permanent truths: re-check live state before acting.
+C0277 implementation is downstream of C0278 whole-engine reconciliation. Do not start C0277 P0 merely because its local plan exists while whole-engine governance/source parity remains red.
 
 Canonical C0277 references:
 - `project-management/C0277_SEASONAL_CHIP_OPTION_VALUE_OPTIMIZER_PLAN_20260916.md`

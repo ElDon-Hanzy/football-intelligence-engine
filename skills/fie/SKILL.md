@@ -7,97 +7,49 @@
 4. Canonical docs.
 5. Historical handovers/conversation summaries.
 
-Never overwrite live evidence with stale documentation. Never hard-code a prior planner/run ID as current authority; resolve current lineage from live state each session.
+Never overwrite live evidence with stale documentation. Resolve current run IDs from live state.
 
 ## Start-of-session checks
-Before meaningful FPL implementation/recommendation:
-- read `PROJECT_STATE.md`, `DECISIONS_AND_HISTORY.md`, latest relevant closeout, and any active program plan/audit;
-- inspect manager state and current prediction/optimizer/sequential lineage;
-- inspect `public.change_tracker_working`;
-- run C0213 architecture + behavioral-consumption status and treat stale definition-hash proof as not PASS;
-- verify current-GW inputs are fresh;
-- inspect C0276 cycle health and current final/publication governance.
-
-## Whole-engine reconciliation rule — C0278
-Before beginning a new architecture/model program after a long implementation chain, reconcile the **whole engine**, not only the proposed change. The canonical current audit is `project-management/C0278_FULL_ENGINE_STATE_AUDIT_RECONCILIATION_20260916.md`.
-
-At minimum:
-- compare live Supabase runtime/registry/tracker against canonical GitHub docs and source;
-- audit every active cron for ownership, purpose, lifecycle/tracker reference and completion semantics;
-- verify authority-relevant deployed runtime/source parity before rebuild/redeploy;
-- preserve intentional blocked/deferred/monitoring/research states rather than mass-closing old rows;
-- update canonical docs when architecture authority changes materially;
-- rerun C0213 architecture, behavioral, provenance, retirement and storage governance after reconciliation;
-- do not begin the next feature program while a newly discovered P0 integrity/source-of-truth contradiction is unresolved.
-
-Current C0278 audit findings to re-check live, not assume permanently: C0213 behavioral proof was 13/14 because projection-core definition hash was stale; a live C0274 GW6 hard-reprojection function/cron existed without tracker/GitHub reconciliation; canonical docs were behind C0248/C0276; C0273 full authority-relevant runtime/source parity remained open.
+Read `PROJECT_STATE.md`, `DECISIONS_AND_HISTORY.md`, latest relevant closeout/active plan; inspect manager state and current prediction/optimizer/sequential lineage; inspect tracker; run C0213 architecture + behavioral status; verify current-GW inputs; inspect C0276 cycle/final/publication governance.
 
 ## Decision rules
-Optimize the whole legal XV but score points entering the XI correctly. Captaincy is separate. Always compare ROLL. Hits need a robust edge after FT inventory, flexibility, timing and uncertainty. Sequential planning must model bank, selling value, FT carry/accrual and future information. Bench value under normal rules is legal expected autosub/resilience, not a flat percentage; Bench Boost uses full bench value. Chip timing compares current use to retained future option value. Structural future fixture evidence may be used without inventing player precision. Price affects feasibility/timing only, never xPts. Serious challengers remain until explicitly resolved. Options inside model error are `NO_MEANINGFUL_EDGE`. Unpromoted research cannot acquire numeric production effect.
+Optimize the whole legal XV. Captaincy is separate. Always compare ROLL. Hits need robust edge after FT inventory, flexibility, timing and uncertainty. Sequential planning models bank, selling value, FT carry/accrual and future information. Bench value is expected autosub/resilience, not a flat percentage; Bench Boost uses full bench value. Price affects feasibility/timing, never xPts. Serious challengers remain until resolved. Options inside model error are `NO_MEANINGFUL_EDGE`. Unpromoted research cannot gain production effect.
 
-## Anti-over-engineering gate
-Before adding a layer ask whether it fixes a demonstrated decision failure, duplicates existing information, has a falsifiable contract, has one clear consumer, can be merged more simply, and delivers expected decision value above complexity. If not, consolidate/reject.
+## Noise-Control / anti-over-engineering
+Never act from one model, recent score, isolated statistic or one-match tactical observation. Require multiple independent signals including a structural signal. If reasonable assumptions flip the recommendation or the edge is inside model error, do not act. Before adding a layer require a demonstrated decision failure, unique information, falsifiable contract, one clear consumer and decision value above complexity; otherwise consolidate/reject.
 
-## Canonical decision architecture
-`FULL-POOL OPTIMIZER`
-→ uncertainty
-→ ensemble/equivalence
-→ structural robustness
-→ forward-management evidence
-→ OR/rank utility
-→ red-team evidence
-→ C0240 adversarial benchmark
-→ captaincy/named-challenger consistency
-→ **C0248 canonical sequential selected-path authority**
-→ C0234/C0276 fail-closed final authorization
-→ C0237/publication
-→ external execution only if separately authorized.
+## Canonical architecture
+`FULL-POOL OPTIMIZER` → uncertainty → ensemble/equivalence → structural robustness → forward-management → OR/rank utility → red-team → C0240 adversarial benchmark → captaincy/named-challenger consistency → **C0248 sole canonical sequential selected-path authority** → C0277 chip opportunity-cost supporting gate → C0234/C0276 fail-closed final authorization → C0237/publication → external execution only if separately authorized.
 
-C0276 is the bounded autonomy control plane around this chain. It must preserve dependency lineage, bounded retries, event invalidation, deadline governance, historical immutability and no external transfer/chip execution.
+C0276 is the bounded autonomy control plane. Preserve exact lineage, bounded retries, event invalidation, deadline governance, historical immutability and no external transfer/chip execution.
 
 ## C0248 invariants
-C0248 remains the sole selected-path authority. Resolve its current production/candidate run IDs live rather than from this skill.
+C0248 remains sole selected-path authority. Fresh candidate lineage is not self-promoting. All chip/terminal/price/FH controls used together bind to canonical planner lineage or fail closed. Free Hit uses a fresh one-GW optimizer candidate; Wildcard uses a fresh-squad sequential path. Wildcard and Free Hit retain banked FTs under 2026/27 rules.
 
-The planner may not self-promote. Fresh candidate lineage remains shadow-only until the canonical promotion contract is satisfied. A newer unpromoted candidate must make final decision readiness fail closed where required.
+## C0277 seasonal chip option-value directive — Completed / Verified
+Use the C0277 chain as supporting evidence, never as a second transfer optimizer:
+- `private.c0277_dual_horizon_chip_option_status_v01`
+- `private.c0277_reservation_value_status_v01`
+- `private.c0277_future_opportunity_scenarios_v01`
+- `private.c0277_robust_chip_action_selector_v01`
+- `private.c0276_chip_opportunity_gate_v01`
 
-All chip, terminal, price and Free Hit controls used together must bind to the same canonical planner lineage. Any mismatch fails closed.
+Permanent rules:
+- keep exact numerical decision horizon distinct from seasonal chip opportunity window;
+- never request/fabricate long-horizon player precision merely to rank chips;
+- unknown future option value is not zero;
+- structural future evidence can reserve a chip but cannot authorize spending;
+- do not invent probabilities for unconfirmed future BGW/DGW/rearrangement scenarios;
+- one-chip-per-GW competition means shared future windows cannot be double-counted;
+- best future chip week stays unresolved/null until evidence supports precision;
+- chip spend requires `PLAY_NOW` from the robust selector plus whole-squad reoptimization, xMins/role gates, future transfer burden, opportunity cost, red-team/Noise-Control and final timing authorization;
+- otherwise use `RESERVE_FOR_FUTURE`, `NO_MEANINGFUL_EDGE`, or fail closed;
+- C0248 authority is unchanged; C0277/C0276 do not execute chips.
 
-Free Hit uses an independent one-GW fresh optimizer candidate; Wildcard uses a fresh-squad sequential path. Wildcard and Free Hit retain banked FTs under the 2026/27 rules.
+Current GW5 verification at C0277 P5: exact horizon 3, seasonal window through GW19, `NONE / RESERVE_FOR_FUTURE / PLAY_NOW=false`; season-best chip weeks unresolved. Re-resolve live rather than hard-code this state.
 
-## C0277 seasonal chip option-value directive
-C0277 is **Planned / Critical** because current exact-horizon chip comparisons do not yet prove that PLAY NOW dominates preserving a chip for its best later opportunity. It extends C0248/C0276 as supporting option-value evidence; it must not become a competing selector.
+## C0278 whole-engine reconciliation rule
+Before a new major architecture/model program after a long implementation chain, reconcile whole-engine runtime/registry/tracker/GitHub/docs. Audit active crons and authority, preserve intentional blocked/deferred/research states, rerun C0213 governance, and do not begin a new feature while a P0 source-of-truth contradiction remains unresolved.
 
-Permanent C0277 rules:
-- compare current chip use against the **optimal PRESERVE branch**, not merely current NONE;
-- optimize the legal chip calendar jointly because chips compete for Gameweeks and Wildcard changes downstream squad state;
-- use exact numerical evidence only where decision-grade player projections exist;
-- use probabilistic/structural future evidence without fabricating exact player xPts/xMins;
-- model chip expiry, one-chip-per-GW collisions, information value of waiting, FT/flexibility effects and price stress;
-- a single `best_gameweek` remains nullable when uncertainty does not justify precision;
-- apply sensitivity/Noise-Control before chip authorization;
-- decision classes: `ROBUST_PLAY`, `LEAN_PLAY`, `NO_MEANINGFUL_EDGE`, `PRESERVE`, `UNRESOLVED_FAIL_CLOSED`;
-- only `ROBUST_PLAY`, after existing final gates, may support a production chip recommendation;
-- C0248 remains sole selected-path authority; C0276/C0234 remain fail closed; no external execution.
-
-C0277 implementation is downstream of C0278 whole-engine reconciliation. Do not start C0277 P0 merely because its local plan exists while whole-engine governance/source parity remains red.
-
-Canonical C0277 references:
-- `project-management/C0277_SEASONAL_CHIP_OPTION_VALUE_OPTIMIZER_PLAN_20260916.md`
-- `project-management/C0277_PRE_IMPLEMENTATION_AUDIT_RECONCILIATION_20260916.md`
-
-## Protected decisions
-- Historical forecasts are append-only.
-- Missing data remains unknown.
-- Actual submitted team, recommendation, frozen decision snapshot and realized outcome remain separate lanes.
-- C0265 production behavior remains untouched until separately authorized.
-- C0240 concurrency must not be expanded as a side effect of unrelated work.
-- C0230 remains advisory/nonblocking unless a later verified decision explicitly changes that status.
-- No transfer or chip execution is implied by FINAL/publication.
-
-## T−2 process
-Fresh ingestion → full-pool projections/roles → new C0248 candidate → canonical peer/promotion validation → C0240/C0242 supporting checks → C0234/C0276 final gate → C0237 publication.
-
-Evaluate all 15 players, xMins/roles, Defensive Contributions, captaincy distributions, chips, ROLL, serious challengers, price/timing, uncertainty, red team and Noise-Control.
-
-## Communication
-Keep chat concise. Put detailed engineering evidence in GitHub/Supabase. State clearly when repaired/fresh evidence invalidates an older recommendation.
+## Protected states
+C0265 predicted-XI/xMins behavior is deliberately unchanged; do not repair without explicit authorization. C0270 is shadow observation only. Do not change C0240 concurrency without separate validation/authorization.

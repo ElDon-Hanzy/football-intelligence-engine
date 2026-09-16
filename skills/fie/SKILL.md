@@ -52,6 +52,26 @@ All chip, terminal and price controls used together must bind to the same canoni
 
 Free Hit must use the independent one-GW fresh optimizer candidate; never use a hard-coded edge. Wildcard uses the exact-horizon fresh optimizer candidate. Wildcard and Free Hit retain banked FTs under the 2026/27 rules.
 
+## C0277 seasonal chip option-value directive
+
+C0277 is **Planned / Critical** and exists because current exact-horizon chip comparisons do not yet prove that PLAY NOW dominates preserving a chip for its best later opportunity. It is a supporting option-value extension to C0248/C0276, not a competing selector.
+
+Permanent C0277 rules:
+- compare current chip use against the **optimal PRESERVE branch**, not merely current NONE;
+- optimize the legal chip calendar jointly because chips compete for Gameweeks and Wildcard changes downstream squad state;
+- use exact numerical evidence only where decision-grade player projections exist;
+- use probabilistic/structural future evidence without fabricating exact player xPts/xMins;
+- model chip expiry, one-chip-per-GW collisions, information value of waiting, FT/flexibility effects and price stress;
+- a single `best_gameweek` must remain nullable when uncertainty does not justify precision;
+- apply sensitivity/Noise-Control before chip authorization;
+- decision classes are `ROBUST_PLAY`, `LEAN_PLAY`, `NO_MEANINGFUL_EDGE`, `PRESERVE`, `UNRESOLVED_FAIL_CLOSED`;
+- only `ROBUST_PLAY`, after existing final gates, may support a production chip recommendation;
+- C0248 remains sole selected-path authority; C0276/C0234 remain fail closed; no external execution.
+
+Current audited baseline (2026-09-16): exact numerical chip coverage GW5-GW8; structural-only GW9-GW19; `season_best_chip_weeks_resolved=false`; current timing input reports `V06_PLANNER_RUN_MISSING`; C0276 bounded option value reports `BOUNDED_OPTION_INPUT_NOT_READY`. Therefore a strong raw GW5 Wildcard edge is not season-level chip authorization. Start C0277 with P0 integration audit/repair before building future option-value layers.
+
+Canonical plan: `project-management/C0277_SEASONAL_CHIP_OPTION_VALUE_OPTIMIZER_PLAN_20260916.md`.
+
 ## Downstream authority
 
 C0234 v6 consumes C0248 selected-path authority. C0237 v7 publishes the C0248 selected path. C0240 is now a **supporting adversarial benchmark**, not normal-transfer selector authority.

@@ -1,180 +1,123 @@
 # Football Intelligence Engine — System Architecture
 
-_Last updated: 2026-09-11 — C0247 architecture audit_
+_Last reconciled: 2026-09-17 — C0278 whole-engine closeout_
 
-## 1. Purpose
+## 1. Purpose and invariants
 
-The engine has two linked products:
-
-1. **FPL decision intelligence** — maximize future season-long FPL points and rank under uncertainty.
-2. **Football market-mispricing research** — identify context-driven value that survives chronology-safe forward validation.
-
-Historical forecasts are immutable. Missing data is not zero. Research code does not acquire production effect merely by existing.
+The engine has two linked products: FPL decision intelligence and chronology-safe football research. Historical forecasts are append-only; missing data is unknown rather than zero; research acquires no production numeric effect merely by existing; actual submission, recommendation, frozen forecast and realized outcome remain separate.
 
 ## 2. Source-of-truth order
 
-1. live Supabase runtime and `public.change_tracker_working`;
-2. C0213 architecture registry/dependency graph/governance;
-3. current GitHub source and migrations;
+1. live Supabase runtime/data and architecture registry;
+2. `public.change_tracker_working` and C0213 governance;
+3. current GitHub source/migrations;
 4. canonical documentation;
-5. historical handovers / legacy registries.
+5. historical handovers and summaries.
 
-## 3. Lifecycle contract
+## 3. Lifecycle and production-effect contract
 
-Components are classified as PRODUCTION, SHADOW, RESEARCH, UI_ONLY, INFRASTRUCTURE or RETIRED. Lifecycle is separate from canonical status and from `production_effect_enabled`.
+Components are classified independently by lifecycle (PRODUCTION, SHADOW, RESEARCH, UI_ONLY, INFRASTRUCTURE, RETIRED), canonical status and production effect. A production-effect component requires definition-hash-bound behavioral proof. Unpromoted research/shadow families have zero numeric production effect.
 
-At the C0247 audit the registry contains 720 components, but only 14 production-effect components. Behavioral proof is 14/14 current PASS.
+Latest C0278 reconciliation evidence: 820 registered components, 14 production-effect components, 14/14 current behavioral PASS, 19/19 required capabilities, 99/99 tracker consumption contracts covered, zero active duplicate cron targets and zero active retired external deployments.
 
-## 4. Production forecast path
+## 4. Forecast path
 
 ```text
 RESULTS / FPL / FOOTBALL SOURCES
-        ↓
-INGESTION + CHRONOLOGY/PROVENANCE
-        ↓
-CANONICAL PLAYER / TEAM / ROLE / FIXTURE STATE
-        ↓
-C0159 BOUNDED FIXTURE DERIVATIVE
-        ↓
-C0166 PRODUCTION FIXTURE FORECAST
-        ↓
-TEAM LAMBDA ADJUSTMENT
-        ↓
-PLAYER GOAL/ASSIST LAMBDA v03
-        ↓
-EVENT POINT DISTRIBUTION
-        ↓
-PLAYER PROJECTION CORE
-        ↓
-FULL-POOL OPTIMIZER
+→ ingestion + chronology/provenance
+→ canonical player/team/role/fixture state
+→ bounded fixture derivative / production fixture forecast
+→ team lambda adjustment
+→ player goal/assist lambdas
+→ event point distribution
+→ player projection core
+→ full-pool optimizer
 ```
 
-Key production components include:
+Core production surfaces include current team performance, adjusted team lambda, goal/assist lambda, event distribution, projection core, C0159/C0166 fixture forecasts, realized/current role profiles and the full-pool optimizer. Realized roles are factual categorical state; shadow research cannot silently alter xPts.
 
-- `private.refresh_current_season_team_performance_v01`
-- `private.fpl_adjusted_team_lambda_v01`
-- `private.fpl_fixture_goal_lambda_v03`
-- `private.fpl_fixture_assist_lambda_v03`
-- `private.fpl_current_event_distribution_v01`
-- `private.generate_upcoming_fpl_projection_core_v01`
-- `private.refresh_c0159_production_fixture_forecasts_v01`
-- `private.refresh_c0166_production_fixture_forecasts_v01`
-- `public.current_realized_player_roles`
-- `public.current_player_role_profiles`
-- `public.current_production_fixture_prediction_v01`
-- `fpl-full-pool-optimizer`.
-
-Realized roles are factual categorical state. Research/shadow families remain zero numeric production effect unless promoted through their explicit gate.
-
-## 5. Current downstream FPL decision stack
-
-The current live decision path is larger than the forecast core:
+## 5. Canonical downstream FPL decision chain
 
 ```text
 FULL-POOL OPTIMIZER
   ↓
-C0227 uncertainty/sensitivity
+C0227 uncertainty / sensitivity
   ↓
-C0228 diverse ensemble / equivalence
+C0228 ensemble / equivalence
   ↓
 C0229 structural robustness
   ↓
-C0230 shadow team-regime diagnostic (zero numeric effect)
+C0231 forward-management evidence
   ↓
-C0231 forward-management approximation
+C0232 OR / rank utility
   ↓
-C0232 OR/rank utility
+C0233 red-team evidence
   ↓
-C0233 adversarial red team
+C0240 adversarial benchmark
   ↓
-C0240 final adversarial optimization
+captaincy + named-challenger consistency
   ↓
-C0234 fail-closed final authorization
+C0248 CANONICAL SEQUENTIAL SELECTED-PATH AUTHORITY
   ↓
-C0237 live publication
+C0234 / C0276 FAIL-CLOSED FINAL AUTHORIZATION
+  ↓
+C0237 PUBLICATION
+  ↓
+external FPL execution only if separately authorized
 ```
 
-Cross-cutting controls:
+Authority rules:
 
-- C0241 exact-horizon lineage/repeat-idempotency.
-- C0242 named-challenger persistence and captaincy equivalence — implemented but not yet fully integrated into C0234/C0237.
+- C0248 is the sole selected-path authority.
+- C0240 is supporting adversarial evidence, not a second selector.
+- C0230 is advisory/nonblocking with zero numeric production effect.
+- C0276 is the bounded autonomy/control plane around the chain, not another optimizer or decision authority.
+- Publication never implies external execution.
 
-C0247 concludes that this decision stack is now the main over-engineering risk.
+## 6. C0276 bounded autonomy
 
-## 6. Current optimizer semantics and limitation
+C0276 represents the operational DAG from fixture/player state through projection, uncertainty, optimizer, ensemble, structural, forward, OR utility, red team, adversarial, captaincy, sequential, final gate and publication. It is lineage-aware and fail-closed.
 
-The canonical full-pool optimizer:
+Heavy asynchronous stages are reconciled only when the returned artifact is newer than its request and matches exact required upstream lineage. Stale or mismatched artifacts cannot satisfy a new request. Retries are bounded; `RETRY_WAIT` is a governed backoff state rather than an unknown-health failure.
 
-- evaluates the legal full player pool using top-xMins plus explosive exceptions;
-- supports a 1–5 GW weighted horizon;
-- uses current selling prices, manager state and transfer-cost accounting;
-- selects the best XI separately each GW;
-- uses tail-aware captain selection;
-- discounts bench output with a configurable bench weight (default 0.12);
-- classifies edges against a model-error margin.
+Current GW5 evidence at reconciliation has reconverged through projection 1401 and C0248 sequential candidate run 38. FINAL_GATE is held by the governed T−2 timing/authorization contract.
 
-However, it evaluates a candidate XV largely as a static squad across the horizon. It does **not** yet model the weekly transition in which +1 FT arrives, prices/information change and the manager can re-optimize again next Gameweek.
+## 7. Sequential squad-management semantics
 
-C0240 tests immediate current-FT / +1-hit / +2-hit paths, not sequential multi-GW transfer trajectories.
+C0248 models reachable multi-Gameweek squad states rather than treating a horizon as one static XV. State includes squad, bank, purchase/selling economics, FT inventory, chip inventory and information. Actions include roll, legal transfers/hits and chip roots where evidence is available. Each transition adds future FT/information state and preserves affordability/flexibility constraints.
 
-## 7. Target decision architecture after C0247
+Every meaningful action is compared with ROLL. XI/captaincy value, bench leakage, marginal £ value, club-slot cost, future transfer burden and model uncertainty are part of the decision-control problem.
 
-Do not add C0243-C0246 as four independent production layers.
+## 8. Chip option value
 
-The intended consolidation target is one **Multi-GW State-Transition Decision Planner**:
+A high short-horizon chip-root score is not sufficient to authorize a chip. C0277 extends the architecture with season/first-half reservation-value evidence and joint chip-calendar evaluation. Chip decisions remain fail-closed when broader timing coverage or robust option-value evidence is incomplete. C0277 is a sub-control feeding the canonical C0248/C0276 decision path, not a parallel selector.
 
-```text
-STATE(t)
-  squad + bank + purchase/selling prices + FT inventory + chip inventory + information
-        ↓
-ACTIONS(t)
-  roll / legal FT sequence / hit / WC / BB / TC / FH
-        ↓
-SCORING(t)
-  XI-first expected points + separate captaincy + state-dependent bench value
-        ↓
-TRANSITION
-  price/information update + one new FT + preserved chip state
-        ↓
-STATE(t+1)
-```
+## 9. Final authorization principle
 
-The planner must compare reachable transfer trajectories against Wildcard/reset paths and preserve uncertainty/no-meaningful-edge semantics.
+There is one fail-closed authorization boundary after C0248. It consumes current-lineage diagnostics and must not duplicate optimization internally. Noise-Control requires multiple independent signals including structural evidence; recommendations inside normal model error, unstable under reasonable assumptions, or inconsistent across plausible scenarios are `NO_MEANINGFUL_EDGE`.
 
-Price movement affects feasibility/execution timing, not xPts.
-
-## 8. Final gate design principle
-
-One final authorization boundary should remain fail-closed. It should consume unique diagnostics rather than duplicate optimization internally.
-
-More gates are not automatically safer. Overlapping decision authorities can create contradiction and make failure diagnosis harder.
-
-C0242 named-challenger resolution should be integrated into this boundary before additional downstream production runtime is introduced.
-
-## 9. Research architecture
-
-Research remains separate:
+## 10. Research architecture
 
 ```text
 SOURCE → FEATURE/MODEL → SHADOW OUTPUT → EVALUATOR/ABLATION → PROMOTION OR REJECTION
 ```
 
-Negative evidence is preserved. Promotion requires the registered forward-validation contract. C0230, C0224 and other unpromoted families remain non-numeric.
+Negative evidence is preserved. C0265 remains deliberately unfixed pending separate authorization. C0270 prospective definitions remain frozen. C0230 and other unpromoted families remain non-numeric.
 
-## 10. Governance and integrity
+## 11. Runtime/governance state
 
-Current audit state:
+C0278 whole-engine reconciliation is Completed / Verified. It reconciled runtime/source ownership, active cron ownership, decision authority, tracker state and canonical documentation. Intentional open, blocked, deferred and monitoring programs are not mass-closed.
 
-- required capabilities: 19/19
-- behavioral production proof: 14/14 PASS
-- tracker consumption contracts: 83/83
-- active duplicate cron targets: 0
-- active retired external deployments: 0
-- architecture registry integrity: green
+Permanent safety constraints:
 
-One active research-only orphan, `EDGE_FUNCTION:c0120-historical-correct-score`, exists live but is not represented in current GitHub source. It should be reconciled separately.
+- no historical forecast rewrite;
+- no hidden second selected-path authority;
+- no production effect without current proof;
+- no external FPL execution without separate authorization;
+- C0265 unchanged unless separately authorized;
+- C0240 concurrency unchanged unless separately validated/authorized.
 
-## 11. Canonical references
+## 12. Canonical references
 
 - `PROJECT_DESCRIPTION.md`
 - `PROJECT_STATE.md`
@@ -183,4 +126,4 @@ One active research-only orphan, `EDGE_FUNCTION:c0120-historical-correct-score`,
 - `DECISIONS_AND_HISTORY.md`
 - `MODEL_CONSUMPTION_AUDIT.md`
 - `skills/fie/SKILL.md`
-- `project-management/C0247_FULL_ENGINE_DECISION_ARCHITECTURE_AUDIT_20260911.md`
+- `project-management/C0278_FULL_ENGINE_STATE_AUDIT_RECONCILIATION_20260916.md`

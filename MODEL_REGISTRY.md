@@ -1,16 +1,16 @@
 # Football Intelligence Engine — Model Registry
 
-_Last updated: 2026-09-14 — C0272 post-audit consolidation_
+_Last reconciled: 2026-09-17 — C0278 whole-engine closeout_
 
 ## 1. Registry policy
 
-The live machine-readable authority is `private.c0213_component_inventory_v01`. Lifecycle, canonical status and numeric production effect are separate. A component does not become production merely because code exists or because it is consumed as diagnostic metadata.
+The live machine-readable authority is the C0213 component inventory/registry. Lifecycle, canonical status and numeric production effect are separate. Code existence or diagnostic consumption never grants production effect.
 
-Every production-effect component requires current definition-hash-bound behavioral proof. Research/shadow output remains observational until its own chronology-safe promotion gate passes.
+Every production-effect component requires current definition-hash-bound behavioral proof. Research/shadow output remains observational until its chronology-safe promotion contract passes.
 
-## 2. Live production-effect set
+## 2. Current production-effect set
 
-C0272 re-ran behavioral consumption on GW5 / prediction run 1367: **14 production-effect components; 14/14 PASS**.
+C0278 reconciliation confirms **14 production-effect components; 14/14 current behavioral PASS**.
 
 | Capability | Canonical component | Effect |
 |---|---|---|
@@ -29,105 +29,105 @@ C0272 re-ran behavioral consumption on GW5 / prediction run 1367: **14 productio
 | Current fixture selector | `public.current_production_fixture_prediction_v01` | State selection |
 | Full-pool optimizer | `fpl-full-pool-optimizer` | Squad optimization |
 
-The old v02 goal/assist lambda functions remain retired rollback components after C0220; v03 is live production.
+The retired v02 goal/assist lambda functions remain rollback-only; v03 is live production.
 
-## 3. Fixture stack
+## 3. Fixture / player / role stack
 
-Production fixture path:
+Production fixture path remains:
 
 `structural baseline → bounded C0147 derivative via C0159 → bounded symmetric C0166 evidence → current production fixture selector`.
 
-Raw C0147 remains shadow/research. The bounded C0159/C0166 derivatives are the only promoted consumption paths. C0272 does not add a new fixture model.
+Raw C0147 remains shadow/research. The player projection path combines team/fixture lambda state, current xG/xA evidence, xMins/start state, penalties, realized tactical roles, clean-sheet / Defensive Contributions / bonus probabilities and event-distribution tails.
 
-## 4. Player / role stack
+C0202 HIGH-confidence attack-side inference remains factual metadata only: no generic flank xPts uplift, no numeric role uplift, and no model effect.
 
-The player projection path combines team/fixture lambda state, current xG/xA evidence, expected minutes/start states, penalty hierarchy, realized tactical role semantics, clean-sheet / Defensive Contributions / bonus probabilities, and event-distribution tails.
+## 4. Canonical squad / decision stack
 
-C0202 now supplies one additional **factual metadata field only**: high-confidence categorical attack-side inference. It is stored in fixture-role evidence through `public.refresh_player_fixture_role_snapshots`.
+`fpl-full-pool-optimizer` is the canonical full-pool squad optimizer. C0248 is the sole canonical sequential selected-path authority.
 
-Permanent C0202 constraints:
+```text
+full-pool optimizer
+→ C0227 uncertainty
+→ C0228 ensemble/equivalence
+→ C0229 structural robustness
+→ C0231 forward-management evidence
+→ C0232 OR/rank utility
+→ C0233 red-team evidence
+→ C0240 adversarial benchmark
+→ captaincy / named-challenger consistency
+→ C0248 sequential selected-path authority
+→ C0234 / C0276 fail-closed final authorization
+→ C0237 publication
+```
 
-- only the validated `HIGH` confidence side bucket is integrated;
-- `attack_side_numeric_xpts_effect=false`;
-- `numeric_role_uplift_enabled=false`;
-- `model_effect_enabled=false`;
-- the rejected generic flank-weakness xPts hypothesis is not promoted.
+C0230 is advisory/nonblocking and zero numeric effect. C0240 is not a normal-transfer selector. C0276 is a bounded operational control plane around this chain, not an xPts model or competing selector.
 
-## 5. Squad / multi-GW decision stack
+## 5. Sequential planning and chips
 
-`fpl-full-pool-optimizer` remains the sole canonical full-pool squad optimizer. C0248 is the canonical **sequential selected-path authority** layered over candidate squad/action evidence.
+C0248 models reachable multi-GW state transitions including squad, bank, purchase/selling economics, FT inventory and chip state. Every action is compared with ROLL and remains subject to uncertainty/Noise-Control.
 
-Decision path:
+C0277 is the active seasonal chip option-value program. It adds reservation-value and joint chip-calendar evidence because a strong short-horizon WC/FH/BB/TC root does not by itself establish the best season-level chip week. C0277 feeds the existing C0248/C0276 authority path and does not create a parallel selector.
 
-`full-pool optimizer → uncertainty / ensemble / structural controls → supporting forward/rank/red-team layers → C0240 adversarial benchmark → C0242 challenger + captaincy consistency → C0248 sequential path authority → C0234 fail-closed authorization → C0237 publication`.
+## 6. Decision controls are not extra xPts models
 
-C0240 is supporting adversarial/regression evidence, not the normal-transfer selector.
-
-C0272 adds **control-plane orchestration**, not another optimizer: `private.c0272_final_promotion_watch_v01` ensures that a final T−2 C0248 candidate gets an identical-lineage cross-beam peer, unchanged deterministic promotion, gate refresh and publication before the deadline. It cannot execute transfers or waive a gate.
-
-## 6. Decision controls are not additional xPts models
-
-- C0227 uncertainty: diagnostic/control.
-- C0228 ensemble: alternative squad search/equivalence.
-- C0229 structural robustness: marginal-value/portfolio diagnostic.
-- **C0230 team regime: shadow advisory only; zero numeric effect and nonblocking to publication/final authorization.**
-- C0231 forward management: supporting reachability evaluator.
-- C0232 OR utility: rank/leverage context; zero direct xPts effect.
-- C0233 red team: supporting adversarial diagnostic.
+- C0227: uncertainty/sensitivity control.
+- C0228: alternative squad search/equivalence.
+- C0229: structural robustness / marginal-value control.
+- C0230: shadow advisory only; zero numeric effect, nonblocking.
+- C0231: forward reachability evidence.
+- C0232: rank/leverage utility; zero direct xPts effect.
+- C0233: red-team evidence.
 - C0240: deeper adversarial benchmark.
-- C0242: named-challenger persistence + captaincy consistency.
-- C0248: canonical sequential selected-path authority.
-- C0234: fail-closed final authorization boundary.
+- captaincy/named challengers: consistency controls.
+- C0248: sole sequential selected-path authority.
+- C0234/C0276: fail-closed final authorization/control plane.
 - C0237: publication boundary.
-- C0272: final-window orchestration only.
+- C0277: chip option-value sub-control.
 
-## 7. Research / shadow portfolio after C0272
+## 7. Protected research / shadow states
 
-| Family | Lifecycle / decision | Promotion state |
-|---|---|---|
-| A0005 enriched forward ablation | **RETIRED / REJECTED**; capture/evaluator crons removed | No production effect |
-| W0002 rolling forward cohort | Continue through preregistered GW5 test | Shadow |
-| C0120 exact-score predictive hypothesis | **REJECTED**; C0236 price/cache retained separately | No production effect |
-| C0147 matchup validation | Continue; future TEST remains scheduled | Shadow; bounded derivative already represented by C0159 |
-| C0197 chaos-only | **REJECTED**, selected dispersion scale 0 | No production effect |
-| C0197 shootout/regime | Final prospective window only; no new captures after GW6 | Shadow |
-| C0202 flank/side | Numeric flank xPts rejected; HIGH-confidence categorical side integrated as factual state | Metadata only, zero numeric effect |
-| C0206 foreign translator | Paused/excluded until materially new governed calibration evidence | Shadow/research only |
-| **C0224 Parity–Draw** | **Continue shadow by explicit user decision on 2026-09-14** | Zero production effect |
-| C0230 team regime | Continue advisory shadow | Zero production effect / nonblocking |
-| C0270 xMins cliff watch | Continue exactly as frozen | Shadow diagnostic only |
+- A0005: retired/rejected; zero production effect.
+- W0002: governed shadow evidence only unless separately promoted.
+- C0120 predictive hypothesis: rejected; retained infrastructure is separate.
+- C0147 raw matchup family: shadow; only bounded promoted derivatives consume numerically.
+- C0197 chaos-only: rejected; scale zero.
+- C0197 shootout/regime: prospective shadow window through its registered expiry.
+- C0202 generic numeric flank hypothesis: rejected; factual HIGH-confidence metadata only.
+- C0206: paused/excluded pending new governed evidence.
+- C0224 Parity–Draw: shadow only.
+- C0230: advisory shadow, zero numeric effect.
+- C0265: Open / Planned / Critical; production behavior deliberately unchanged.
+- C0270: frozen prospective xMins-cliff diagnostic; shadow only.
 
-No new numeric shadow family was promoted in C0272.
+Negative evidence and rejected hypotheses are retained without numeric production effect.
 
-## 8. Anti-over-engineering / promotion discipline
+## 8. Promotion / anti-over-engineering discipline
 
-A new production component must fix a demonstrated material blind spot, add information not already represented, have a falsifiable output and regression test, have exactly one explicit consumption path, and show robust expected decision value above model uncertainty and maintenance cost.
+A new production component must fix a demonstrated material blind spot, add unique information, have a falsifiable output/regression test, have one explicit consumption contract and show decision value above uncertainty and maintenance cost. Prefer extending an existing state/planner/gate over creating a parallel model or authority.
 
-If the same requirement fits naturally into an existing state layer, planner or gate, consolidate rather than create a new model. C0202 is the reference example: its useful factual side classifier was folded into the existing role-state evidence while the failed numeric hypothesis was discarded.
+## 9. Current governance evidence
 
-## 9. Governance controls
+Latest C0278 reconciliation:
 
-- `private.c0213_component_definition_hash_v01()`
-- `private.run_c0213_behavioral_consumption_tests_v01(gw)`
-- `private.c0213_behavioral_consumption_status_v01()`
-- `private.c0213_change_consumption_contracts`
-- `private.c0213_tracker_consumption_governance_v01()`
-- `private.audit_change_tracker_governance_v01()`
-
-C0272 verification:
-
+- registered components: **820**;
 - production-effect components: **14**;
 - behavioral PASS: **14/14**;
 - required capabilities: **19/19**;
-- tracker consumption contracts: **97/97**;
+- tracker consumption contracts: **99/99 covered**;
 - consumption violations: **0**;
 - active duplicate cron targets: **0**;
-- active retired API/Edge deployments: **0**;
+- active retired external deployments: **0**;
 - `system_consolidation_ok=true`.
 
-## 10. C0272 references
+Key governance surfaces include component definition hashing, behavioral-consumption tests/status, change-consumption contracts, tracker-consumption governance and tracker audit functions.
 
-- `project-management/C0272_POST_AUDIT_CONSOLIDATION_20260914.md`
-- `supabase/migrations/20260914030600_c0272_post_audit_consolidation.sql`
-- `supabase/functions/fpl-autonomous-gate/index.ts` — v7 source
-- consumption contracts `C0202_C0272_FACTUAL_SIDE_STATE_V01` and `C0272_POST_AUDIT_CONSOLIDATION_V01`
+## 10. Canonical references
+
+- `PROJECT_STATE.md`
+- `PROJECT_DESCRIPTION.md`
+- `SYSTEM_ARCHITECTURE.md`
+- `WEEKLY_DATA_PIPELINE.md`
+- `MODEL_CONSUMPTION_AUDIT.md`
+- `skills/fie/SKILL.md`
+- `project-management/C0278_FULL_ENGINE_STATE_AUDIT_RECONCILIATION_20260916.md`
+- `project-management/C0277_SEASONAL_CHIP_OPTION_VALUE_OPTIMIZER_PLAN_20260916.md`

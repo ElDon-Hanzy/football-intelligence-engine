@@ -1,366 +1,172 @@
 # Football Intelligence Engine — Decisions & History
 
-_Last updated: 2026-09-09 (Dubai) — through C0237/C0238 always-live publication closeout_
+_Last reconciled: 2026-09-17 (Dubai) — C0278 whole-engine closeout_
 
-This file preserves the durable decisions that govern the current engine. Detailed pre-C0213 reasoning and the former long-form ledger remain permanently available in Git history; this live file is intentionally concise so it can remain operationally current.
+This file preserves durable decisions governing the current engine. Detailed historical reasoning remains in Git history and project-management closeouts. Current runtime evidence outranks stale historical descriptions; historical decisions are preserved rather than rewritten.
 
-## 1. Product objective
+## 1. Product objective and immutable rules
 
-The engine has two linked objectives:
+The engine has two linked objectives: maximize future FPL decision quality/season-long rank, and identify football-context market mispricing that survives chronology-safe validation.
 
-1. maximize future FPL decision quality and season-long rank;
-2. find football-context market mispricing that survives chronology-safe validation.
+Permanent rules:
 
-The betting objective is not to imitate bookmakers. The FPL objective is not to maximize last week’s points or follow ownership. Both products optimize future decision quality under uncertainty.
+- Historical FPL/betting forecasts are append-only.
+- Completed evidence changes future decisions only.
+- Missing data is unknown, never silently zero.
+- Actual submitted team, engine recommendation, frozen decision snapshot and realized outcome are separate records.
+- Research/shadow output has zero numeric production effect until promoted through its registered chronology-safe gate.
+- No model is promoted from one GW, one statistic, one favorable scoreline or one model output.
+- Every meaningful FPL action compares with ROLL/no action.
+- Expected minutes, tactical role and fixture quality are structural gates.
+- Statistically indistinguishable options are `NO_MEANINGFUL_EDGE` rather than ranked noise.
 
-## 2. Immutable chronology and data rules
+## 2. C0213 — architecture and behavioral governance
 
-- Historical FPL and betting forecasts are append-only.
-- Fixture/model intelligence may change only before kickoff and freezes at kickoff.
-- Completed-match evidence may update future decisions only.
-- Retrospective replay/shadow evidence must be labelled retrospective.
-- Missing data is not zero.
-- Source/capture/evidence-cutoff provenance is mandatory where material.
-- Negative experiments are preserved; they are not retuned until they look successful.
-- A model is never promoted from one GW, one statistic, one favorable scoreline or one model output.
+C0213 established the machine-readable component inventory, dependency graph, lifecycle/effect separation, tracker consumption contracts and definition-hash-bound behavioral proof.
 
-## 3. FPL Decision-Control doctrine
+Permanent decisions:
 
-Every meaningful FPL decision must:
+- Static code/reference dependency is insufficient proof of production effect.
+- Every `production_effect_enabled=true` component requires current behavioral evidence using its appropriate effect class.
+- A production definition/runtime change invalidates its old proof until reproven.
+- Implemented model-effect work requires an explicit production consumer, evaluator/promotion gate, research-infrastructure pathway, blocked-source pathway or reconciled program contract.
+- Prediction-level effect provenance must expose baseline and adjusted lineage without rewriting history.
+- Lifecycle RETIRED is not enough: active external runtime must actually be reconciled/removed with rollback evidence.
 
-- evaluate the full available player pool, not just the current 15;
-- begin from expected minutes/start probability and tactical role;
-- use projected points plus haul/blank distributions, Defensive Contributions, bonus and clean-sheet probabilities;
-- optimize the legal £100m squad, including marginal value per £1m, club-slot cost, bench leakage, future transfer burden and structural flexibility;
-- keep an explosive-exception bucket outside the top-xMins filter;
-- compare every proposed transfer against ROLL/no action;
-- optimize captaincy separately;
-- apply ownership/EO only as game-theory context, not as proof of quality;
-- classify statistically indistinguishable options as `NO_MEANINGFUL_EDGE` rather than rank noise.
+C0278 current proof: 14 production-effect components, 14/14 PASS, 19/19 required capabilities, 99/99 tracker consumption coverage, zero duplicate active cron targets and zero active retired external deployments.
 
-Captaincy and transfer recommendations require multiple independent supporting signals, including at least one structural signal such as expected minutes, tactical role or fixture quality.
+## 3. Projection and chronology decisions
 
-## 4. Frozen manager decisions are not rewritten
+`private.generate_upcoming_fpl_projection_core_v01` is the canonical production player-projection core. Coverage/orchestration wrappers are not competing model cores.
 
-Historical automated snapshots and actual manager actions are separate records. Later model improvements do not rewrite what was recommended or actually done at the time.
+C0217/C0219 established bounded projection cadence: upstream drift alone is not permission to write a new immutable snapshot. Current-GW cadence and final-window refresh rules govern writes; future baselines remain frozen according to their cadence contract. Accidental historical duplicate forecasts are preserved rather than deleted.
 
-The saved manager plan is authoritative only when it exists and was allowed by the current decision-readiness contract.
+C0274 hard-event invalidation is a subordinate safety primitive for severe confirmed availability changes. It may trigger a new immutable projection snapshot; it is not an independent decision authority and never rewrites historical forecasts.
 
-## 5. Projection readiness is not decision readiness — C0213
+## 4. Tactical / role decisions
 
-A projection can be numerically valid while a final decision must remain blocked.
+Realized tactical role is factual production state, not an ad-hoc attacking multiplier. Numeric role uplift remains disabled unless separately validated and promoted.
 
-C0213 formalized the decision lineage:
+Raw C0147 tactical matchup research remains shadow. Bounded C0159/C0166 derivatives are the promoted fixture-consumption path. C0202 generic numeric flank xPts was rejected; only validated HIGH-confidence categorical attack-side metadata may enter factual role/fixture state, with zero numeric xPts effect.
 
-`RESULTS → FPL_CURRENT_DATA → REALIZED_ROLES → PLAYER_STATE → TEAM_STATE → TACTICAL_FIXTURE_STATE → FIXTURE_PROJECTION → PLAYER_PROJECTION → POINT_DISTRIBUTION → MANAGER_STATE → FULL_POOL_OPTIMIZER → DECISION_READINESS → SAVED_MANAGER_PLAN`
+Spatial/proxy evidence must never be described as true tracking geometry when the source cannot support that claim.
 
-Fail-closed guards protect automated decision snapshots and future manager-plan writes. Numerical projections may continue refreshing while decision output is red.
+## 5. Full-pool optimizer and Noise-Control
 
-## 6. Two selector systems are intentionally distinct
+The full-pool optimizer evaluates the legal squad problem using the available player pool, xMins/explosive candidate controls, legal formation/club/budget constraints, XI/captaincy value, bench leakage, transfer cost, manager economics, horizon value and model-error margins.
 
-The engine contains:
+It is a squad optimizer, not final authorization. A proposed action must survive uncertainty, structural-role gates and multiple independent signals. If reasonable assumptions flip the action, plausible scenarios do not consistently favor it, or its edge sits within normal model error, the engine must not force the move.
 
-1. an automated current-15 selector inside the projection core;
-2. a full-pool £100m optimizer feeding an externally adjudicated manager plan.
+## 6. C0248 — sole sequential selected-path authority
 
-These are not duplicate implementations of the same problem.
-
-The full-pool optimizer is canonical but read-only. It cannot save `fpl_manager_plans` and cannot bypass manager state, Noise-Control or Decision-Control.
-
-## 7. C0212 realized role is factual state, not a new coefficient
-
-The realized-role layer exists because nominal FPL position can differ materially from actual tactical deployment.
-
-C0212/C0213 decision:
-
-- realized tactical role is production factual state;
-- it changes categorical role semantics;
-- the existing quantitative base profile remains the numerical profile;
-- `numeric_role_uplift_enabled=false`;
-- no ad-hoc “attacking role” multiplier is added merely because one player was observed higher up the pitch.
-
-A future numerical realized-role effect requires a separate chronology-safe model and promotion gate.
-
-## 8. Static dependency proof is insufficient — C0213 P4
-
-C0213 found that code/reference graphs alone cannot prove that a factor materially affects production.
+The earlier downstream architecture accumulated overlapping decision layers and static-horizon limitations. C0248 consolidated the state-transition problem.
 
 Permanent decision:
 
-Every component with `production_effect_enabled=true` requires current behavioral proof using the correct effect class:
+- C0248 is the **sole canonical sequential selected-path authority**.
+- It evaluates reachable multi-GW states including squad, bank, purchase/selling economics, FT inventory, chip inventory and evolving information.
+- ROLL is always an explicit action.
+- Future FTs, affordability, future transfer burden, flexibility and state-dependent bench value are part of path evaluation.
+- C0240 remains supporting adversarial benchmark evidence and is **not** a second normal-transfer selector.
+- C0230 remains advisory/nonblocking with zero numeric production effect.
+- Captaincy and serious named challengers must be consistent with the selected path.
 
-- numeric perturbation;
-- state selection;
-- output lineage; or
-- runtime probe.
+## 7. C0276 — bounded autonomous control plane
 
-PASS evidence is bound to the current component definition hash. A production definition/runtime change invalidates the old PASS until deliberately reproven.
+C0276 operationalizes the canonical chain without creating another optimizer:
 
-Current proof suite: `private.run_c0213_behavioral_consumption_tests_v01(gw)`.
+`FIXTURE_STATE + PLAYER_STATE → PLAYER_PROJECTION → UNCERTAINTY → OPTIMIZER → ENSEMBLE → STRUCTURAL → FORWARD → OR_UTILITY → RED_TEAM → ADVERSARIAL → CAPTAINCY → SEQUENTIAL → FINAL_GATE → PUBLICATION`.
 
-## 9. Implemented intelligence requires a consumer or evaluator — C0213 P4
+Permanent decisions:
 
-“We built it” is not equivalent to “the engine uses it.”
+- Exact upstream lineage is mandatory.
+- Heavy asynchronous results are accepted only when newer than their request and aligned to exact required lineage.
+- An old successful artifact cannot satisfy a newer dispatch.
+- Retries are bounded; exhausted or governance-blocked states fail closed.
+- `RETRY_WAIT` is governed backoff, not an unknown-health failure.
+- C0276 is the single scheduled control plane for final decision convergence.
+- C0272's final-promotion primitive may be invoked subordinately but no longer owns an independent scheduler.
+- C0237 publication never means external FPL execution.
 
-Any implemented model-effect tracker item must resolve to an explicit pathway:
+At C0278 reconciliation, GW5 had reconverged through projection 1401 and C0248 sequential candidate run 38; FINAL_GATE remained correctly held by T−2 governance.
 
-- production consumer;
-- research evaluator/promotion gate;
-- research infrastructure;
-- blocked external source;
-- program umbrella; or
-- reconciled legacy evidence.
+## 8. C0277 — seasonal chip option value
 
-The global tracker governance audit now fails when governed implemented intelligence has no such contract.
-
-## 10. Production-effect provenance must be inspectable
-
-A current FPL prediction should expose why it differs from baseline rather than simply return xPts.
-
-C0213 P4 therefore records/exposes:
-
-- baseline prediction lineage;
-- team/opponent lambdas;
-- player goal/assist lambdas;
-- DC/bonus probabilities;
-- point-distribution version;
-- fixture generator and C0159/C0166 lineage;
-- signed C0166 adjustments;
-- explicit realized-role numeric-effect policy.
-
-This is an audit surface, not permission to rewrite historical forecasts.
-
-## 11. Canonical production FPL core
-
-The active production core was previously misleadingly named `generate_upcoming_fpl_snapshot_c0160_legacy_v01`.
-
-C0213 renamed the same function object in-place to:
-
-`private.generate_upcoming_fpl_projection_core_v01`
-
-The OID and behavior were preserved. `private.generate_upcoming_fpl_snapshot_v01` remains the coverage/orchestration wrapper rather than a competing model core.
-
-## 12. Continuous projection coverage is fail-closed
-
-C0204 learned from a newly added FPL player that a one-time “all players covered” proof is insufficient.
+A strong short-horizon chip root is not sufficient evidence that the chip should be spent now. C0277 therefore evaluates reservation value and broader first-half/season chip timing as a sub-control feeding C0248/C0276.
 
 Permanent decision:
 
-- genuinely new players may be narrowly governed into pending exclusion when both state and baseline are absent and there is no prior eligibility history;
-- restored/existing players, missing-state-only, missing-baseline-only and mass regressions are not auto-excluded;
-- unresolved projection gaps block generation.
+- WC/FH/BB/TC timing must account for future opportunity cost.
+- Chip timing must survive uncertainty, Noise-Control and red-team analysis.
+- Incomplete broader timing evidence causes fail-closed/reserve behavior rather than forced chip use.
+- C0277 is not a parallel selected-path authority.
 
-## 13. Tactical calibrated-selector bug and fix
+## 9. C0234/C0237 — authorization and publication are distinct
 
-The v0.1.1 tactical wrapper called v0.1 first, creating a timestamp race that could cause raw v0.1 rows to win a latest-row selector.
+The active Gameweek may expose a current fully evaluated recommendation before final authorization, but final/execution semantics remain separate.
 
-Permanent decision:
+Permanent distinctions:
 
-For the same match/team/signal, current tactical state explicitly prefers v0.1.1. “Latest timestamp” alone is not a valid version selector when wrappers intentionally generate parent rows first.
+- publication stage/status is not external execution authority;
+- skipped mandatory evaluation blocks decision-grade publication; negative evaluated evidence is allowed;
+- current publications are append-only and may be superseded by fresher fully evaluated evidence;
+- external FPL transfers/chips are never executed unless separately authorized outside this decision-publication contract.
 
-## 14. C0147 is shadow; its bounded derivative is production
+## 10. Research promotion and negative evidence
 
-C0147 tactical matchup predictive intelligence remains SHADOW/research.
+Negative/rejected findings are durable evidence. They are not retuned because later anecdotes look favorable. This includes rejected residual/nonlinear/hierarchical/context blends, generic fatigue heuristics, unsupported mismatch mixtures, chaos-only/eSOT tail ideas and generic flank xPts effects.
 
-C0159 consumes a bounded derivative of that evidence. C0166 then adds bounded symmetric season-aware evidence.
+Research architecture remains:
 
-Therefore:
+`SOURCE → FEATURE/MODEL → SHADOW OUTPUT → EVALUATOR/ABLATION → PROMOTION OR REJECTION`.
 
-- raw C0147 is not production merely because production code reads its results;
-- C0159/C0166 are the production-effect layers;
-- C0166 evidence adjustment remains capped at `|0.04|` log-lambda per team;
-- target-fixture actual leakage is prohibited.
+## 11. Protected live states
 
-## 15. Full-pool optimizer decision
+These states must not be casually normalized during cleanup:
 
-C0213 closed the absence of a canonical full-player-pool optimizer by deploying `fpl-full-pool-optimizer`.
+- **C0265:** Open / Planned / Critical. The predicted-XI hard-anchor xMins defect is deliberately registered but unchanged until separately authorized.
+- **C0270:** prospective xMins-cliff/coincidence definitions remain frozen; numerical coincidence is not causal evidence.
+- **C0240 concurrency:** do not increase/change without separate validation/authorization.
+- **C0230:** advisory/nonblocking.
+- Intentional blocked/deferred/monitoring research programs remain open until their actual acceptance/expiry evidence exists.
 
-Permanent design:
+## 12. C0278 — whole-engine reconciliation decision
 
-- top ~300 by xMins plus explosive exceptions;
-- position-specific candidate pools;
-- legal 2/5/5/3 squad, max three per club, ≤£100m;
-- weighted 3–5 GW horizon;
-- bench leakage;
-- transfer cost/opportunity cost;
-- manager-state-aware inputs;
-- deterministic search with explicit `search_exact=false` when approximate;
-- model-error margin before declaring an edge;
-- read-only, no direct manager-plan writes.
+C0278 audited live runtime, architecture registry, active crons, tracker states, decision authority, production-effect proof and canonical documentation.
 
-The optimizer’s first engineering proof itself returned `NO_MEANINGFUL_EDGE_WITHIN_MODEL_ERROR`, which is an acceptable and desirable output.
+Permanent source-of-truth order:
 
-## 16. Retired runtimes must actually be retired
+1. live Supabase runtime/data/architecture registry;
+2. tracker and C0213 governance;
+3. current GitHub source/migrations;
+4. canonical documentation;
+5. historical handovers/summaries.
 
-C0213 found 19 lifecycle-RETIRED external components still physically active.
+C0278 repaired the C0272/C0276 scheduler overlap so C0276 is the single scheduled final-control loop, reconciled C0274 as a subordinate safety primitive, preserved intentional tracker states, and updated canonical documents without rewriting historical closeouts.
 
-Permanent decision:
+Closeout invariants:
 
-- a component is not considered consolidated simply because the registry labels it RETIRED;
-- retirement requires consumer proof, rollback/source evidence and physical runtime reconciliation;
-- broad destructive pruning is not acceptable for targeted retirement.
+- no undocumented competing decision authority;
+- no duplicate active cron target;
+- no production effect without current behavioral proof;
+- no false mass-closing of research/monitoring work;
+- no historical forecast rewrite;
+- no external FPL execution;
+- C0265 unchanged;
+- C0240 concurrency unchanged unless separately authorized.
 
-All 19 were reconciled to inactive/deleted; active retired external deployment count is now zero.
+## 13. Anti-over-engineering decision
 
-## 17. Research promotion discipline
+A new production component must fix a demonstrated material failure, add unique information, have a falsifiable output/regression test, possess one explicit consumption contract and justify maintenance complexity. Prefer consolidation into an existing state/planner/gate over parallel models and authorities.
 
-### Effect-family gate — C0125
+## 14. Canonical references
 
-Registered effect-family promotion requires, at minimum:
-
-- ≥50 genuine VALIDATION observations;
-- ≥30 genuine TEST observations;
-- ≥0.005 absolute Brier improvement in both;
-- no log-loss regression;
-- process MAE within 2%;
-- zero integrity violations;
-- manual review;
-- no automatic activation.
-
-Historical evidence alone cannot pass.
-
-### A0005
-
-GW2 VALIDATION and GW3 TEST are now complete. The cohort is eligible for a formal review, but per-variant sample is only 10 fixtures in each split and test-set improvements are small. The correct next action is formal no-retuning adjudication, not coefficient hunting.
-
-### W0002
-
-W0002 was precommitted before A0005 outcomes and remains independent:
-
-- GW4 VALIDATION;
-- GW5 TEST;
-- model effect disabled.
-
-It must not be altered to fit A0005 results.
-
-## 18. Preserved negative/rejected model evidence
-
-The project intentionally retains negative findings, including:
-
-- regularized residual effects where non-zero fits failed the dual-metric gate → shrink to zero;
-- nonlinear response curves without cross-window stability → reject;
-- hierarchical team residual shrinkage without cross-window stability → reject;
-- context-specific venue blends without robust stability → reject;
-- generic schedule/fatigue heuristic → reject;
-- mean-preserving mismatch mixture → reject on training likelihood without opening the holdout to rescue it;
-- generic Chaos-only high-score dispersion → no meaningful edge;
-- eSOT chaos activation → no robust high-tail edge;
-- generic flank xPts adjustment → off after holdout collapse.
-
-Do not retune rejected models merely because later anecdotal examples look favorable.
-
-## 19. Correct Score / market edge discipline
-
-A likely score is not automatically a value bet. Value requires current market comparison, de-vig awareness, raw model probability and chronology-safe pricing.
-
-C0034 remains blocked until a genuine third Correct Score source produces normalized pre-kickoff selections.
-
-C0120/E0007 remains research-only. The current sample is too sparse for a value claim.
-
-## 20. Spatial/tactical truth must match evidence quality
-
-Do not call event/proxy data “true pressing,” “line height,” “high line vs pace” or exact left/right geometry without evidence capable of supporting those claims.
-
-C0082 remains blocked on genuine spatial/tracking access. C0202 exact-side inference may be used as a shadow label where validated, but generic flank-weakness xPts effects remain off until the registered forward gate passes.
-
-## 21. UI/presentation cannot imply model promotion
-
-Presentation may summarize research, but:
-
-- research diagnostics must not masquerade as production semantics;
-- missing values must display as missing, never fake zero;
-- historical prediction and actual manager action must remain visually distinct;
-- weak/no-edge fixtures must not be forced into categorical calls;
-- UI success does not prove model correctness, and backend health does not prove browser rendering.
-
-`frontend-v2` is the preferred interface. Primary-route legacy retirement remains a separate C0176 decision with rollback protection.
-
-## 22. Security/performance cleanup is separate from model tuning
-
-New objects are hardened at creation. Existing advisor debt is tracked separately so architecture/model work does not silently mutate legacy access paths or drop indexes without evidence.
-
-Current known backlog includes older mutable-search-path functions, `pg_net` in public, many service-path RLS/no-policy INFOs, unindexed FKs and unused-index candidates.
-
-“Unused” is not sufficient evidence to remove an index.
-
-## 23. C0213 closure decision
-
-C0213 is considered structurally complete only when all of the following are true:
-
-- architecture registry integrity green;
-- no required capability missing/contradictory;
-- no active duplicate cron target;
-- no active retired external runtime;
-- all production-effect components have current definition-bound behavioral PASS;
-- implemented governed model-effect tracker work has a consumer/evaluator contract;
-- prediction-level effect provenance is available;
-- canonical architecture/model/pipeline/consumption docs are current;
-- strict repository CI and live Pages integrity pass;
-- tracker is marked Completed/Verified only after those proofs.
-
-## 24. Immediate post-C0213 sequence
-
-After formal C0213 verification:
-
-1. clear remaining GW4 readiness blockers — realized-role mapping, C0167 evidence consistency, current 3-GW projections, manager state and exact-signature full-pool optimizer;
-2. adjudicate completed A0005 without retuning;
-3. only when GW4 decision readiness is green, execute the full FPL Decision-Control process;
-4. save a GW4 manager plan only if a robust edge exists; otherwise ROLL/no-action remains a valid outcome.
-
-This sequence prevents architecture cleanup, research evaluation and live FPL decisioning from contaminating each other.
-
-## 25. C0219 — bounded projection cadence outranks live timestamp parity
-
-C0217 changed the projection system from “regenerate whenever an upstream timestamp is newer” to a deliberate storage cadence: one current-GW snapshot per 24 hours, one final T−2h refresh, and frozen GW+1/GW+2 baselines until promotion.
-
-A 2026-09-08 production audit found an architectural contradiction: the older C0213 optimizer readiness/orchestration path still required projection timestamps to be newer than frequently refreshed C0166/player-state timestamps and directly called the raw projection generator when that condition failed. This bypassed C0217 and produced a second immutable projection run for each of GW4/GW5/GW6.
-
-Permanent decision:
-
-- **C0217 is the sole controller of projection-write cadence.**
-- Optimizer readiness must distinguish upstream completeness, snapshot completeness, cadence validity and upstream drift.
-- Upstream completeness remains fail-closed; missing evidence is never treated as zero.
-- A complete current-GW frozen snapshot is optimizer-valid while it satisfies the 24-hour cadence, and inside the final window it must come from the T−2h window.
-- A complete GW+1/GW+2 frozen baseline remains optimizer-valid until that GW is promoted.
-- Newer upstream state is exposed as `upstream_drifted_since_snapshot`; it is evidence for the next permitted refresh, not an independent permission to write.
-- The optimizer orchestrator may invoke the C0217 cadence controller, but it may not bypass it by calling the raw FPL snapshot generator directly.
-- Accidentally duplicated frozen forecasts are preserved as immutable evidence; do not delete or rewrite them merely to restore storage neatness.
-- This contract repair is reliability-only and does not justify changing a manager plan.
-
-C0219 verification reused projection runs 1334/1335/1336 and optimizer run 5 without changing the optimizer input signature. A repeated orchestration check left GW4/GW5/GW6 projection-run counts at 2/2/2, proving the direct duplicate-writer path was removed. Plan 10 remained unchanged.
-
-## 26. C0237 — “not final” must not mean “publish no plan”
-
-The C0226–C0234 stack originally coupled final authorization with current-plan serving too tightly. C0234 could correctly refuse final authorization, while the serving layer then exposed no newer plan even though the optimizer, structural ensemble, uncertainty, forward-management, rank-control and red-team layers had already produced enough evidence to identify the best current option.
-
-Permanent decision:
-
-- **The active Gameweek always publishes the best current fully evaluated plan whenever every required layer has run.**
-- Publication timing and authorization are separate dimensions: `PRE_FINAL`/`FINAL` is the stage; `PROVISIONAL`/`CONTESTED`/`FINAL` is the status.
-- A negative layer may make a plan `CONTESTED`; it must not make the plan disappear.
-- A skipped required layer blocks publication. Negative results are allowed; skipped mandatory evaluation is not.
-- The mandatory C0237 chain is the canonical full-pool optimizer plus C0227, C0228, C0229, C0230, C0231, C0232, C0233 and C0234.
-- C0230 and other shadow/research evidence may be surfaced publicly as research input, but `numeric_production_effect=false` unless separately promoted under its own chronology-safe gate.
-- `public.fpl_manager_plans` remains the separate final/execution ledger. A live C0237 publication does not become execution authority merely because it is visible.
-- Only a C0234-backed final publication may set `execution_authorized=true`.
-- Current publications are append-only and may be superseded by later fully evaluated evidence without rewriting earlier publications.
-
-The persisted publication invariant is:
-
-`ALL_REQUIRED_LAYERS_EVALUATED_NEGATIVE_RESULTS_ALLOWED_SKIPPED_LAYERS_FORBIDDEN`
-
-The first strict C0237 GW4 publication is `PRE_FINAL / CONTESTED / execution_authorized=false`, proving the engine can expose its best current answer without pretending the final gate is green.
-
-## 27. C0238 — deployment reliability fixes must preserve strict product gates
-
-The C0237 UI release exposed a GitHub-hosted-runner infrastructure failure: Playwright’s `--with-deps` apt refresh was contaminated by a stale Google Chrome repository carried by the Ubuntu image. The first mitigation removed only legacy `.list` files; a later runner image used deb822 `.sources`, so the failure correctly recurred.
-
-Permanent decision:
-
-- Hosted-runner package-source defects may be isolated narrowly when they are unrelated to the application under test.
-- The fix must target the offending source by repository content, not by assuming one filename format.
-- The workflow must fail closed if the offending source is still present.
-- Chromium/Playwright E2E, accessibility, deterministic visual review, artifact verification, Pages deployment and live integrity checks must remain enabled; infrastructure trouble is not permission to bypass them.
-- Intentional UI contract changes require the semantic E2E contract and reviewed visual baselines to change together. Old tests must not force obsolete product semantics, but coverage must not be weakened merely to obtain a green build.
-
-C0238 therefore removes only apt-source entries that actually reference `dl.google.com/linux/chrome`, regardless of `.list`/`.sources` format, then verifies none remain before Playwright installs Chromium. Product HEAD `98956d091d768dee640fb4c869f654ad49a2f24c` subsequently passed the complete strict Pages pipeline in workflow `34387458458`, including live root and `/v2/` integrity.
+- `PROJECT_STATE.md`
+- `PROJECT_DESCRIPTION.md`
+- `SYSTEM_ARCHITECTURE.md`
+- `MODEL_REGISTRY.md`
+- `WEEKLY_DATA_PIPELINE.md`
+- `MODEL_CONSUMPTION_AUDIT.md` (historical audit evidence; do not rewrite as current state)
+- `skills/fie/SKILL.md`
+- `project-management/C0278_FULL_ENGINE_STATE_AUDIT_RECONCILIATION_20260916.md`
+- `project-management/C0277_SEASONAL_CHIP_OPTION_VALUE_OPTIMIZER_PLAN_20260916.md`

@@ -1,137 +1,132 @@
 # Football Intelligence Engine — Weekly Data Pipeline
 
-_Last updated: 2026-09-11 — C0247 audit_
+_Last reconciled: 2026-09-17 — C0278 whole-engine closeout_
 
 ## 1. Operating principle
 
-The weekly system is a chronology-safe state machine. Projection readiness and decision readiness are separate. Completed-match evidence may update future Gameweeks only; target-fixture intelligence freezes at kickoff; missing data is not zero.
+The weekly system is a chronology-safe state machine. Projection readiness and decision readiness are separate. Completed-match evidence may update future Gameweeks only; target-fixture intelligence freezes according to its registered chronology contract; missing data remains unknown rather than zero.
+
+Historical forecasts are append-only.
 
 ## 2. Continuous source/state refresh
 
-Core live jobs include:
+Core live activity includes official/results synchronization, FPL player/price/manager state, availability/injury/suspension evidence, team/process evidence, realized tactical roles, prospective role/fixture state, and C0159/C0166 fixture forecast cycles.
 
-- official/results synchronization;
-- FPL price/player-state ingestion;
-- availability/injury/suspension refresh;
-- current-season team/process evidence;
-- realized tactical-role refresh after completed matches;
-- prospective role/tactical fixture state;
-- C0159/C0166 fixture forecast cycles.
+Exact cron inventory is live runtime state and must be read from Supabase rather than hard-coded here. C0278 reconciliation found **29 active crons and zero duplicate active cron targets** after authority cleanup.
 
-Exact cron inventory is live architecture state and should be read from Supabase rather than copied permanently into this document. C0247 live registry shows 29 active crons and zero duplicate active cron targets.
+## 3. Prospective horizon and chronology
 
-## 3. Prospective horizon
+Decision evaluation supports exact 1–5 GW numerical horizons where approved inputs exist. C0241 exact-horizon lineage prevents shorter upstream evidence from being silently extrapolated into a longer decision horizon. Missing future evidence must reduce readiness/precision rather than be invented.
 
-The FPL decision architecture supports an exact **1–5 Gameweek horizon**.
+C0248 then models reachable weekly state transitions across that evidence: squad, bank, selling/acquisition economics, FT inventory, chip inventory and future information state.
 
-C0241 repaired the horizon contract so a horizon-5 optimizer/adversarial decision must be based on horizon-5 upstream lineage. Missing GW7/GW8 feature state cannot be silently replaced by a shorter optimizer result and then extrapolated.
+## 4. Projection cadence and hard invalidation
 
-Forward numerical precision must not be invented where approved data are unavailable.
+C0217 remains the canonical projection-cadence controller; C0235 provides immutable PRE_FINAL semantics. Current-GW projections refresh through governed cadence, including final-information refresh behavior near the deadline.
 
-## 4. Projection cadence
-
-C0217 is the canonical projection-cadence controller. C0235 adds immutable PRE_FINAL publication semantics. Do not bypass cadence with raw projection writes.
-
-Current-GW projections refresh under the canonical cadence, with a separate forced final-information refresh at T−2h before the deadline.
-
-Historical forecasts remain append-only.
+Material post-snapshot state changes invalidate stale descendants. C0274 hard-event functions remain a safety primitive for confirmed severe availability changes; they are not an independent scheduled decision authority. Regeneration creates a new immutable projection snapshot rather than rewriting history.
 
 ## 5. End-of-Gameweek sequence
 
 After a Gameweek completes:
 
-1. results finalize;
-2. player/team actuals are appended;
-3. realized tactical roles update from completed matches;
+1. results/finality become authoritative;
+2. player/team actuals append;
+3. realized tactical roles update;
 4. current player/team state incorporates completed evidence;
 5. future role/tactical state rebuilds;
-6. C0159/C0166 fixture forecasts refresh;
+6. fixture forecasts refresh;
 7. future player projections/event distributions refresh;
-8. decision layers re-evaluate only on valid fresh lineage.
+8. downstream decision layers regenerate only on valid fresh lineage.
 
 Incomplete result/role state remains a readiness blocker rather than neutral evidence.
 
-## 6. Full-pool optimizer
+## 6. C0276 operational DAG
 
-The canonical optimizer is read-only and consumes:
+The bounded autonomous cycle is:
 
-- exact target GW/horizon;
-- exact prediction-run lineage;
-- manager state and current acquisition/selling values;
-- FT inventory;
-- budget;
-- transfer-cost points;
-- horizon weights;
-- bench weight;
-- model-error margin;
-- current tactical roles/xMins.
+```text
+FIXTURE_STATE + PLAYER_STATE
+→ PLAYER_PROJECTION
+→ UNCERTAINTY
+→ OPTIMIZER
+→ ENSEMBLE
+→ STRUCTURAL
+→ FORWARD
+→ OR_UTILITY
+→ RED_TEAM
+→ ADVERSARIAL
+→ CAPTAINCY
+→ SEQUENTIAL
+→ FINAL_GATE
+→ PUBLICATION
+```
 
-A later material projection/manager-state change invalidates stale optimizer output for decision-grade use.
+C0276 processes this chain with exact lineage checks, bounded retries and fail-closed recovery. Heavy asynchronous results are accepted only if their timestamp/request and required upstream lineage match the current cycle. A stale successful artifact cannot satisfy a newer dispatch.
 
-## 7. Current decision-control sequence
+## 7. Decision-control semantics
 
-After optimizer generation, the current production stack evaluates:
+After optimizer generation:
 
-- C0227 uncertainty/sensitivity;
-- C0228 ensemble/equivalence;
-- C0229 structural robustness;
-- C0230 shadow regime diagnostics;
-- C0231 approximate forward management;
-- C0232 rank/leverage context;
-- C0233 red team;
-- C0240 deeper adversarial current-transfer search;
-- C0234 final authorization;
-- C0237 live publication.
+- C0227 tests uncertainty/sensitivity;
+- C0228 tests ensemble/equivalence;
+- C0229 tests structural robustness;
+- C0231 supplies forward-management evidence;
+- C0232 supplies OR/rank utility;
+- C0233 supplies red-team evidence;
+- C0240 supplies adversarial benchmark evidence;
+- captaincy/named-challenger consistency is evaluated;
+- **C0248 selects the canonical sequential path**;
+- C0234/C0276 apply fail-closed final authorization;
+- C0237 publishes only after the authority chain allows it.
 
-C0241 enforces exact-horizon lineage. C0242 named-challenger/captaincy consistency is implemented but still awaiting full C0234/C0237 integration.
+C0230 remains advisory/nonblocking and zero numeric effect. C0240 is not a second selected-path authority.
 
-## 8. Critical C0247 limitation
+## 8. Sequential transfer planning
 
-The current horizon calculation is **not yet a sequential weekly transfer planner**.
+C0248 supersedes the old static-horizon limitation. It evaluates reachable weekly trajectories in which FT inventory changes, future transfers can be made, affordability is state-dependent and information evolves. ROLL/no transfer is always a candidate.
 
-A candidate XV is evaluated across future GWs, while C0240 tests immediate current-FT / +1-hit / +2-hit transfer counts. The engine does not yet model:
+Normal-transfer evaluation accounts for transfer costs, bank/selling values, XI-first scoring, captaincy, bench leakage/resilience, club-slot cost, future transfer burden and model uncertainty. Reasonable-assumption sensitivity that destroys the edge results in `NO_MEANINGFUL_EDGE`.
 
-`remaining FTs after GW t action + one new FT at GW t+1 + changed prices/information + re-optimization`.
+## 9. Bench and captaincy semantics
 
-Therefore a static five-GW objective cannot be treated as the final strategic value of “move now versus wait one week.”
+Bench value is state-dependent rather than treated as four equal starters. Normal weeks account for autosub/resilience/option value; Bench Boost requires full legal bench scoring semantics.
 
-## 9. Bench semantics
+Captaincy is optimized separately using expected points, xMins, ceiling/tail probabilities, matchup, penalties and rank/EO context. Captain and vice must remain consistent with the final selected path.
 
-Normal-GW optimization currently discounts bench output (default optimizer weight 0.12); it does not equal-weight XI and bench.
+## 10. Chip timing / C0277
 
-C0247 identifies the remaining gap: bench value must become state-dependent. Normal weeks should reflect expected autosub/resilience/option value; a Bench Boost week should count the full scoring contribution of all four bench players.
+Chip actions can appear as C0248 roots, but a short-horizon chip edge is insufficient for season-level authorization. C0277 supplies first-half/season reservation-value and joint chip-calendar evidence.
 
-Do not use a fixed bench weight as a substitute for chip-state logic.
+Before WC/FH/BB/TC authorization, the engine must establish that the proposed timing survives uncertainty, Noise-Control, red-team evidence and future opportunity cost. If broader timing coverage is incomplete, the chip gate fails closed or reserves the chip for future use.
 
-## 10. Chip timing
+## 11. Price and manager state
 
-Current C0234 chip handling is incomplete. It verifies Wildcard availability and can fail closed when long-horizon Wildcard opportunity cost is unavailable, but no unified BB/TC/FH timing optimizer exists.
-
-Chip actions should ultimately be modeled as alternatives inside the same multi-GW state transition, not as disconnected recommendation layers.
-
-## 11. Price state
-
-FPL prices/selling values are current-state constraints. C0242 rechecks named-challenger feasibility after price changes.
-
-Pending C0243 requirements would add predictive execution-timing risk. Price prediction must affect timing/feasibility, not xPts.
+Current prices, selling values, bank and FT inventory are feasibility constraints. Price forecasts may affect timing/flexibility but never directly alter player xPts. A material manager-state or projection change invalidates stale decision artifacts.
 
 ## 12. Final Gameweek decision
 
 Before final authorization:
 
-- current manager state must be known;
-- current price/availability/role/tactical/fixture inputs must be fresh;
-- exact-horizon lineage must be valid;
-- required uncertainty/structural/adversarial controls must have evaluated;
-- serious named challengers must be resolved once C0242 is integrated;
-- captaincy equivalence must be communicated honestly;
-- final T−2h refresh must be current;
-- chip opportunity cost must be sufficient for any proposed chip.
+- manager state and economics must be current;
+- price/availability/role/tactical/fixture evidence must be sufficiently fresh;
+- exact upstream lineage must be valid;
+- uncertainty, structural, forward, OR, red-team and adversarial evidence must be current;
+- captaincy/named challengers must be consistent;
+- C0248 sequential selected path must be current;
+- final T−2/deadline governance must pass;
+- any chip must pass C0277 opportunity-cost evidence.
 
-Only an authorized final decision may enter the execution ledger. The engine does not externally execute FPL transfers/chips.
+C0276 is the single scheduled control plane for this final chain. C0272's final-promotion primitive may be invoked subordinately where required, but it no longer has an independent scheduled authority loop.
 
-## 13. Pending architecture
+Publication does not authorize or perform external FPL transfers/chips.
 
-C0243-C0246 remain design-only. Per C0247, consolidate them into one minimum multi-GW state-transition planner when explicitly authorized rather than adding four independent runtime layers.
+## 13. Protected states
 
-Canonical audit: `project-management/C0247_FULL_ENGINE_DECISION_ARCHITECTURE_AUDIT_20260911.md`.
+- C0265 xMins hard-anchor behavior remains deliberately unchanged pending separate authorization.
+- C0270 prospective definitions remain frozen.
+- C0240 concurrency remains unchanged unless separately validated/authorized.
+- Historical forecasts are never rewritten.
+- Actual submitted team, recommendation, decision snapshot and realized outcome remain distinct.
+
+Canonical reconciliation: `project-management/C0278_FULL_ENGINE_STATE_AUDIT_RECONCILIATION_20260916.md`.

@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project Description
 
-_Last reconciled: 2026-09-17 (Dubai) — C0278 whole-engine closeout_
+_Last reconciled: 2026-09-17 (Dubai) — C0279 program registered_
 
 ## Mission
 
@@ -72,6 +72,12 @@ C0276 remains **In Progress** as the bounded autonomous decision-cycle controlle
 
 C0277 Seasonal Chip Option-Value Optimizer is **In Progress**. It exists because short-horizon chip roots do not by themselves establish the best season-level chip week. Until reservation value and broader first-half chip timing survive the C0277 uncertainty, Noise-Control and red-team gates, chip authorization remains fail-closed where evidence is incomplete.
 
+## Planned C0279 forecast-to-player integration
+
+C0279 is a critical, shadow-first program with zero current production effect. It responds to demonstrated season-state leakage, misleading single-score headlines, missing score-family-to-player propagation and contradictory matchup evidence.
+
+The target product will use an explicit current-season/previous-season performance blend that reaches 100/0 from nine current-season matches, prevent L20 or opaque cross-season L10 from bypassing canonical state, classify LOW/NORMAL/HIGH scoring environments, treat shootout/demolition as HIGH subtypes, propagate team goal states into player haul/captaincy/TC evaluation, and make the matchup modal sufficient to audit the engine decision.
+
 ## Protected governance states
 
 - **C0265:** Open / Planned / Critical. The xMins hard-anchor bug remains deliberately unchanged pending separate authorization.
@@ -96,5 +102,6 @@ Do not add a production layer merely because a useful concept exists. A componen
 - `skills/fie/SKILL.md`
 - `project-management/C0278_FULL_ENGINE_STATE_AUDIT_RECONCILIATION_20260916.md`
 - `project-management/C0277_SEASONAL_CHIP_OPTION_VALUE_OPTIMIZER_PLAN_20260916.md`
+- `project-management/C0279_SEASON_STATE_SCORE_FAMILY_PLAYER_UPSIDE_INTEGRATION_PLAN_20260917.md`
 - live `public.change_tracker_working`
 - live C0213 architecture and behavioral-consumption registries

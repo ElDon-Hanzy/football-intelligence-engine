@@ -1,6 +1,6 @@
 # Football Intelligence Engine — System Architecture
 
-_Last reconciled: 2026-09-17 — C0278 whole-engine closeout_
+_Last reconciled: 2026-09-17 — C0279 planned integration registered_
 
 ## 1. Purpose and invariants
 
@@ -36,7 +36,26 @@ RESULTS / FPL / FOOTBALL SOURCES
 
 Core production surfaces include current team performance, adjusted team lambda, goal/assist lambda, event distribution, projection core, C0159/C0166 fixture forecasts, realized/current role profiles and the full-pool optimizer. Realized roles are factual categorical state; shadow research cannot silently alter xPts.
 
-## 5. Canonical downstream FPL decision chain
+## 5. Planned C0279 forecast-to-player bridge
+
+C0279 is a shadow-first consolidation program with zero current production effect. Its target chain is:
+
+```text
+canonical season-weighted team state
+→ orthogonal fixture modifiers
+→ fixture lambda / full score distribution
+→ LOW / NORMAL / HIGH scoring environment
+→ match-script and score-family distribution
+→ team goal states
+→ conditional player return distributions
+→ existing captaincy / C0277 / C0248 / C0276 authorities
+```
+
+Previous-season performance decays to zero from nine current-season matches. L20 cannot return as an input; L5/L10/L20 mapping is audit/removal work only where cross-season evidence bypasses canonical state. Shootout and demolition are HIGH_SCORING subtypes. The raw modal score remains diagnostic rather than automatic headline.
+
+The Decision-Evidence Contract requires the matchup modal to expose the conclusion, material supporting inputs, genuine counterpoints, conflict reconciliation, signed/net effects and player implications. Research-only context remains separately labeled with zero production effect.
+
+## 6. Canonical downstream FPL decision chain
 
 ```text
 FULL-POOL OPTIMIZER
@@ -74,7 +93,7 @@ Authority rules:
 - C0276 is the bounded autonomy/control plane around the chain, not another optimizer or decision authority.
 - Publication never implies external execution.
 
-## 6. C0276 bounded autonomy
+## 7. C0276 bounded autonomy
 
 C0276 represents the operational DAG from fixture/player state through projection, uncertainty, optimizer, ensemble, structural, forward, OR utility, red team, adversarial, captaincy, sequential, final gate and publication. It is lineage-aware and fail-closed.
 
@@ -82,21 +101,21 @@ Heavy asynchronous stages are reconciled only when the returned artifact is newe
 
 Current GW5 evidence at reconciliation has reconverged through projection 1401 and C0248 sequential candidate run 38. FINAL_GATE is held by the governed T−2 timing/authorization contract.
 
-## 7. Sequential squad-management semantics
+## 8. Sequential squad-management semantics
 
 C0248 models reachable multi-Gameweek squad states rather than treating a horizon as one static XV. State includes squad, bank, purchase/selling economics, FT inventory, chip inventory and information. Actions include roll, legal transfers/hits and chip roots where evidence is available. Each transition adds future FT/information state and preserves affordability/flexibility constraints.
 
 Every meaningful action is compared with ROLL. XI/captaincy value, bench leakage, marginal £ value, club-slot cost, future transfer burden and model uncertainty are part of the decision-control problem.
 
-## 8. Chip option value
+## 9. Chip option value
 
 A high short-horizon chip-root score is not sufficient to authorize a chip. C0277 extends the architecture with season/first-half reservation-value evidence and joint chip-calendar evaluation. Chip decisions remain fail-closed when broader timing coverage or robust option-value evidence is incomplete. C0277 is a sub-control feeding the canonical C0248/C0276 decision path, not a parallel selector.
 
-## 9. Final authorization principle
+## 10. Final authorization principle
 
 There is one fail-closed authorization boundary after C0248. It consumes current-lineage diagnostics and must not duplicate optimization internally. Noise-Control requires multiple independent signals including structural evidence; recommendations inside normal model error, unstable under reasonable assumptions, or inconsistent across plausible scenarios are `NO_MEANINGFUL_EDGE`.
 
-## 10. Research architecture
+## 11. Research architecture
 
 ```text
 SOURCE → FEATURE/MODEL → SHADOW OUTPUT → EVALUATOR/ABLATION → PROMOTION OR REJECTION
@@ -104,7 +123,7 @@ SOURCE → FEATURE/MODEL → SHADOW OUTPUT → EVALUATOR/ABLATION → PROMOTION 
 
 Negative evidence is preserved. C0265 remains deliberately unfixed pending separate authorization. C0270 prospective definitions remain frozen. C0230 and other unpromoted families remain non-numeric.
 
-## 11. Runtime/governance state
+## 12. Runtime/governance state
 
 C0278 whole-engine reconciliation is Completed / Verified. It reconciled runtime/source ownership, active cron ownership, decision authority, tracker state and canonical documentation. Intentional open, blocked, deferred and monitoring programs are not mass-closed.
 
@@ -117,7 +136,7 @@ Permanent safety constraints:
 - C0265 unchanged unless separately authorized;
 - C0240 concurrency unchanged unless separately validated/authorized.
 
-## 12. Canonical references
+## 13. Canonical references
 
 - `PROJECT_DESCRIPTION.md`
 - `PROJECT_STATE.md`
@@ -127,3 +146,4 @@ Permanent safety constraints:
 - `MODEL_CONSUMPTION_AUDIT.md`
 - `skills/fie/SKILL.md`
 - `project-management/C0278_FULL_ENGINE_STATE_AUDIT_RECONCILIATION_20260916.md`
+- `project-management/C0279_SEASON_STATE_SCORE_FAMILY_PLAYER_UPSIDE_INTEGRATION_PLAN_20260917.md`

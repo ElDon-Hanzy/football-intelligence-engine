@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Model Registry
 
-_Last reconciled: 2026-09-17 — C0278 whole-engine closeout_
+_Last reconciled: 2026-09-17 — C0279 planned program registered_
 
 ## 1. Registry policy
 
@@ -101,11 +101,25 @@ C0277 is the active seasonal chip option-value program. It adds reservation-valu
 
 Negative evidence and rejected hypotheses are retained without numeric production effect.
 
-## 8. Promotion / anti-over-engineering discipline
+## 8. C0279 planned integration — zero production effect
+
+C0279 is registered but not promoted. It targets consolidation of current-season team state, representative score families, conditional player upside and calculation-faithful decision evidence. Until promotion, the current 14-component production-effect set is unchanged.
+
+Planned constraints:
+- previous-season performance weight reaches 0% from nine current-season matches;
+- L20 cannot be introduced/restored; cross-season L10 bypasses must be removed;
+- LOW/NORMAL/HIGH is the primary scoring hierarchy; shootout/demolition are HIGH subtypes;
+- raw modal cell remains diagnostic;
+- score-family output may nominate player/captain/TC candidates but existing projection, captaincy, C0277, C0248 and C0276 authorities remain binding;
+- Decision-Evidence Contract audits materiality, direction, net effects, contradictions and traceability.
+
+Canonical plan: `project-management/C0279_SEASON_STATE_SCORE_FAMILY_PLAYER_UPSIDE_INTEGRATION_PLAN_20260917.md`.
+
+## 9. Promotion / anti-over-engineering discipline
 
 A new production component must fix a demonstrated material blind spot, add unique information, have a falsifiable output/regression test, have one explicit consumption contract and show decision value above uncertainty and maintenance cost. Prefer extending an existing state/planner/gate over creating a parallel model or authority.
 
-## 9. Current governance evidence
+## 10. Current governance evidence
 
 Latest C0278 reconciliation:
 
@@ -121,7 +135,7 @@ Latest C0278 reconciliation:
 
 Key governance surfaces include component definition hashing, behavioral-consumption tests/status, change-consumption contracts, tracker-consumption governance and tracker audit functions.
 
-## 10. Canonical references
+## 11. Canonical references
 
 - `PROJECT_STATE.md`
 - `PROJECT_DESCRIPTION.md`
@@ -131,3 +145,4 @@ Key governance surfaces include component definition hashing, behavioral-consump
 - `skills/fie/SKILL.md`
 - `project-management/C0278_FULL_ENGINE_STATE_AUDIT_RECONCILIATION_20260916.md`
 - `project-management/C0277_SEASONAL_CHIP_OPTION_VALUE_OPTIMIZER_PLAN_20260916.md`
+- `project-management/C0279_SEASON_STATE_SCORE_FAMILY_PLAYER_UPSIDE_INTEGRATION_PLAN_20260917.md`

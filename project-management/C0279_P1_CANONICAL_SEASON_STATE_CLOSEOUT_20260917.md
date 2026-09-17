@@ -57,6 +57,7 @@ These are state-contract diagnostics, not promoted fixture lambdas.
 - No production selector changed.
 - No external FPL execution.
 - Supabase advisors reported no C0279-specific security or performance finding; existing project-wide advisory backlog remains outside this phase.
+- C0213 architecture remains green: 14/14 production behavioral proofs, 19/19 required capabilities, tracker governance 100/100, zero violations, zero duplicate cron targets, system consolidation true.
 
 ## Gate disposition
 

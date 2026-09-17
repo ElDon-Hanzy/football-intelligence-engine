@@ -1,7 +1,7 @@
 # C0279 — Season-State, Score-Family & Player-Upside Integration Program
 
 **Status:** In Progress  
-**Delivery stage:** P4 completed / P5 pending  
+**Delivery stage:** P5 completed / P6 pending  
 **Priority:** Critical  
 **Date:** 2026-09-17  
 **Parent architecture:** C0213, C0166, C0248, C0276  
@@ -262,7 +262,7 @@ A decision-ready forecast fails closed if the explanation is incomplete, contrad
 
 **Gate:** improved family/goal-band calibration and coherent headline behavior.
 
-### P5 — Conditional player-return bridge
+### P5 — Conditional player-return bridge — COMPLETED / VERIFIED
 
 - Propagate team-goal states into reconciled player outcome distributions.
 
@@ -341,3 +341,5 @@ C0248 remains the sole sequential selected-path authority. C0277 remains the chi
 - **P3 completed 2026-09-17:** implemented full-matrix LOW/NORMAL/HIGH scoring-environment shadow with normalized memberships, goal bands and subtype probabilities. Shootout/demolition are HIGH children; missing matrices fail closed; raw modal scores are diagnostic. Brentford–Chelsea and Leeds–Palace classify HIGH/SHOOTOUT despite raw 1–1 modes. Closeout: `project-management/C0279_P3_SCORING_ENVIRONMENT_SHADOW_CLOSEOUT_20260917.md`.
 
 - **P4 completed 2026-09-17:** implemented a fail-closed full-matrix score-family selector that preserves the raw modal cell, enforces LOW/NORMAL/HIGH environment eligibility, selects a direction-aware representative headline and discloses weak/conflicting direction. Brentford–Chelsea and Leeds–Palace both resolve to SHOOTOUT / 3–2 while retaining raw 1–1 references; family probabilities reconcile; full GW5 and boundary suites passed; zero production effect. Closeout: `project-management/C0279_P4_SCORE_FAMILY_SHADOW_SELECTOR_CLOSEOUT_20260917.md`.
+
+- **P5 completed 2026-09-17:** implemented a private shadow conditional player-return bridge for team goal states 0/1/2/3/4+, using canonical event lambdas, haul tails, xMins/start and current roles. Player scoring/assist shares conserve team events; weighted conditional states exactly reconstruct canonical xPts and P(10+) in diagnostic fixtures; all 604 frozen GW5 player rows passed conservation, monotonicity and chronology/effect checks. João Pedro leads eligible Chelsea P(10+) in the 4+ goal state but receives no automatic captaincy/TC authorization. Zero production effect. Closeout: `project-management/C0279_P5_CONDITIONAL_PLAYER_RETURN_BRIDGE_CLOSEOUT_20260917.md`.

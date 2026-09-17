@@ -68,3 +68,5 @@ These are P2 diagnostics, not promoted forecast adjustments.
 - No forecast, player, historical, captaincy or execution row written.
 - No production selector changed.
 - Supabase advisors found no C0279-specific issue.
+
+- C0213 architecture remains green: 14/14 production behavioral proofs, 19/19 required capabilities, tracker governance 100/100, zero violations, zero duplicate cron targets, system consolidation true.

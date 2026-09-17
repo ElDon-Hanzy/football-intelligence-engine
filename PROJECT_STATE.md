@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-17 (Dubai) — C0279 planned / C0277-C0278 reconciled / C0276 GW5 T-2 wait_
+_Last updated: 2026-09-17 (Dubai) — C0279 P1 verified / C0277-C0278 reconciled / C0276 GW5 T-2 wait_
 
 ## 1. Mission and immutable rules
 Build one chronology-safe football intelligence engine for FPL decision intelligence and football forecasting/research. FPL objective: maximize probability of Overall Rank #1, or expected final rank if #1 becomes unrealistic.
@@ -27,13 +27,13 @@ Current selector: **RESERVE_FOR_FUTURE**, chip **NONE**, `PLAY_NOW=false`. Bound
 
 C0276 consumes C0277 through `private.c0276_chip_opportunity_gate_v01`; C0248 remains selected-path authority and the gate cannot execute a chip. See `project-management/C0277_SEASONAL_CHIP_OPTION_VALUE_OPTIMIZER_CLOSEOUT_20260917.md`.
 
-## 6. C0279 season-state / score-family / player-upside integration — Planned
+## 6. C0279 season-state / score-family / player-upside integration — P1 Verified
 
 C0279 P0 is **Completed / Verified** and the program remains shadow-first after live defects in Leeds–Crystal Palace and Brentford–Chelsea. It will consolidate the team-state hierarchy, eliminate opaque cross-season L10/L20 production leakage, classify fixtures as LOW/NORMAL/HIGH scoring with shootout/demolition as high-scoring subtypes, select representative score families, propagate team goal states into player haul distributions/captaincy/TC nominations, and enforce a calculation-faithful Decision-Evidence Contract in the matchup modal.
 
-Approved season-performance blend: 40/60 after one current-season match; 55/45 after two; 65/35 after three; 75/25 after four-five; 80/20 after six; 85/15 after seven; 90/10 after eight; 100/0 from nine. Structural/tactical/availability variables remain orthogonal modifiers. L20 is audit/removal scope only and must not be restored. P0 froze GW5 evidence (fixture hash `a7ce3ddf7b5620a3103dc6c307fa5fbc`, player run 1426/hash `4c1e9ab3b700f29cedf173c242d41a47`) and mapped the canonical C0159 cross-season L10 bypass, C0166 cross-season L5 path, downstream player/captaincy consumers and zero-effect L20 infrastructure. No production behavior changed. P1 canonical season-state implementation is pending. No C0279 production effect is authorized before behavioral consumption proof, shadow validation and explicit promotion.
+Approved season-performance blend: 40/60 after one current-season match; 55/45 after two; 65/35 after three; 75/25 after four-five; 80/20 after six; 85/15 after seven; 90/10 after eight; 100/0 from nine. Structural/tactical/availability variables remain orthogonal modifiers. L20 is audit/removal scope only and must not be restored. P0 froze GW5 evidence (fixture hash `a7ce3ddf7b5620a3103dc6c307fa5fbc`, player run 1426/hash `4c1e9ab3b700f29cedf173c242d41a47`) and mapped the canonical C0159 cross-season L10 bypass, C0166 cross-season L5 path, downstream player/captaincy consumers and zero-effect L20 infrastructure. No production behavior changed. P1 is **Completed / Verified**. The private shadow contract now applies the approved sample schedule, reaches 100/0 at 9+, exposes actual sample/weights/lineage, fails closed on missing or invalid evidence, keeps structural modifiers orthogonal, and marks L5/L10/L20 as unconsumed. Samples 0–10 and both diagnostic fixtures passed. Existing C0159/C0166 definitions and production behavior remain unchanged. P2 acceleration/regime shadow is pending. No C0279 production effect is authorized before behavioral consumption proof, shadow validation and explicit promotion.
 
-Canonical plan: `project-management/C0279_SEASON_STATE_SCORE_FAMILY_PLAYER_UPSIDE_INTEGRATION_PLAN_20260917.md`. P0 closeout: `project-management/C0279_P0_FREEZE_AND_ACTIVE_CONSUMER_AUDIT_CLOSEOUT_20260917.md`.
+Canonical plan: `project-management/C0279_SEASON_STATE_SCORE_FAMILY_PLAYER_UPSIDE_INTEGRATION_PLAN_20260917.md`. P0 closeout: `project-management/C0279_P0_FREEZE_AND_ACTIVE_CONSUMER_AUDIT_CLOSEOUT_20260917.md`. P1 closeout: `project-management/C0279_P1_CANONICAL_SEASON_STATE_CLOSEOUT_20260917.md`.
 
 ## 7. C0265 / C0270 integrity watch
 C0265 remains **Open / Planned / Critical**, deliberately unchanged. Do not repair without separate authorization. C0270 remains prospective shadow monitoring; numerical coincidences are not causal validation.
@@ -49,7 +49,7 @@ Unpromoted research remains zero-effect. V3 is the current consumer product surf
 - C0276: In Progress; waiting on governed GW5 T−2 final window.
 - C0277: **Completed / Verified**.
 - C0278: **Completed / Verified**.
-- C0279: **In Progress / P0 completed; P1 pending; zero production effect**.
+- C0279: **In Progress / P1 completed; P2 pending; zero production effect**.
 
 ## 10. Canonical references
 `PROJECT_DESCRIPTION.md`, `DECISIONS_AND_HISTORY.md`, `SYSTEM_ARCHITECTURE.md`, `MODEL_REGISTRY.md`, `WEEKLY_DATA_PIPELINE.md`, `MODEL_CONSUMPTION_AUDIT.md`, `skills/fie/SKILL.md`, C0277 closeout, C0278 reconciliation and the C0279 canonical plan.

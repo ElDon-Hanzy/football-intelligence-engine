@@ -1,7 +1,7 @@
 # C0279 — Season-State, Score-Family & Player-Upside Integration Program
 
-**Status:** Planned  
-**Delivery stage:** Architecture approved / pre-implementation audit pending  
+**Status:** In Progress  
+**Delivery stage:** P0 completed / P1 pending  
 **Priority:** Critical  
 **Date:** 2026-09-17  
 **Parent architecture:** C0213, C0166, C0248, C0276  
@@ -223,7 +223,7 @@ A decision-ready forecast fails closed if the explanation is incomplete, contrad
 
 ## 10. Implementation phases and gates
 
-### P0 — Freeze and active-consumer audit
+### P0 — Freeze and active-consumer audit — COMPLETED / VERIFIED
 
 - Freeze current GW5 fixture predictions, player projections and FPL recommendations.
 - Preserve the two diagnostic fixtures.
@@ -330,3 +330,7 @@ C0248 remains the sole sequential selected-path authority. C0277 remains the chi
 - Decision-Evidence Contract audit suite.
 - Chronological shadow evaluation report.
 - Promotion/rollback closeout.
+
+## 13. Progress ledger
+
+- **P0 completed 2026-09-17:** GW5 fixture/player/team-fact evidence frozen by immutable IDs and hashes; canonical C0159 cross-season L10 production bypass identified; C0166 cross-season L5 path identified; L20 confirmed zero direct production effect; forecast-to-player/captaincy chain mapped; no production behavior changed. Closeout: `project-management/C0279_P0_FREEZE_AND_ACTIVE_CONSUMER_AUDIT_CLOSEOUT_20260917.md`.

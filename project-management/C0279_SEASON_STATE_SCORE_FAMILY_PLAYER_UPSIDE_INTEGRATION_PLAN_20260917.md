@@ -1,7 +1,7 @@
 # C0279 — Season-State, Score-Family & Player-Upside Integration Program
 
 **Status:** In Progress  
-**Delivery stage:** P1 completed / P2 pending  
+**Delivery stage:** P2 completed / P3 pending  
 **Priority:** Critical  
 **Date:** 2026-09-17  
 **Parent architecture:** C0213, C0166, C0248, C0276  
@@ -242,7 +242,7 @@ A decision-ready forecast fails closed if the explanation is incomplete, contrad
 
 **Gate:** one versioned state consumed everywhere; chronology and missing-data tests pass.
 
-### P2 — Acceleration/regime shadow
+### P2 — Acceleration/regime shadow — COMPLETED / VERIFIED
 
 - Add bounded two-match acceleration classification.
 - Run perturbation, opponent-quality and finishing-regression tests.
@@ -335,3 +335,5 @@ C0248 remains the sole sequential selected-path authority. C0277 remains the chi
 
 - **P0 completed 2026-09-17:** GW5 fixture/player/team-fact evidence frozen by immutable IDs and hashes; canonical C0159 cross-season L10 production bypass identified; C0166 cross-season L5 path identified; L20 confirmed zero direct production effect; forecast-to-player/captaincy chain mapped; no production behavior changed. Closeout: `project-management/C0279_P0_FREEZE_AND_ACTIVE_CONSUMER_AUDIT_CLOSEOUT_20260917.md`.
 - **P1 completed 2026-09-17:** implemented private versioned chronology-safe shadow season-state functions with the approved 0–10 sample weight schedule, explicit sample/weight/lineage exposure, missing-data fail-closed behavior, orthogonal modifier separation and L5/L10/L20 exclusion. Both diagnostic fixtures passed; C0159/C0166 remained unchanged; zero production effect. Closeout: `project-management/C0279_P1_CANONICAL_SEASON_STATE_CLOSEOUT_20260917.md`.
+
+- **P2 completed 2026-09-17:** implemented chronology-safe opponent-adjusted two-match acceleration classification with finishing-residual, weak-opponent, persistence, uncertainty and tail-only controls. Leeds classified as process improvement; Palace as finishing-only; all perturbation tests passed; baseline replacement prohibited; zero production effect. Closeout: `project-management/C0279_P2_BOUNDED_ACCELERATION_REGIME_CLOSEOUT_20260917.md`.

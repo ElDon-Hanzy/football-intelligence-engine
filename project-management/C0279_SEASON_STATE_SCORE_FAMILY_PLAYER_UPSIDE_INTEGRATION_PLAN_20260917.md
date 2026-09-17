@@ -1,7 +1,7 @@
 # C0279 — Season-State, Score-Family & Player-Upside Integration Program
 
 **Status:** In Progress  
-**Delivery stage:** P0 completed / P1 pending  
+**Delivery stage:** P1 completed / P2 pending  
 **Priority:** Critical  
 **Date:** 2026-09-17  
 **Parent architecture:** C0213, C0166, C0248, C0276  
@@ -233,7 +233,7 @@ A decision-ready forecast fails closed if the explanation is incomplete, contrad
 
 **Gate:** complete behavioral consumption map; no unidentified production path.
 
-### P1 — Canonical season-state contract
+### P1 — Canonical season-state contract — COMPLETED / VERIFIED
 
 - Implement the explicit weight schedule.
 - Separate orthogonal structural modifiers.
@@ -334,3 +334,4 @@ C0248 remains the sole sequential selected-path authority. C0277 remains the chi
 ## 13. Progress ledger
 
 - **P0 completed 2026-09-17:** GW5 fixture/player/team-fact evidence frozen by immutable IDs and hashes; canonical C0159 cross-season L10 production bypass identified; C0166 cross-season L5 path identified; L20 confirmed zero direct production effect; forecast-to-player/captaincy chain mapped; no production behavior changed. Closeout: `project-management/C0279_P0_FREEZE_AND_ACTIVE_CONSUMER_AUDIT_CLOSEOUT_20260917.md`.
+- **P1 completed 2026-09-17:** implemented private versioned chronology-safe shadow season-state functions with the approved 0–10 sample weight schedule, explicit sample/weight/lineage exposure, missing-data fail-closed behavior, orthogonal modifier separation and L5/L10/L20 exclusion. Both diagnostic fixtures passed; C0159/C0166 remained unchanged; zero production effect. Closeout: `project-management/C0279_P1_CANONICAL_SEASON_STATE_CLOSEOUT_20260917.md`.

@@ -70,3 +70,18 @@ Both diagnostic family distributions reconcile to 1.000000 after normalization. 
 Migration: `supabase/migrations/20260917190000_c0279_p4_score_family_shadow_selector.sql`
 
 P4 gate is satisfied for implementation correctness, reconciliation, coherent headline behavior and fail-closed handling. Calibration improvement remains a prospective P8 evaluation question and is not asserted from these diagnostics.
+
+## Final architecture verification
+
+Post-reconciliation C0213 governance is green:
+
+- system consolidation: true
+- registry integrity: true
+- production behavioral proof: 14/14
+- required capabilities: 19/19
+- tracker consumption governance: 100/100, zero violations
+- tracker audit: zero bad IDs, unverified completions, missing references or consumption violations
+- active duplicate cron targets: zero
+- production-effect components remain 14
+
+C0279 tracker state is `P4 Verified`, phase `P4 complete — P5 conditional player-return bridge pending`, with model effect still explicitly zero until validation and promotion.

@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-17 (Dubai) — C0277/C0278 reconciled state / C0276 GW5 T-2 wait_
+_Last updated: 2026-09-17 (Dubai) — C0279 planned / C0277-C0278 reconciled / C0276 GW5 T-2 wait_
 
 ## 1. Mission and immutable rules
 Build one chronology-safe football intelligence engine for FPL decision intelligence and football forecasting/research. FPL objective: maximize probability of Overall Rank #1, or expected final rank if #1 becomes unrealistic.
@@ -27,13 +27,21 @@ Current selector: **RESERVE_FOR_FUTURE**, chip **NONE**, `PLAY_NOW=false`. Bound
 
 C0276 consumes C0277 through `private.c0276_chip_opportunity_gate_v01`; C0248 remains selected-path authority and the gate cannot execute a chip. See `project-management/C0277_SEASONAL_CHIP_OPTION_VALUE_OPTIMIZER_CLOSEOUT_20260917.md`.
 
-## 6. C0265 / C0270 integrity watch
+## 6. C0279 season-state / score-family / player-upside integration — Planned
+
+C0279 is registered as a critical shadow-first program after live defects in Leeds–Crystal Palace and Brentford–Chelsea. It will consolidate the team-state hierarchy, eliminate opaque cross-season L10/L20 production leakage, classify fixtures as LOW/NORMAL/HIGH scoring with shootout/demolition as high-scoring subtypes, select representative score families, propagate team goal states into player haul distributions/captaincy/TC nominations, and enforce a calculation-faithful Decision-Evidence Contract in the matchup modal.
+
+Approved season-performance blend: 40/60 after one current-season match; 55/45 after two; 65/35 after three; 75/25 after four-five; 80/20 after six; 85/15 after seven; 90/10 after eight; 100/0 from nine. Structural/tactical/availability variables remain orthogonal modifiers. L20 is audit/removal scope only and must not be restored. No C0279 production effect is authorized before behavioral consumption proof, shadow validation and explicit promotion.
+
+Canonical plan: `project-management/C0279_SEASON_STATE_SCORE_FAMILY_PLAYER_UPSIDE_INTEGRATION_PLAN_20260917.md`.
+
+## 7. C0265 / C0270 integrity watch
 C0265 remains **Open / Planned / Critical**, deliberately unchanged. Do not repair without separate authorization. C0270 remains prospective shadow monitoring; numerical coincidences are not causal validation.
 
-## 7. Research / product governance
+## 8. Research / product governance
 Unpromoted research remains zero-effect. V3 is the current consumer product surface; V2 remains fallback until explicitly retired. UI preserves Actual / Recommendation / Decision snapshot / Realized lanes. `FINAL` never implies external execution.
 
-## 8. Current engineering dispositions
+## 9. Current engineering dispositions
 - C0264: Blocked; experimental branch closed/unmerged.
 - C0265: Open / Planned / Critical; no fix authorized.
 - C0270: In Progress / shadow.
@@ -41,8 +49,9 @@ Unpromoted research remains zero-effect. V3 is the current consumer product surf
 - C0276: In Progress; waiting on governed GW5 T−2 final window.
 - C0277: **Completed / Verified**.
 - C0278: **Completed / Verified**.
+- C0279: **Planned / architecture approved; pre-implementation audit pending; zero production effect**.
 
-## 9. Canonical references
-`PROJECT_DESCRIPTION.md`, `DECISIONS_AND_HISTORY.md`, `SYSTEM_ARCHITECTURE.md`, `MODEL_REGISTRY.md`, `WEEKLY_DATA_PIPELINE.md`, `MODEL_CONSUMPTION_AUDIT.md`, `skills/fie/SKILL.md`, C0277 closeout and C0278 reconciliation.
+## 10. Canonical references
+`PROJECT_DESCRIPTION.md`, `DECISIONS_AND_HISTORY.md`, `SYSTEM_ARCHITECTURE.md`, `MODEL_REGISTRY.md`, `WEEKLY_DATA_PIPELINE.md`, `MODEL_CONSUMPTION_AUDIT.md`, `skills/fie/SKILL.md`, C0277 closeout, C0278 reconciliation and the C0279 canonical plan.
 
 When documentation disagrees with live runtime, verify live evidence first and reconcile documentation rather than weakening runtime gates.

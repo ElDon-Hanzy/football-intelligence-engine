@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Decisions & History
 
-_Last reconciled: 2026-09-17 (Dubai) — C0277/C0278 closeout_
+_Last reconciled: 2026-09-17 (Dubai) — C0279 plan registered after C0277/C0278 closeout_
 
 This file preserves durable decisions governing the current engine. Runtime evidence outranks stale historical descriptions; history is not rewritten.
 
@@ -39,6 +39,24 @@ C0277 implementation chain: dual-horizon contract → reservation-value evidence
 Permanent source-of-truth order: live Supabase → tracker/C0213 → current GitHub source/migrations → canonical docs → historical handovers.
 
 Current P5 proof after C0277: C0213 14/14 behavioral PASS, 19/19 required capabilities, 99/99 tracker governance, zero duplicate active cron targets, zero active retired external deployments. C0265 remains deliberately unchanged; C0240 concurrency unchanged; no historical rewrite or external FPL execution.
+
+## C0279 — planned canonical integration contract
+
+C0279 records an approved shadow-first architecture change after demonstrated production/explanation failures.
+
+Permanent planned rules:
+- current-season versus previous-season performance uses the explicit 40/60, 55/45, 65/35, 75/25, 80/20, 85/15, 90/10, then 100/0 schedule from one through nine-plus current-season matches;
+- previous-season performance is capped at 25% from four matches and is exactly 0% from nine;
+- venue, opponent, tactical, personnel, manager/system, availability and congestion inputs are orthogonal modifiers, not part of that season blend;
+- L20 is removal/audit scope only; opaque cross-season L10/L20 inputs cannot bypass canonical state;
+- shootout and demolition are HIGH_SCORING subtypes;
+- the raw modal score is diagnostic and cannot automatically become the representative headline;
+- fixture score-family distributions must propagate into conditional player haul distributions, captaincy nominations and existing C0277 chip opportunity-cost evidence;
+- matchup evidence must be chronology-safe, calculation-linked, material, distinct, directionally correct, human-readable and traceable;
+- mirrored evidence is netted; immaterial contributions are omitted; conflicting evidence is explicitly reconciled;
+- C0279 creates no parallel fixture, projection, captaincy, chip or execution authority.
+
+C0279 has zero production effect until audit, shadow validation, behavioral proof and explicit promotion. Canonical plan: `project-management/C0279_SEASON_STATE_SCORE_FAMILY_PLAYER_UPSIDE_INTEGRATION_PLAN_20260917.md`.
 
 ## Protected live states
 - C0265: Open / Planned / Critical; predicted-XI xMins defect deliberately unchanged until separately authorized.

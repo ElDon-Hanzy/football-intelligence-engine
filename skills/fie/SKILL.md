@@ -51,5 +51,22 @@ Current GW5 verification at C0277 P5: exact horizon 3, seasonal window through G
 ## C0278 whole-engine reconciliation rule
 Before a new major architecture/model program after a long implementation chain, reconcile whole-engine runtime/registry/tracker/GitHub/docs. Audit active crons and authority, preserve intentional blocked/deferred/research states, rerun C0213 governance, and do not begin a new feature while a P0 source-of-truth contradiction remains unresolved.
 
+## C0279 planned season-state / score-family / player-upside directive
+
+C0279 is planned and has zero production effect until explicitly promoted. Read `project-management/C0279_SEASON_STATE_SCORE_FAMILY_PLAYER_UPSIDE_INTEGRATION_PLAN_20260917.md` before C0279 work.
+
+Required rules:
+- map L5/L10/L20 only to identify and remove opaque cross-season consumers; never restore L20;
+- use the registered season-performance blend, capped at 25% previous season after four matches and 0% previous season from nine;
+- keep venue/opponent/tactical/personnel/availability/congestion modifiers outside the season blend;
+- classify scoring environment LOW/NORMAL/HIGH before script; shootout and demolition are HIGH subtypes;
+- do not equate the raw modal score with the representative headline;
+- propagate score-family/team-goal states into reconciled player haul distributions and captaincy nominations;
+- never auto-award captaincy or TC; preserve full-XV, xMins/role, C0277 opportunity-cost, Noise-Control and final authorization;
+- modal facts must be active, material, chronology-safe, distinct, directionally correct and traceable;
+- net mirrored effects, omit immaterial ones, reconcile conflicts in clear football language;
+- fail closed when a decision-ready modal cannot explain the active forecast;
+- do not create parallel fixture, projection, captaincy, chip or execution authority.
+
 ## Protected states
 C0265 predicted-XI/xMins behavior is deliberately unchanged; do not repair without explicit authorization. C0270 is shadow observation only. Do not change C0240 concurrency without separate validation/authorization.

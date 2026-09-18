@@ -109,3 +109,17 @@ P6 is supporting evidence only. It creates no parallel selector and performs no 
 Migration: `supabase/migrations/20260917194500_c0279_p6_captaincy_chip_shadow_consumption.sql`
 
 P6 structural, coverage, authority and opportunity-cost gates are satisfied. Ranking/calibration value remains a P8 prospective evaluation question.
+
+## Final architecture verification
+
+Post-reconciliation C0213 governance is green:
+
+- system consolidation and registry integrity: true
+- production behavioral proof: 14/14
+- required capabilities: 19/19
+- tracker consumption governance: 100/100, zero violations
+- tracker audit: zero bad IDs, unverified completions, missing references or consumption violations
+- active duplicate cron targets: zero
+- production-effect components remain 14
+
+C0279 tracker state is `P6 Verified`, phase `P6 complete — P7 matchup modal and Decision-Evidence Contract pending`, with model effect still explicitly zero until validation and promotion.

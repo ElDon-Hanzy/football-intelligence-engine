@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Decisions & History
 
-_Last reconciled: 2026-09-17 (Dubai) — C0279 plan registered after C0277/C0278 closeout_
+_Last reconciled: 2026-09-18 (Dubai) — through C0281 closeout_
 
 This file preserves durable decisions governing the current engine. Runtime evidence outranks stale historical descriptions; history is not rewritten.
 
@@ -18,54 +18,21 @@ This file preserves durable decisions governing the current engine. Runtime evid
 - C0240 is supporting adversarial evidence, not a second selector. C0230 is advisory/nonblocking.
 - C0276 is the bounded autonomous control plane: exact lineage, bounded retry, one governed final-control loop, fail closed on unresolved mandatory evidence. Publication is not external execution.
 
-## C0277 — seasonal chip option value: Completed / Verified
-A strong short-horizon chip branch does not prove that spending the chip now dominates preserving it.
+## C0281 durable deadline-control decisions — 2026-09-18
+GW5 demonstrated that a nominal T-2 final window is insufficient when tail latency, asynchronous request state and changing lineages interact. Deadline control is therefore a convergence problem, not merely a scheduler priority.
 
-Permanent C0277 contract:
-- exact numerical decision horizon and seasonal chip opportunity window are separate dimensions;
-- exact player-level chip value is used only where decision-grade projections exist;
-- structural future fixture evidence may reserve optionality but cannot authorize spending;
-- unknown future option value is not zero and must not be replaced by invented points or probabilities;
-- WC/FH/BB/TC compete for scarce Gameweeks; shared future windows are not additive/double-counted;
-- Wildcard retains information/squad-reset option value and must include downstream squad/FT/flexibility consequences;
-- chip spending requires robust `PLAY_NOW` evidence after whole-squad reoptimization, xMins/role gates, opportunity cost, red-team, Noise-Control and existing final timing gates;
-- unresolved future opportunity or assumption-sensitive superiority causes `RESERVE_FOR_FUTURE`, `NO_MEANINGFUL_EDGE`, or fail-closed behavior;
-- a single best future chip week remains unresolved/null until evidence justifies that precision;
-- C0277 is a supporting gate only. C0248 remains selected-path authority; C0276/C0234 remain authorization controls; no external execution.
+The governed phase model is `NORMAL → T4_BASELINE → T4_BASELINE_CONVERGED → T2_DELTA → CLOSED`. T-4 is the target for a coherent baseline. T-2 processes material deltas rather than starting the entire decision chain from scratch.
 
-C0277 implementation chain: dual-horizon contract → reservation-value evidence → future opportunity scenarios → robust cross-chip selector → C0276 chip-opportunity gate. At P5 verification GW5 remained `NONE / RESERVE_FOR_FUTURE / PLAY_NOW=false`; season-best chip weeks were unresolved. Invalid long exact numerical horizons fail closed.
+Inside T-4, authoritative player-state changes are immediately material. Raw fixture-lineage refresh churn is debounced until repeated twice or persistent for five minutes. This is deliberately conservative stabilization and does not claim semantic selected-path/xPts materiality.
 
-## C0278 — whole-engine reconciliation
-Permanent source-of-truth order: live Supabase → tracker/C0213 → current GitHub source/migrations → canonical docs → historical handovers.
+Existing C0248/C0243 price timing remains authoritative. Price information cannot create a football transfer. It may only accelerate an already robust transfer if affordability is materially threatened; otherwise information optionality is preserved.
 
-Current P5 proof after C0277: C0213 14/14 behavioral PASS, 19/19 required capabilities, 99/99 tracker governance, zero duplicate active cron targets, zero active retired external deployments. C0265 remains deliberately unchanged; C0240 concurrency unchanged; no historical rewrite or external FPL execution.
+Deadline runtime reservation is empirical and tail-aware. Current policy uses `max(300 seconds, 2 × E2E P99 + 60 seconds)`. Timeout observations count as failures, not acceptable latency targets. When remaining time breaches the reservation, new heavy dispatch is prohibited. If a coherent checkpoint exists, it may be frozen for existing governance; if none exists, the system fails closed. A fallback cannot bypass chip, final-gate or publication governance and never implies external execution.
 
-## C0279 — planned canonical integration contract
+Async RUNNING nodes are no longer allowed to livelock indefinitely: non-2xx HTTP responses fail immediately into governed recovery; absent responses older than 300 seconds fail; successful HTTP responses still uncaptured after 300 seconds also fail.
 
-C0279 records an approved shadow-first architecture change after demonstrated production/explanation failures.
+The GW5 incident also established a process lesson: inspect existing architecture before proposing new capabilities. C0243/C0248 already contained price-timing logic; C0281 integrates it rather than duplicating it.
 
-Permanent planned rules:
-- current-season versus previous-season performance uses the explicit 40/60, 55/45, 65/35, 75/25, 80/20, 85/15, 90/10, then 100/0 schedule from one through nine-plus current-season matches;
-- previous-season performance is capped at 25% from four matches and is exactly 0% from nine;
-- venue, opponent, tactical, personnel, manager/system, availability and congestion inputs are orthogonal modifiers, not part of that season blend;
-- L20 is removal/audit scope only; opaque cross-season L10/L20 inputs cannot bypass canonical state;
-- shootout and demolition are HIGH_SCORING subtypes;
-- the raw modal score is diagnostic and cannot automatically become the representative headline;
-- fixture score-family distributions must propagate into conditional player haul distributions, captaincy nominations and existing C0277 chip opportunity-cost evidence;
-- matchup evidence must be chronology-safe, calculation-linked, material, distinct, directionally correct, human-readable and traceable;
-- mirrored evidence is netted; immaterial contributions are omitted; conflicting evidence is explicitly reconciled;
-- C0279 creates no parallel fixture, projection, captaincy, chip or execution authority.
+A prior P5 tracker sentence claiming the live phase was CLOSED was incorrect. Recorded runtime evidence shows the live phase call at 17:20:58 UTC was `T2_DELTA`, around nine minutes before the 17:30 UTC deadline.
 
-C0279 has zero production effect until audit, shadow validation, behavioral proof and explicit promotion. Canonical plan: `project-management/C0279_SEASON_STATE_SCORE_FAMILY_PLAYER_UPSIDE_INTEGRATION_PLAN_20260917.md`.
-
-## Protected live states
-- C0265: Open / Planned / Critical; predicted-XI xMins defect deliberately unchanged until separately authorized.
-- C0270: prospective shadow monitoring; numerical coincidence is not causal evidence.
-- C0240 concurrency: do not change without separate validation.
-- Intentional blocked/deferred/monitoring research remains open until governed acceptance/expiry evidence exists.
-
-## Anti-over-engineering rule
-A new production component must fix a demonstrated material failure, add unique information, have a falsifiable contract, possess one explicit consumer, and justify maintenance complexity. Prefer consolidation into an existing state/planner/gate over parallel authorities.
-
-## Canonical references
-`PROJECT_STATE.md`; `PROJECT_DESCRIPTION.md`; `SYSTEM_ARCHITECTURE.md`; `MODEL_REGISTRY.md`; `WEEKLY_DATA_PIPELINE.md`; `MODEL_CONSUMPTION_AUDIT.md`; `skills/fie/SKILL.md`; `project-management/C0278_FULL_ENGINE_STATE_AUDIT_RECONCILIATION_20260916.md`; `project-management/C0277_SEASONAL_CHIP_OPTION_VALUE_OPTIMIZER_CLOSEOUT_20260917.md`.
+C0281 completed fault injection and a full deadline rehearsal successfully. No historical forecasts were rewritten and no external FPL transfer/chip execution occurred.

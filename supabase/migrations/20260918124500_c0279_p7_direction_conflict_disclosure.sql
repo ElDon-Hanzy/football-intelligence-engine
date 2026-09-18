@@ -1,0 +1,6 @@
+-- Deployment reconciliation marker.
+-- The authoritative CREATE OR REPLACE definition is retained in
+-- 20260918123000_c0279_p7_decision_evidence_modal.sql so a clean migration run
+-- installs the conflict-disclosure rule directly. The live deployment recorded
+-- this follow-up version after the initial P7 validation exposed a legitimate
+-- low-scoring-parity versus slight-result-lean tension.

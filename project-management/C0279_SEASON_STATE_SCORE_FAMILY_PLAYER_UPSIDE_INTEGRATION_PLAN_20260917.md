@@ -1,7 +1,7 @@
 # C0279 — Season-State, Score-Family & Player-Upside Integration Program
 
 **Status:** In Progress  
-**Delivery stage:** P6 completed / P7 pending  
+**Delivery stage:** P7 completed / P8 pending  
 **Priority:** Critical  
 **Date:** 2026-09-17  
 **Parent architecture:** C0213, C0166, C0248, C0276  
@@ -275,7 +275,7 @@ A decision-ready forecast fails closed if the explanation is incomplete, contrad
 
 **Gate:** whole-XV comparison, named challengers, opportunity cost, red-team and Noise-Control remain binding.
 
-### P7 — Matchup modal and Decision-Evidence Contract
+### P7 — Matchup modal and Decision-Evidence Contract — COMPLETED / VERIFIED
 
 - Implement conclusion → support → risk → reconciliation → player implications.
 - Add automated contradiction, materiality and traceability audits.
@@ -345,3 +345,5 @@ C0248 remains the sole sequential selected-path authority. C0277 remains the chi
 - **P5 completed 2026-09-17:** implemented a private shadow conditional player-return bridge for team goal states 0/1/2/3/4+, using canonical event lambdas, haul tails, xMins/start and current roles. Player scoring/assist shares conserve team events; weighted conditional states exactly reconstruct canonical xPts and P(10+) in diagnostic fixtures; all 604 frozen GW5 player rows passed conservation, monotonicity and chronology/effect checks. João Pedro leads eligible Chelsea P(10+) in the 4+ goal state but receives no automatic captaincy/TC authorization. Zero production effect. Closeout: `project-management/C0279_P5_CONDITIONAL_PLAYER_RETURN_BRIDGE_CLOSEOUT_20260917.md`.
 
 - **P6 completed 2026-09-18:** implemented a private full-XV plus named-challenger captaincy/chip evidence adapter consuming P5 conditional upside and the binding C0277 gate. Mbeumo remains C0248 incumbent and shadow rank 1; Bruno is equivalent under the one-point Noise-Control margin; João Pedro ranks seventh across the XV despite leading Chelsea’s conditional upside. C0277 remains RESERVE_FOR_FUTURE / NONE / PLAY_NOW=false, so TC is blocked. Zero captain/chip authority and zero production effect. Closeout: `project-management/C0279_P6_CAPTAINCY_CHIP_SHADOW_CONSUMPTION_CLOSEOUT_20260918.md`.
+
+- **P7 completed 2026-09-18:** implemented the private shadow Decision-Evidence modal contract in conclusion → support → risk → reconciliation → player implications → additional-context order. Calculation-linked support and genuine uncertainty risks are structurally separated; the raw modal cell is disclosed; shootout is audited as HIGH_SCORING; direction/family tensions are explicitly reconciled; tactical observations with disabled model effect are excluded from support/risk and labeled research-only. Brentford–Chelsea and Leeds–Palace resolve to HIGH/SHOOTOUT / 3–2 while retaining raw 1–1 references. All 10 GW5 fixtures passed decision-ready, chronology, deterministic-hash and zero-effect gates; opaque L10/L20 and mirrored suppression mentions were zero. João Pedro leads eligible Chelsea high-tail upside without captaincy/TC authority. Closeout: `project-management/C0279_P7_MATCHUP_MODAL_DECISION_EVIDENCE_CLOSEOUT_20260918.md`.

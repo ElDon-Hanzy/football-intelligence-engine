@@ -101,6 +101,9 @@ P9 must not promote C0279. Before reconsideration, the engine needs:
 - Primary migration: `c86525636bda5f89e29cfe7f3ed953babfae4b2b`
 - Cohort correction: `694df4dbb9c613642f90c057f77dc32d9d893e18`
 - P0 generator pin: `b6610d30baa8a84069f7913163c3b3085deb1fca`
+- Initial closeout: `684dde1e0d37d64eec6655c84533239eef713bfe`
+- Canonical plan update: `bb2b1af78e2aa3fd0f06b793238cf2069af3186a`
+- Project-state update: `c45253946c67a1b508523b57da1300acf3cd5af1`
 
 ## Boundary
 

@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-18 (Dubai) — C0279 P8 verified / promotion blocked / C0277-C0278 reconciled_
+_Last updated: 2026-09-18 (Dubai) — C0281 completed / verified_
 
 ## 1. Mission and immutable rules
 Build one chronology-safe football intelligence engine for FPL decision intelligence and football forecasting/research. FPL objective: maximize probability of Overall Rank #1, or expected final rank if #1 becomes unrealistic.
@@ -15,25 +15,28 @@ Sources of truth: Supabase `knooiwezzsxcwhtjtdap`; GitHub `ElDon-Hanzy/football-
 C0230 is advisory/nonblocking. C0240 is supporting evidence, not another selector. C0276 is the bounded autonomy/control plane, not another optimizer.
 
 ## 3. Whole-engine reconciliation
-C0278 is **Completed / Verified**. Current C0213 status after C0277 P5: system consolidation GREEN; behavioral proof 14/14; 19/19 required capabilities; tracker governance 99/99; zero duplicate cron targets; zero active retired API/edge/external deployments. Runtime currently reports 29 active crons. C0265 remains untouched; C0240 concurrency unchanged; no historical rewrite or external FPL execution.
+C0278 is **Completed / Verified**. C0265 remains untouched; C0240 concurrency unchanged; no historical rewrite or external FPL execution.
 
-## 4. Current GW5 decision cycle
-Current governed lineage includes C0248 sequential planner run **38**. Candidate existence does not equal FINAL authorization. C0276 remains at governed T−2 timing wait. GW5 deadline: 2026-09-18 17:30 UTC; T−2 threshold: 15:30 UTC. FINAL_GATE remains fail-closed before the authorized window.
+## 4. C0281 deadline convergence — Completed / Verified
+GW5 exposed timeout, async-state and moving-lineage convergence failures. C0281 repairs deadline control without weakening decision governance.
+
+Production cadence is restored duplicate-safe: C0276 autonomous tick job40 `*/5`; projection horizon job41 `*/15`; optimizer orchestration job42 `12,27,42,57`.
+
+The deadline protocol is now `NORMAL → T4_BASELINE → T4_BASELINE_CONVERGED → T2_DELTA → CLOSED`. T-4 establishes a coherent baseline. T-2 is a delta phase rather than the first finalization attempt. Authoritative player-state changes remain immediately material; fixture refresh churn inside T-4 is conservatively debounced until two observations or five minutes. Existing C0248/C0243 price timing is reused: price never creates a football transfer and can only accelerate an already robust football decision when affordability is materially threatened.
+
+Empirical 14-day runtime evidence at closeout: projection P99 ~46.6s, optimizer orchestration P99 ~49.4s, C0276 E2E control tick P99 ~120.0s. Deadline reservation uses `max(300s, 2*E2E P99 + 60s)`. Once breached, no new heavy dispatch is allowed. The controller freezes the latest coherent lineage checkpoint if available, subject to existing governance; otherwise it fails closed. It never fabricates a mixed-lineage answer.
+
+Fault injection and the full GW5 deadline rehearsal passed. The retrospective GW5 T-3 test correctly fails closed because GW5 predates C0281 and has no coherent T-4 checkpoint.
+
+Correction: a prior tracker note said the P5 live phase was CLOSED. The recorded call at 17:20:58 UTC was actually `T2_DELTA`, roughly nine minutes before the 17:30 UTC deadline.
+
+Closeout: `project-management/C0281_DEADLINE_CONVERGENCE_FINALIZATION_CLOSEOUT_20260918.md`.
 
 ## 5. C0277 seasonal chip option value — Completed / Verified
-C0277 now separates the exact numerical decision horizon from the longer seasonal structural opportunity window. Current GW5 contract: exact horizon 3; exact numerical GWs 5–8; structural-only GWs 9–19; no confirmed first-half BGW/DGW/nonstandard window; season-best chip weeks remain unresolved.
+C0277 separates exact numerical decision horizon from longer seasonal structural opportunity. Current selector remains **RESERVE_FOR_FUTURE**, chip **NONE**, `PLAY_NOW=false` unless later evidence changes it. Unknown future option value is not zero; structural scenarios cannot authorize spending a chip.
 
-Current selector: **RESERVE_FOR_FUTURE**, chip **NONE**, `PLAY_NOW=false`. Bounded current evidence is BB +2.367, TC +6.499, FH +5.702 and WC exact-horizon edge +10.593; these values are not season-level authorization. Unknown future option value is not zero. Structural scenarios may reserve a chip but cannot authorize spending. Shared future windows cannot be double-counted. Invalid long numerical horizon requests fail closed.
-
-C0276 consumes C0277 through `private.c0276_chip_opportunity_gate_v01`; C0248 remains selected-path authority and the gate cannot execute a chip. See `project-management/C0277_SEASONAL_CHIP_OPTION_VALUE_OPTIMIZER_CLOSEOUT_20260917.md`.
-
-## 6. C0279 season-state / score-family / player-upside integration — P8 Verified / Promotion Blocked
-
-C0279 P0 is **Completed / Verified** and the program remains shadow-first after live defects in Leeds–Crystal Palace and Brentford–Chelsea. It will consolidate the team-state hierarchy, eliminate opaque cross-season L10/L20 production leakage, classify fixtures as LOW/NORMAL/HIGH scoring with shootout/demolition as high-scoring subtypes, select representative score families, propagate team goal states into player haul distributions/captaincy/TC nominations, and enforce a calculation-faithful Decision-Evidence Contract in the matchup modal.
-
-Approved season-performance blend: 40/60 after one current-season match; 55/45 after two; 65/35 after three; 75/25 after four-five; 80/20 after six; 85/15 after seven; 90/10 after eight; 100/0 from nine. Structural/tactical/availability variables remain orthogonal modifiers. L20 is audit/removal scope only and must not be restored. P0 froze GW5 evidence (fixture hash `a7ce3ddf7b5620a3103dc6c307fa5fbc`, player run 1426/hash `4c1e9ab3b700f29cedf173c242d41a47`) and mapped the canonical C0159 cross-season L10 bypass, C0166 cross-season L5 path, downstream player/captaincy consumers and zero-effect L20 infrastructure. No production behavior changed. P1 is **Completed / Verified**. The private shadow contract now applies the approved sample schedule, reaches 100/0 at 9+, exposes actual sample/weights/lineage, fails closed on missing or invalid evidence, keeps structural modifiers orthogonal, and marks L5/L10/L20 as unconsumed. Samples 0–10 and both diagnostic fixtures passed. Existing C0159/C0166 definitions and production behavior remain unchanged. P2 is **Completed / Verified**. The bounded two-match layer uses P1 opponent-adjusted state, distinguishes process improvement, finishing-only spikes, weak-opponent inflation, tactical regimes, noise and insufficient evidence, and can never replace the canonical baseline. Leeds is correctly recognized as process improvement; Palace’s recent scoring is finishing-only under current evidence. P3 is **Completed / Verified**. The full score matrix now produces LOW/NORMAL/HIGH shadow memberships, goal bands and subtype probabilities; shootout and demolition are HIGH subtypes, missing evidence fails closed, and the raw modal score is diagnostic only. Brentford–Chelsea and Leeds–Palace both classify HIGH/SHOOTOUT despite raw 1–1 cells. P4 is **Completed / Verified**. The full-matrix selector aggregates mutually exclusive football families, treats shootout as high scoring, preserves the raw modal cell as a diagnostic, chooses an environment-eligible and direction-aware representative score, discloses weak/conflicting direction, and fails closed below 95% matrix coverage. Brentford–Chelsea and Leeds–Palace both select SHOOTOUT / 3–2 while retaining raw 1–1 references; both distributions reconcile to 1. P5 is **Completed / Verified**. Team goal states 0/1/2/3/4+ now propagate through a private conditional player-return bridge using canonical goal/assist lambdas, existing haul distributions, xMins/start probability and current roles. Player/team goal and assist allocations conserve; weighted states reconstruct the canonical unconditional forecast. All 604 frozen GW5 player rows passed conservation, monotonic-tail and chronology/effect checks. In Brentford–Chelsea, João Pedro is the highest eligible Chelsea P(10+) option in the 4+ goal state, but P5 grants no automatic captaincy or Triple Captain authority. P6 is **Completed / Verified**. The private adapter compares the full XV and every active named challenger using canonical haul tails, P5 conditional upside, xMins/start/role gates, scoring environment and Noise-Control, then consumes C0277 as a binding chip gate without selection authority. Mbeumo remains the C0248 incumbent and shadow rank 1; Bruno is equivalent inside the one-point error margin; João Pedro ranks seventh across the XV despite Chelsea conditional upside. C0277 remains RESERVE_FOR_FUTURE / NONE / PLAY_NOW=false, so TC is blocked. P7 is **Completed / Verified**. The private Decision-Evidence modal contract now presents conclusion, calculation-linked support, genuine risks, explicit reconciliation, gated player implications and separately labeled zero-effect tactical research context. The raw modal cell is disclosed without controlling the headline; shootout is HIGH_SCORING; weak result direction and direction/family tensions are stated plainly. Brentford–Chelsea and Leeds–Palace resolve to HIGH/SHOOTOUT / 3–2 while retaining raw 1–1 references. João Pedro leads eligible Chelsea conditional high-tail upside without captaincy/TC authority. The full 10-fixture GW5 suite passed decision readiness, chronology, deterministic hashes and zero-effect gates, with zero opaque L10/L20, mirrored suppression or research-in-support/risk violations. P8 is **Completed / Verified**, but promotion is **blocked**. The chronology-safe GW1–GW4 fixture replay contains 38 eligible matches: environment accuracy 31.58%, family accuracy 18.42%, representative exact-score accuracy 5.26%, raw-modal exact accuracy 15.00% where available, 1X2 Brier 0.628772, O2.5 Brier 0.241105, BTTS Brier 0.229604 and total-goal MAE 1.518693. P3–P7 preserve the score matrix, so core probability improvement is zero by design. A valid prior-season performance backtest is unavailable because none of 2,000 historical feature rows are genuine historical captures. Retroactive P5 evaluation would leak current role state, and immutable historical full-XV/captaincy/chip states do not exist. These are recorded as blocking negative evidence. The exact P0 GW5 cohort—C0166 snapshots 9084–9093 and player run 1426—is frozen for prospective evaluation. No C0279 production effect or P9 promotion is authorized.
-
-Canonical plan: `project-management/C0279_SEASON_STATE_SCORE_FAMILY_PLAYER_UPSIDE_INTEGRATION_PLAN_20260917.md`. P0 closeout: `project-management/C0279_P0_FREEZE_AND_ACTIVE_CONSUMER_AUDIT_CLOSEOUT_20260917.md`. P1 closeout: `project-management/C0279_P1_CANONICAL_SEASON_STATE_CLOSEOUT_20260917.md`. P2 closeout: `project-management/C0279_P2_BOUNDED_ACCELERATION_REGIME_CLOSEOUT_20260917.md`. P3 closeout: `project-management/C0279_P3_SCORING_ENVIRONMENT_SHADOW_CLOSEOUT_20260917.md`. P4 closeout: `project-management/C0279_P4_SCORE_FAMILY_SHADOW_SELECTOR_CLOSEOUT_20260917.md`. P5 closeout: `project-management/C0279_P5_CONDITIONAL_PLAYER_RETURN_BRIDGE_CLOSEOUT_20260917.md`. P6 closeout: `project-management/C0279_P6_CAPTAINCY_CHIP_SHADOW_CONSUMPTION_CLOSEOUT_20260918.md`. P7 closeout: `project-management/C0279_P7_MATCHUP_MODAL_DECISION_EVIDENCE_CLOSEOUT_20260918.md`. P8 closeout: `project-management/C0279_P8_CHRONOLOGICAL_SHADOW_EVALUATION_CLOSEOUT_20260918.md`.
+## 6. C0279 season-state / score-family / player-upside integration
+C0279 remains **promotion blocked / zero production effect** after P8 validation. Its shadow architecture and frozen prospective cohort remain available for future evidence. It must not affect production until its promotion gate is satisfied.
 
 ## 7. C0265 / C0270 integrity watch
 C0265 remains **Open / Planned / Critical**, deliberately unchanged. Do not repair without separate authorization. C0270 remains prospective shadow monitoring; numerical coincidences are not causal validation.
@@ -46,12 +49,13 @@ Unpromoted research remains zero-effect. V3 is the current consumer product surf
 - C0265: Open / Planned / Critical; no fix authorized.
 - C0270: In Progress / shadow.
 - C0273: broader autonomy/website/VPS work remains open/deferred where acceptance evidence is incomplete.
-- C0276: In Progress; waiting on governed GW5 T−2 final window.
+- C0276: active bounded control plane with C0281 deadline protections.
 - C0277: **Completed / Verified**.
 - C0278: **Completed / Verified**.
-- C0279: **In Progress / P8 completed; P9 promotion blocked; zero production effect**.
+- C0279: **Promotion blocked / zero production effect**.
+- C0281: **Completed / Verified**.
 
 ## 10. Canonical references
-`PROJECT_DESCRIPTION.md`, `DECISIONS_AND_HISTORY.md`, `SYSTEM_ARCHITECTURE.md`, `MODEL_REGISTRY.md`, `WEEKLY_DATA_PIPELINE.md`, `MODEL_CONSUMPTION_AUDIT.md`, `skills/fie/SKILL.md`, C0277 closeout, C0278 reconciliation and the C0279 canonical plan.
+`PROJECT_DESCRIPTION.md`, `DECISIONS_AND_HISTORY.md`, `SYSTEM_ARCHITECTURE.md`, `MODEL_REGISTRY.md`, `WEEKLY_DATA_PIPELINE.md`, `MODEL_CONSUMPTION_AUDIT.md`, `skills/fie/SKILL.md`, C0277 closeout, C0278 reconciliation, C0279 canonical plan, and C0281 closeout.
 
 When documentation disagrees with live runtime, verify live evidence first and reconcile documentation rather than weakening runtime gates.

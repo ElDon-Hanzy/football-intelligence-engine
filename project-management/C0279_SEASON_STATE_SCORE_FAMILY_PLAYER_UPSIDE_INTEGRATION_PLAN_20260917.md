@@ -1,7 +1,7 @@
 # C0279 — Season-State, Score-Family & Player-Upside Integration Program
 
 **Status:** In Progress  
-**Delivery stage:** P5 completed / P6 pending  
+**Delivery stage:** P6 completed / P7 pending  
 **Priority:** Critical  
 **Date:** 2026-09-17  
 **Parent architecture:** C0213, C0166, C0248, C0276  
@@ -268,7 +268,7 @@ A decision-ready forecast fails closed if the explanation is incomplete, contrad
 
 **Gate:** team/player probability conservation, xMins/role gates and tail calibration pass.
 
-### P6 — Captaincy/chip consumption
+### P6 — Captaincy/chip consumption — COMPLETED / VERIFIED
 
 - Add score-family-aware nominations to the existing captaincy process.
 - Feed TC evidence into C0277 without creating a new chip authority.
@@ -343,3 +343,5 @@ C0248 remains the sole sequential selected-path authority. C0277 remains the chi
 - **P4 completed 2026-09-17:** implemented a fail-closed full-matrix score-family selector that preserves the raw modal cell, enforces LOW/NORMAL/HIGH environment eligibility, selects a direction-aware representative headline and discloses weak/conflicting direction. Brentford–Chelsea and Leeds–Palace both resolve to SHOOTOUT / 3–2 while retaining raw 1–1 references; family probabilities reconcile; full GW5 and boundary suites passed; zero production effect. Closeout: `project-management/C0279_P4_SCORE_FAMILY_SHADOW_SELECTOR_CLOSEOUT_20260917.md`.
 
 - **P5 completed 2026-09-17:** implemented a private shadow conditional player-return bridge for team goal states 0/1/2/3/4+, using canonical event lambdas, haul tails, xMins/start and current roles. Player scoring/assist shares conserve team events; weighted conditional states exactly reconstruct canonical xPts and P(10+) in diagnostic fixtures; all 604 frozen GW5 player rows passed conservation, monotonicity and chronology/effect checks. João Pedro leads eligible Chelsea P(10+) in the 4+ goal state but receives no automatic captaincy/TC authorization. Zero production effect. Closeout: `project-management/C0279_P5_CONDITIONAL_PLAYER_RETURN_BRIDGE_CLOSEOUT_20260917.md`.
+
+- **P6 completed 2026-09-18:** implemented a private full-XV plus named-challenger captaincy/chip evidence adapter consuming P5 conditional upside and the binding C0277 gate. Mbeumo remains C0248 incumbent and shadow rank 1; Bruno is equivalent under the one-point Noise-Control margin; João Pedro ranks seventh across the XV despite leading Chelsea’s conditional upside. C0277 remains RESERVE_FOR_FUTURE / NONE / PLAY_NOW=false, so TC is blocked. Zero captain/chip authority and zero production effect. Closeout: `project-management/C0279_P6_CAPTAINCY_CHIP_SHADOW_CONSUMPTION_CLOSEOUT_20260918.md`.

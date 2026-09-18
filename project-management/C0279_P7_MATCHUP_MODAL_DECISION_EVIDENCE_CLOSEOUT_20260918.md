@@ -83,6 +83,14 @@ The initial suite correctly exposed one legitimate Spurs–Aston Villa tension: 
 - `supabase/migrations/20260918124500_c0279_p7_direction_conflict_disclosure.sql`
 - `project-management/C0279_P7_MATCHUP_MODAL_DECISION_EVIDENCE_CLOSEOUT_20260918.md`
 
+## Reconciliation references
+
+- Decision-Evidence migration: `6b3f279d756703e89b407c4dbca136c1104742b7`
+- Direction-conflict deployment marker: `0cbc7bf7227aa063703ddd7e2175d726ba5cd404`
+- Initial closeout: `d1b5947f959566628a2c62565b6ea0e2ca13064a`
+- Canonical plan update: `282ca960f6084a2310e2f8752c5be719eb00dfb3`
+- Project-state update: `8cddba5635fcd11d71011ccb061ee42ba0c5f190`
+
 ## Boundary
 
 P7 does not modify fixture forecasts, exact-score matrices, player projections, captain selection, chip selection, historical rows or external FPL state. P8 remains pending. Promotion remains forbidden without chronological evaluation, definition-bound consumption proof, green governance and explicit authorization.

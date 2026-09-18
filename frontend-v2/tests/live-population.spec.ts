@@ -63,10 +63,12 @@ async function openView(page: Page, view: string, gw: number, heading: string | 
   throw lastError;
 }
 
-function governanceHasExplicitState(governance: any): boolean {
-  if (governance?.ok === true) return true;
-  const text = JSON.stringify(governance ?? {}).toUpperCase();
-  return text.includes('FAIL') || text.includes('BLOCK') || text.includes('CLOSED') || text.includes('NOT_READY') || text.includes('DEADLINE');
+function expectGovernanceContract(governance: any): void {
+  expect(typeof governance?.ok).toBe('boolean');
+  for (const field of ['total_rows', 'decision_rows', 'bad_change_ids', 'completed_not_verified', 'completed_without_refs', 'decision_rows_without_refs']) {
+    expect(Number.isInteger(governance?.[field]), `governance.${field}`).toBe(true);
+    expect(governance[field], `governance.${field}`).toBeGreaterThanOrEqual(0);
+  }
 }
 
 test('current production APIs populate every v2 data surface', async ({ request }, testInfo) => {
@@ -124,9 +126,6 @@ test('current production APIs populate every v2 data surface', async ({ request 
   const deadlinePassed = fpl.deadline_at != null && Number.isFinite(new Date(fpl.deadline_at).getTime())
     ? Date.now() >= new Date(fpl.deadline_at).getTime()
     : false;
-  // Expected XI is a pre-deadline decision input, not a post-deadline serving invariant.
-  // Once the deadline has passed, frozen predictions and realised fixture state are authoritative;
-  // missing forward XI evidence must not block serving an otherwise valid active Gameweek.
   if (!deadlinePassed) {
     for (const fixture of intelligence.fixtures) {
       expect(fixture.home_team?.expected_xi?.length ?? 0, `home expected XI for match ${fixture.match_id}`).toBeGreaterThan(0);
@@ -180,9 +179,9 @@ test('current production APIs populate every v2 data surface', async ({ request 
   expect(engine.active_model?.version).toBeTruthy();
   expect(engine.latest_prediction_run?.id).toBe(fpl.prediction_run_id);
   expect(engine.production_fixture_layer?.fixtures).toBe(10);
-  // Governance may intentionally be fail-closed after the deadline. The population test
-  // verifies that diagnostics expose a truthful, explicit state rather than forcing green.
-  expect(governanceHasExplicitState(engine.governance)).toBe(true);
+  // Governance truth is carried by the typed diagnostics contract. Do not infer lifecycle
+  // state from guessed status words: ok=false plus the counters is itself an explicit state.
+  expectGovernanceContract(engine.governance);
   if (!deadlinePassed) expect(engine.orchestration_readiness?.projection_ready).toBe(true);
   else expect(typeof engine.orchestration_readiness?.projection_ready).toBe('boolean');
   expect(typeof engine.orchestration_readiness?.decision_ready).toBe('boolean');
@@ -237,8 +236,11 @@ test('every current v2 page renders its populated sections without silent blanks
     }
 
     await openView(page, 'engine', gw, 'Engine & Research');
-    // Both clean and explicit fail-closed governance are valid populated states.
-    await expect(page.getByText(/Governance (clean|blocked)/i).first()).toBeVisible({ timeout: LIVE_TIMEOUT });
+    // Assert the actual Engine diagnostics UI contract: governance has a named section and
+    // renders either ledger state, while decision readiness carries fail-closed lifecycle truth.
+    await expect(page.getByRole('heading', { name: /^(Clean ledger|Attention required)$/ })).toBeVisible({ timeout: LIVE_TIMEOUT });
+    await expect(page.getByRole('heading', { name: /^Decision (READY|BLOCKED|UNKNOWN)$/ })).toBeVisible({ timeout: LIVE_TIMEOUT });
+    await expect(page.getByRole('heading', { name: 'Fail-closed rules active' })).toBeVisible({ timeout: LIVE_TIMEOUT });
     await expect(page.locator('.source-health-card').first()).toBeVisible({ timeout: LIVE_TIMEOUT });
     await expect(page.locator('.analysis-hero-metrics')).not.toContainText('Latest FPL run—');
     await expect(page.locator('.state-panel')).toHaveCount(0);

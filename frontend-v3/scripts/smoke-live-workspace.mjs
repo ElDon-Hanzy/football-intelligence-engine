@@ -25,7 +25,10 @@ if (authPayload?.iss !== 'supabase' || authPayload?.ref !== projectRef || authPa
 const headers = { Accept: 'application/json', Authorization: `Bearer ${anonJwt}`, apikey: anonJwt };
 const timedFetch = async (url) => {
   const started = performance.now();
-  const response = await fetch(url, { headers, cache: 'no-store', signal: AbortSignal.timeout(15000) });
+  // Cold Edge Function starts can exceed 15 seconds while still satisfying the
+  // page's bounded two-request concurrency policy. Keep semantic validation
+  // strict, but allow the production smoke enough time to receive headers.
+  const response = await fetch(url, { headers, cache: 'no-store', signal: AbortSignal.timeout(30000) });
   const headersMs = performance.now() - started;
   const payload = await response.json();
   return { response, payload, headersMs, totalMs: performance.now() - started };

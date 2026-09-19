@@ -143,16 +143,14 @@ Deno.serve(async (req: Request) => {
     ])];
 
     const detailsStarted = performance.now();
-    const [predictionRunResult, playersResult, teamsResult, projectionResult, actualsResult] = await Promise.all([
+    const [predictionRunResult, playersResult, teamsResult, projectionResult, actualsResult, leagueTopResult] = await Promise.all([
       predictionRunId
         ? sb.from('gameweek_prediction_runs')
             .select('id,gameweek,generated_at,deadline_at,run_type,frozen,excluded_from_backtest,model_version_id,metadata')
             .eq('id', predictionRunId)
             .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
-      playerIds.length
-        ? sb.from('players').select('id,web_name,position,team_id').in('id', playerIds)
-        : Promise.resolve({ data: [], error: null }),
+      sb.from('players').select('id,web_name,position,team_id'),
       sb.from('teams').select('id,name,short_name'),
       predictionRunId && playerIds.length
         ? sb.from('fpl_public_projection_payload_v01')
@@ -166,6 +164,13 @@ Deno.serve(async (req: Request) => {
             .eq('result_run_id', resultRun.id)
             .in('player_id', playerIds)
         : Promise.resolve({ data: [], error: null }),
+      predictionRunId
+        ? sb.from('fpl_public_projection_payload_v01')
+            .select('player_id,expected_points,expected_minutes,p_blank,p_5_plus,p_10_plus,p_15_plus,p_20_plus,p_start,p_goal,p_assist,p_clean_sheet,p_dc,p_bonus,confidence,q90,q95,distribution_version,tail_semantics')
+            .eq('prediction_run_id', predictionRunId)
+            .order('expected_points', { ascending: false })
+            .limit(10)
+        : Promise.resolve({ data: [], error: null }),
     ]);
     const detailsMs = performance.now() - detailsStarted;
 
@@ -174,6 +179,7 @@ Deno.serve(async (req: Request) => {
     if (teamsResult.error) throw teamsResult.error;
     if (projectionResult.error) throw projectionResult.error;
     if (actualsResult.error) throw actualsResult.error;
+    if (leagueTopResult.error) throw leagueTopResult.error;
 
     const predictionRun = predictionRunResult.data as any;
     const firstKickoff = matches.map((match) => ts(match.kickoff_time)).filter(Number.isFinite).sort((a, b) => a - b)[0];
@@ -196,7 +202,7 @@ Deno.serve(async (req: Request) => {
     if (priceEvidenceResult.error) throw priceEvidenceResult.error;
 
     const teamById = new Map((teamsResult.data || []).map((team: any) => [Number(team.id), team]));
-    const projectionByPlayer = new Map((projectionResult.data || []).map((row: any) => [Number(row.player_id), row]));
+    const projectionByPlayer = new Map([...(projectionResult.data || []), ...(leagueTopResult.data || [])].map((row: any) => [Number(row.player_id), row]));
     const snapshotFinishedIds = new Set(
       Array.isArray(resultRun?.metadata?.finished_fixture_ids)
         ? resultRun.metadata.finished_fixture_ids.map(Number).filter(Number.isFinite)
@@ -256,7 +262,27 @@ Deno.serve(async (req: Request) => {
       };
     });
 
-    const playerEvidence = playerIds.map((playerId) => {
+    const playerById = new Map(players.map((player: any) => [Number(player.player_id), player]));
+    const leagueTopXpts = (leagueTopResult.data || []).map((row: any, index: number) => {
+      const player = playerById.get(Number(row.player_id)) as any;
+      return {
+        rank: index + 1,
+        player_id: Number(row.player_id),
+        name: player?.name ?? `Player ${row.player_id}`,
+        position: player?.position ?? null,
+        team: player?.team ?? null,
+        team_short: player?.team_short ?? null,
+        expected_points: asNumber(row.expected_points),
+        expected_minutes: asNumber(row.expected_minutes),
+        p_start: asNumber(row.p_start),
+        p_10_plus: asNumber(row.p_10_plus),
+        p_15_plus: asNumber(row.p_15_plus),
+        p_20_plus: asNumber(row.p_20_plus),
+      };
+    });
+
+    const evidencePlayerIds = [...new Set([...playerIds, ...(leagueTopResult.data || []).map((row: any) => Number(row.player_id))])];
+    const playerEvidence = evidencePlayerIds.map((playerId) => {
       const row = projectionByPlayer.get(Number(playerId)) as any;
       if (!row) {
         return {
@@ -402,6 +428,7 @@ Deno.serve(async (req: Request) => {
         player_actuals: playerActuals,
       },
       players,
+      league_top_xpts: leagueTopXpts,
       semantics: {
         final_does_not_imply_execution_authorized: true,
         actual_is_never_inferred_from_recommendation: true,

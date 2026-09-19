@@ -187,6 +187,8 @@ function WorkspaceContent({
 
       <CurrentFplScorecard score={score} actualVerified={actualVerified} />
 
+      <LeagueTopXpts workspace={workspace} onPlayer={setSelectedPlayerId} />
+
       <div className="v3-fpl-controls">
         <div className="v3-state-tabs" role="tablist" aria-label="FPL state">
           <Tab active={stateMode === 'recommendation'} onClick={() => setStateMode('recommendation')}>Engine</Tab>
@@ -223,6 +225,14 @@ function WorkspaceContent({
       <PlayerIntelligenceModal open={selectedPlayerId != null} onClose={() => setSelectedPlayerId(null)} playerId={selectedPlayerId} workspace={workspace} live={live} />
     </div>
   );
+}
+
+function LeagueTopXpts({ workspace, onPlayer }: { workspace: FplWorkspaceApi; onPlayer: (playerId: number) => void }) {
+  const rows = workspace.league_top_xpts ?? [];
+  return <section aria-labelledby="league-top-xpts-heading">
+    <div className="v3-section-heading"><div><span className="v3-kicker">Whole player pool</span><h2 id="league-top-xpts-heading">Top 10 by projected xPts</h2></div><small>Frozen decision-time projection run #{workspace.decision_snapshot?.prediction_run_id ?? '—'}</small></div>
+    {rows.length ? <div className="v3-card-grid v3-card-grid--signals">{rows.map((row) => <button type="button" className="v3-compact-card v3-player-summary-card" key={row.player_id} onClick={() => onPlayer(row.player_id)} aria-label={`Open ${row.name} intelligence`}><span className="v3-card-rank">#{row.rank}</span><strong>{row.name}</strong><small>{row.team_short ?? row.team ?? '—'} · {row.position ?? '—'}</small><b>{row.expected_points == null ? '—' : row.expected_points.toFixed(1)} xPts</b><small>{row.p_10_plus == null ? '—' : `${Math.round(row.p_10_plus * 100)}%`} P10+</small></button>)}</div> : <p className="v3-inline-warning">League-wide xPts ranking is unavailable for this frozen run.</p>}
+  </section>;
 }
 
 function CurrentFplScorecard({ score, actualVerified }: { score: ScenarioScoreComparison; actualVerified: boolean }) {

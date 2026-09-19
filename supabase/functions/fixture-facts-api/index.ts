@@ -96,24 +96,9 @@ function buildContextFacts(args:{
   const hCS=value(homeId,'CURRENT_SEASON_CLEAN_SHEETS',null,'ALL'),aCS=value(awayId,'CURRENT_SEASON_CLEAN_SHEETS',null,'ALL');
   higher('SEASON_CLEAN_SHEETS',hCS,aCS,.20,.74,(_fav,h,a)=>`${homeName} have kept clean sheets in ${pct(h)} of league matches this season; ${awayName} ${pct(a)}.`,{home_sample:hSeasonN,away_sample:aSeasonN});
 
-  const hVenueXg=value(homeId,'XG_FOR_AVG',10,'HOME'),aVenueXg=value(awayId,'XG_FOR_AVG',10,'AWAY');
-  higher('VENUE_ATTACK_XG',hVenueXg,aVenueXg,.25,.89,(_fav,h,a)=>`${homeName}'s last 10 home league matches average ${dec(h)} xG; ${awayName}'s last 10 away matches ${dec(a)} xG.`);
-
-  const hVenueXga=value(homeId,'XG_AGAINST_AVG',10,'HOME'),aVenueXga=value(awayId,'XG_AGAINST_AVG',10,'AWAY');
-  lower('VENUE_DEFENCE_XG',hVenueXga,aVenueXga,.25,.87,(_fav,h,a)=>`${homeName}'s last 10 home league matches average ${dec(h)} xGA; ${awayName}'s last 10 away matches ${dec(a)} xGA.`);
-
-  const hVenueWin=value(homeId,'WIN_RATE',10,'HOME'),aVenueWin=value(awayId,'WIN_RATE',10,'AWAY');
-  higher('VENUE_RESULTS',hVenueWin,aVenueWin,.15,.84,(_fav,h,a)=>`${homeName} have won ${pct(h)} of their last 10 home league matches; ${awayName} have won ${pct(a)} of their last 10 away matches.`);
-
-  const hRecentGF=value(homeId,'GOALS_FOR_AVG',5,'ALL'),hRecentGA=value(homeId,'GOALS_AGAINST_AVG',5,'ALL');
-  const aRecentGF=value(awayId,'GOALS_FOR_AVG',5,'ALL'),aRecentGA=value(awayId,'GOALS_AGAINST_AVG',5,'ALL');
-  if(hRecentGF!=null&&hRecentGA!=null&&aRecentGF!=null&&aRecentGA!=null){
-    const hBalance=hRecentGF-hRecentGA,aBalance=aRecentGF-aRecentGA;
-    higher('RECENT_GOAL_BALANCE',hBalance,aBalance,.30,.82,(_fav,h,a)=>`Across the last five league matches, ${homeName}'s goal balance is ${h>=0?'+':''}${dec(h)} per match vs ${awayName} ${a>=0?'+':''}${dec(a)}.`);
-  }
-
-  const hFts=value(homeId,'FAILED_TO_SCORE',10,'ALL'),aFts=value(awayId,'FAILED_TO_SCORE',10,'ALL');
-  lower('SCORING_RELIABILITY',hFts,aFts,.15,.75,(_fav,h,a)=>`${homeName} failed to score in ${pct(h)} of their last 10 league matches; ${awayName} in ${pct(a)}.`);
+  // Deliberately no rolling L5/L10 evidence here. Cross-season rolling windows
+  // previously escaped into the public explanation layer and could outweigh or
+  // contradict the canonical current-season state.
 
   const tacticalByKey=new Map<string,any[]>();
   for(const row of tactical||[]){
@@ -158,37 +143,40 @@ Deno.serve(async(req)=>{
     if(re)throw re;
     if(!run)return new Response(JSON.stringify({ok:true,gameweek:gw,facts_available:false,reason:`No C0162 snapshot after GW${asOf}`}),{headers:cors});
 
-    const [{data:matches,error:me},{data:teams,error:te},{data:card,error:ce},{data:modal,error:moe},{data:recent,error:rre},{data:preds,error:pe},{data:teamStats,error:tse},{data:tactical,error:tme}]=await Promise.all([
+    const [{data:matches,error:me},{data:teams,error:te},{data:modal,error:moe},{data:recent,error:rre},{data:preds,error:pe},{data:teamStats,error:tse},{data:tactical,error:tme}]=await Promise.all([
       sb.from('matches').select('id,gameweek,kickoff_time,home_team_id,away_team_id').eq('source','fpl').eq('gameweek',gw).order('kickoff_time'),
       sb.from('teams').select('id,name,short_name'),
-      sb.from('current_fixture_card_facts_v01').select('id,snapshot_run_id,match_id,team_id,opponent_team_id,fact_type,usefulness_score,card_rank,alignment,one_liner,payload,evidence_cutoff').eq('snapshot_run_id',run.id).eq('gameweek',gw).order('match_id').order('card_rank'),
-      sb.from('current_fixture_modal_facts_v01').select('id,snapshot_run_id,match_id,team_id,opponent_team_id,fact_type,usefulness_score,candidate_rank,card_rank,alignment,one_liner,payload,evidence_cutoff').eq('snapshot_run_id',run.id).eq('gameweek',gw).order('match_id').order('usefulness_score',{ascending:false}),
+      sb.from('current_fixture_modal_facts_v01').select('id,snapshot_run_id,match_id,team_id,opponent_team_id,fact_type,usefulness_score,candidate_rank,card_rank,alignment,one_liner,payload,evidence_cutoff').eq('gameweek',gw).order('match_id').order('usefulness_score',{ascending:false}),
       sb.from('team_recent_epl_result_snapshots').select('team_id,sequence_no,opponent_team_id,fixture_kickoff,venue,goals_for,goals_against,result').eq('snapshot_run_id',run.id).order('team_id').order('sequence_no'),
       sb.from('current_production_fixture_prediction_v01').select('id,match_id,captured_at,markets,home_lambda,away_lambda,source_snapshot').eq('gameweek',gw),
       sb.from('team_fact_snapshots').select('id,team_id,fact_type,window_matches,venue_scope,numeric_value,sample_size,payload').eq('snapshot_run_id',run.id),
       sb.from('current_fixture_tactical_matchups').select('id,match_id,team_id,opponent_team_id,kickoff_time,evidence_cutoff,signal_key,score,direction,confidence,model_effect_enabled').eq('gameweek',gw)
     ]);
-    if(me)throw me;if(te)throw te;if(ce)throw ce;if(moe)throw moe;if(rre)throw rre;if(pe)throw pe;if(tse)throw tse;if(tme)throw tme;
+    if(me)throw me;if(te)throw te;if(moe)throw moe;if(rre)throw rre;if(pe)throw pe;if(tse)throw tse;if(tme)throw tme;
     const tm=new Map((teams||[]).map((x:any)=>[Number(x.id),x]));
     const predBy=new Map((preds||[]).map((x:any)=>[Number(x.match_id),x]));
-    const cardBy=new Map<number,any[]>(),modalBy=new Map<number,any[]>(),recentBy=new Map<number,any[]>();
+    const modalBy=new Map<number,any[]>(),recentBy=new Map<number,any[]>();
     const statBy=new Map<string,StatRow>();
-    for(const x of card||[]){const k=Number(x.match_id);if(!cardBy.has(k))cardBy.set(k,[]);cardBy.get(k)!.push(x)}
     for(const x of modal||[]){const k=Number(x.match_id);if(!modalBy.has(k))modalBy.set(k,[]);modalBy.get(k)!.push(x)}
     for(const x of recent||[]){const k=Number(x.team_id);if(!recentBy.has(k))recentBy.set(k,[]);recentBy.get(k)!.push({...x,opponent_name:tm.get(Number(x.opponent_team_id))?.name||null,opponent_short:tm.get(Number(x.opponent_team_id))?.short_name||null})}
     for(const x of teamStats||[]){statBy.set(statKey(Number(x.team_id),String(x.fact_type),x.window_matches==null?null:Number(x.window_matches),x.venue_scope==null?null:String(x.venue_scope)),x as StatRow)}
     const fixtures=(matches||[]).map((m:any)=>{
       const pred:any=predBy.get(Number(m.id))||null;
       const contextFacts=buildContextFacts({match:m,pred,run,tm,stats:statBy,tactical:tactical||[]});
-      const signedFacts=modalBy.get(Number(m.id))||[];
+      // C0280 explanation rows are keyed to the immutable fixture prediction
+      // snapshot, not the team-fact snapshot run. Exact alignment is mandatory.
+      const signedFacts=(modalBy.get(Number(m.id))||[]).filter((x:any)=>Number(x.snapshot_run_id)===Number(pred?.id));
+      const mergedFacts=[...signedFacts,...contextFacts]
+        .filter((x:any)=>!/(^|_)(L5|L10|L20)(_|$)|last\s+(five|10|ten|20|twenty)/i.test(`${x.fact_type} ${x.one_liner}`))
+        .sort((a:any,b:any)=>Number(b.usefulness_score)-Number(a.usefulness_score));
       return {
         match_id:Number(m.id),gameweek:Number(m.gameweek),kickoff_time:m.kickoff_time,
         home:{id:Number(m.home_team_id),name:tm.get(Number(m.home_team_id))?.name||null,short_name:tm.get(Number(m.home_team_id))?.short_name||null,recent:recentBy.get(Number(m.home_team_id))||[]},
         away:{id:Number(m.away_team_id),name:tm.get(Number(m.away_team_id))?.name||null,short_name:tm.get(Number(m.away_team_id))?.short_name||null,recent:recentBy.get(Number(m.away_team_id))||[]},
         alignment_basis:pred?{snapshot_id:Number(pred.id),captured_at:pred.captured_at,source_change_id:pred.source_snapshot?.change_id||null,top_outcome:topOutcome(pred.markets),markets:pred.markets||{}}:null,
-        card_facts:cardBy.get(Number(m.id))||[],modal_facts:[...signedFacts,...contextFacts]
+        card_facts:mergedFacts.filter((x:any)=>x.alignment==='SUPPORTS').slice(0,3),modal_facts:mergedFacts
       };
     });
-    return new Response(JSON.stringify({ok:true,gameweek:gw,facts_available:true,evidence_source:'dynamic_c0166_plus_c0190_context',snapshot_run:run,fixtures}),{headers:cors});
+    return new Response(JSON.stringify({ok:true,gameweek:gw,facts_available:true,evidence_source:'prediction_aligned_c0280_plus_current_season_context',snapshot_run:run,fixtures}),{headers:cors});
   }catch(e){return new Response(JSON.stringify({ok:false,error:e instanceof Error?e.message:String(e)}),{status:500,headers:cors})}
 });

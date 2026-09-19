@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-19 (Dubai) — C0284 next-GW prediction recovery opened_
+_Last updated: 2026-09-20 (Dubai) — C0284 P3 canonical decision contract deployed_
 
 ## 1. Mission and immutable rules
 Build one chronology-safe football intelligence engine for FPL decision intelligence and football forecasting/research. FPL objective: maximize probability of Overall Rank #1, or expected final rank if #1 becomes unrealistic.
@@ -68,7 +68,7 @@ C0282 is **Completed / Verified**. V3 is the current consumer product surface; V
 - C0281: **Completed / Verified**.
 - C0282: **Completed / Verified**.
 - C0283: deployed reconciliation components exist, but the current-season-first forward generator is not the active production writer; activation and promotion are governed by C0284.
-- C0284: **In Progress / P0-P2 Verified / Production blocker**. The cutoff-safe current-season state and canonical prior decay are active. `forward_fixture_v0.3.0_c0284_current_season` passed the retrospective chronology-safe non-inferiority gate and is active for GW6-GW8; C0166 writer job 20 is paused with snapshots retained for rollback. P3-P7 remain publication blockers; no next-GW public forecast is authorized yet.
+- C0284: **In Progress / P0-P2 Verified / P3 contract deployed / Production blocker**. The cutoff-safe current-season state and canonical prior decay are active. `forward_fixture_v0.3.0_c0284_current_season` passed the retrospective chronology-safe non-inferiority gate and is active for GW6-GW8; C0166 writer job 20 is paused with snapshots retained for rollback. `current_fixture_decision_contract_v01` now supplies the canonical full Low/Normal/High distribution, blended near-tie state, independent no-edge result state, and separate raw-modal versus representative scores. GW6 tests are 6/6 PASS, but P3 is not closed until API/FPL/UI consumers use this contract. P4-P7 remain publication blockers; no next-GW public forecast is authorized yet.
 
 ## 11. Canonical references
 `PROJECT_DESCRIPTION.md`, `DECISIONS_AND_HISTORY.md`, `SYSTEM_ARCHITECTURE.md`, `MODEL_REGISTRY.md`, `WEEKLY_DATA_PIPELINE.md`, `MODEL_CONSUMPTION_AUDIT.md`, `skills/fie/SKILL.md`, C0277 closeout, C0278 reconciliation, C0279 canonical plan, C0280 closeouts, C0281 closeout and C0282 plan/closeout evidence.

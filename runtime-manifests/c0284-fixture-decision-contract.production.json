@@ -1,0 +1,26 @@
+{
+  "component": "current_fixture_decision_contract_v01",
+  "supabase_project": "knooiwezzsxcwhtjtdap",
+  "observed_at": "2026-09-19T23:12:00Z",
+  "production": {
+    "contract_version": "c0284_fixture_decision_v01",
+    "source_selector": "current_production_fixture_prediction_v01",
+    "source_generator": "forward_fixture_v0.3.0_c0284_current_season",
+    "historical_rows_mutated": false,
+    "c0265_changed": false
+  },
+  "verification": {
+    "gameweek": 6,
+    "fixture_rows": 10,
+    "tests_passed": 6,
+    "tests_failed": 0,
+    "minimum_matrix_coverage": 0.998341,
+    "maximum_environment_sum_error": 0.000001,
+    "near_tie_rows": 3,
+    "representative_differs_from_raw_modal_rows": 10,
+    "no_edge_converted_to_draw_violations": 0
+  },
+  "publication_authorized": false,
+  "remaining_gate": "API_FPL_UI_CONSUMER_CUTOVER_AND_FREEZE_LINEAGE",
+  "parity_status": "DATABASE_CONTRACT_GREEN_CONSUMERS_PENDING"
+}

@@ -8,6 +8,11 @@
 **Scope:** Active fixture prediction path, scoring environments, decision evidence, player/FPL propagation and V3 Matchup Intelligence  
 **Protected state:** Historical forecasts remain append-only; no frozen prediction is overwritten; research-only inputs remain zero-effect until promoted; C0265 remains unchanged
 
+## Progress ledger
+
+- 2026-09-19: P0-P2 verified; `forward_fixture_v0.3.0_c0284_current_season` promoted for GW6-GW8 and the superseded C0166 writer paused.
+- 2026-09-20: P3 canonical database contract implemented and verified in production as `current_fixture_decision_contract_v01`. The contract makes the full Low/Normal/High distribution authoritative, marks near ties as `BLENDED_NEAR_TIE`, preserves raw-modal and representative scores separately, and returns `NO_MEANINGFUL_EDGE` without inventing a draw. All six GW6 contract tests pass. P3 remains open until API/FPL/UI consumers cut over to this single contract; publication remains blocked.
+
 ## 1. Executive decision
 
 C0284 is a targeted end-to-end recovery of the existing engine. It is not a wholesale rebuild and does not discard the previous five weeks of work.

@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Model Registry
 
-_Last reconciled: 2026-09-19 — tracker reconciliation D_
+_Last reconciled: 2026-09-20 — C0284 P3 canonical decision contract_
 
 ## 1. Registry policy
 The live machine-readable authority is the C0213 component inventory/registry. Lifecycle, canonical status and numeric production effect are separate. Code existence or diagnostic consumption never grants production effect. Every production-effect component requires current definition-hash-bound behavioral proof. Research/shadow output remains observational until its chronology-safe promotion contract passes.
@@ -13,9 +13,11 @@ C0278 verified the production-effect baseline at its closeout. The canonical cap
 The retired v02 goal/assist lambda functions remain rollback-only; v03 is live production.
 
 ## 3. Fixture / player / role stack
-Production fixture path remains:
+Production fixture path is now:
 
-`structural baseline → bounded C0147 derivative via C0159 → bounded symmetric C0166 evidence → current production fixture selector`.
+`current-season state + canonical decaying prior → forward_fixture_v0.3.0_c0284_current_season → current production fixture selector → c0284_fixture_decision_v01`.
+
+The C0284 decision contract derives the full Low/Normal/High distribution from the complete score matrix, keeps Shootout/Demolition beneath High, discloses near ties, and keeps `NO_MEANINGFUL_EDGE` independent from DRAW. Raw modal and outcome-coherent representative scores are separate fields. The contract is deployed and tested; public consumers remain blocked from publication until their lineage cutover is verified.
 
 Raw C0147 remains shadow/research. The player projection path combines team/fixture lambda state, current xG/xA evidence, xMins/start state, penalties, realized tactical roles, clean-sheet / Defensive Contributions / bonus probabilities and event-distribution tails.
 

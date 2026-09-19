@@ -118,7 +118,7 @@ test('Live mode compares actual points with frozen xPts for actual submitted pla
 test('Player cards open frozen projection and realized FPL intelligence', async ({ page }) => {
   await loadWorkspace(page);
   await page.getByRole('tab', { name: 'Live' }).click();
-  await page.getByRole('button', { name: /Open João Pedro intelligence/ }).click();
+  await page.locator('.v3-player-card').filter({ hasText: 'João Pedro' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'João Pedro' })).toBeVisible();
   await expect(page.getByText('Frozen decision-time projection', { exact: true })).toBeVisible();

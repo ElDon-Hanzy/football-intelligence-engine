@@ -1,18 +1,18 @@
 {
   "function": "fpl-v3-workspace-api",
   "supabase_project": "knooiwezzsxcwhtjtdap",
-  "observed_at": "2026-09-13T18:31:30.855955+00:00",
+  "observed_at": "2026-09-19T15:40:14.156Z",
   "production": {
-    "version": 3,
-    "bundle_sha256": "88548930feebaf42b45d23cb155bf731659b5eb0ce758a791cd6dc8e13e11273",
+    "version": 4,
+    "bundle_sha256": "dad3af50ad920695ef01809152b8c6245cc81f81bc617df096545fd4a013cc24",
     "contract_version": "fpl_v3_workspace_v02_player_evidence",
-    "verify_jwt": true
+    "verify_jwt": false
   },
   "repository": {
-    "branch": "c0267-v3-workspace-parity-latency",
+    "branch": "main",
     "path": "supabase/functions/fpl-v3-workspace-api/index.ts",
-    "git_blob_sha": "c4351312ba409bc340ea298bbfad45a55488865b",
-    "source_commit": "b7d5b3a9c33872ede74a212dc6ec901a493ffdfd"
+    "git_blob_sha": "d420d970f0dbd964344546f96c124c091aa6c78a",
+    "source_commit": "611cedadade00a41931003ad6f486432cc0e8423"
   },
   "live_contract_verification": {
     "request_ids": [6052, 6053],
@@ -27,5 +27,5 @@
   "private_contract_verified": true,
   "public_client_live_smoke_verified": true,
   "public_v3_deploy_allowed": true,
-  "reason": "C0267 reconciles the live-proven V3 workspace v3 source into GitHub after the C0264 incident. GW4 and GW5 workspace contracts are live-verified; C0255/C0257 actual/recommendation/realized separation, frozen history, missing-data and execution-authorization semantics remain intact. C0266 catalog recovery remains unchanged and V2 is untouched."
+  "reason": "C0283 live version 4 restores the frozen whole-pool top-10 xPts contract while preserving actual/recommendation/realized separation, frozen history, missing-data and execution-authorization semantics. The public-client live smoke passed after deployment; V2 remains unchanged."
 }

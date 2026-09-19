@@ -26,6 +26,15 @@ test('Engine pitch is formation-aware and remains separate from submitted-team t
   await expect(page.getByText('FINAL FROZEN NOT AUTHORIZED', { exact: true })).toHaveCount(0);
 });
 
+test('league-wide top 10 xPts ranking is present and ordered', async ({ page }) => {
+  await loadWorkspace(page);
+  const board = page.getByRole('heading', { name: 'Top 10 by projected xPts' }).locator('..').locator('..');
+  await expect(board).toBeVisible();
+  await expect(page.locator('.v3-player-summary-card')).toHaveCount(10);
+  await expect(page.locator('.v3-player-summary-card').first()).toContainText('Gabriel');
+  await expect(page.locator('.v3-player-summary-card').first()).toContainText('6.2 xPts');
+});
+
 test('FPL primary summary compares fully scored engine and actual scenarios with engine as baseline', async ({ page }) => {
   await loadWorkspace(page);
   const scorecard = page.getByRole('region', { name: 'Engine versus actual Gameweek scoring' });

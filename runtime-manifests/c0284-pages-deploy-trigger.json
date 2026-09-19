@@ -1,0 +1,7 @@
+{
+  "change_id": "C0284",
+  "phase": "P3_CONSUMER_CUTOVER",
+  "source_commit": "5fd8e52444ac030f95ff4887709617222185dc2a",
+  "triggered_at": "2026-09-20T00:00:00Z",
+  "purpose": "Trigger standard GitHub Pages workflow after Git Data API fast-forward."
+}

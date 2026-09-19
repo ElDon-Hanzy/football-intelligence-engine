@@ -325,3 +325,15 @@ Passing unit tests, deploying functions, creating migrations or improving one di
 - Refreshed all 20 states under the corrected policy. Nineteen rows pass fully; Coventry, Hull and Ipswich correctly expose 4/5 xG coverage as a warning rather than pretending five xG observations exist. No result or weight block remains.
 - The new view is security-invoker, denied to anonymous users and readable only by authenticated/service roles. Post-migration advisors found no new C0284-specific security or performance error.
 - Production selection remains unchanged pending the chronological P2 benchmark.
+
+### 2026-09-19 — P2 chronological benchmark and promotion completed
+
+- Used one common deadline cutoff per Gameweek and kept retrospective replay distinct from genuine prospective evidence.
+- C0166 was unavailable in GW2; the primary common comparison therefore used 20 settled GW3-GW4 fixtures. Six settled GW5 fixtures were confirmatory only.
+- The raw current-season candidate was over-dispersed. Added a two-match current-season league-mean reliability regularizer; it introduces no previous-season weight.
+- On GW3-GW4 the corrected candidate stayed within 2% of C0166 on exact-score log loss, 1X2 Brier, team-goal MAE, total-goal MAE and family Brier.
+- Promoted `forward_fixture_v0.3.0_c0284_current_season` because it is non-inferior and satisfies the mandatory 25-to-0% prior schedule with zero L5/L10/L20 consumption.
+- Deployed edge function version 4 and generated ten active rows for each of GW6-GW8.
+- Paused superseded writer job 20; forward writer job 6 remains active. C0166 snapshots remain append-only rollback evidence.
+- Direct scoring-family winner selection still collapses toward Normal; P3 remains a publication blocker.
+- Forecast rows remain unfrozen pending P4. Promotion does not authorize public publication.

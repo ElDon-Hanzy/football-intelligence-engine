@@ -17,6 +17,14 @@ The contract makes the complete Low/Normal/High probability distribution canonic
 - Representative score differs from the raw modal score in 10/10 GW6 fixtures, proving the fields are not aliases.
 - GW6/GW7/GW8 each expose 10 active rows; near-tie counts are 3/2/4.
 
+## Consumer cutover verification
+
+- `fpl-api` v19 reads `current_fixture_decision_contract_v01` and exposes the canonical result, complete scoring distribution, near-tie state, representative score, raw modal score and decision hash.
+- `fixture-facts-api` v8 aligns evidence to the canonical snapshot and leaves no-edge evidence neutral instead of coercing it to DRAW.
+- V3 no longer derives scoring environments from lambdas, applies a boundary override, or converts no-edge to DRAW. Match and history surfaces use the canonical result and representative score, disclose the full Low/Normal/High distribution, and label lambdas as projected goals.
+- GW6 live API verification returned 10/10 contract rows, one contract version, three blended near-ties, and zero missing representative/raw/hash fields.
+- Frontend typecheck, 20/20 domain tests and production build passed.
+
 ## Gate status
 
-The database portion of P3 is green. P3 is not closed and publication remains blocked until every API, FPL and V3 UI consumer reads this contract and deployed parity is proven. P4 freeze/lineage work follows that consumer cutover.
+P3 is verified and closed. Publication remains blocked. P4 immutable freeze, mixed-lineage prevention and fail-closed publication authorization are next.

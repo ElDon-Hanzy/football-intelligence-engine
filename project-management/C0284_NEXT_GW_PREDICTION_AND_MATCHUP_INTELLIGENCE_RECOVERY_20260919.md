@@ -342,3 +342,12 @@ Passing unit tests, deploying functions, creating migrations or improving one di
 - Paused superseded writer job 20; forward writer job 6 remains active. C0166 snapshots remain append-only rollback evidence.
 - Direct scoring-family winner selection still collapses toward Normal; P3 remains a publication blocker.
 - Forecast rows remain unfrozen pending P4. Promotion does not authorize public publication.
+
+### 2026-09-20 — P3 canonical decision contract and consumer cutover completed
+
+- Deployed `current_fixture_decision_contract_v01` as the sole result/scoring-family semantic authority.
+- Verified GW6 at 10/10 rows and 6/6 database contract tests; Low/Normal/High probabilities reconcile, near ties are explicit, no-edge is independent from DRAW, and representative/raw scores remain separate.
+- Cut `fpl-api` and `fixture-facts-api` over from the raw production selector to the canonical decision contract.
+- Removed V3 lambda-based family reconstruction, the arbitrary Normal boundary override and no-edge-to-DRAW coercion from both current-match and history surfaces.
+- Live verification returned one canonical contract version across all ten GW6 fixtures, three near ties and zero missing representative score, raw modal or decision hash fields.
+- P3 is closed. Publication remains blocked because all GW6 forecast rows are still `frozen=false`; P4 owns immutable snapshot freeze and mixed-lineage publication authorization.

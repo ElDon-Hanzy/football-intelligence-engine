@@ -68,7 +68,7 @@ function PredictionCard({ fixture, phase, onOpen }: { fixture: MatchFixture; pha
     <div className="v3-card-meta"><span className="v3-phase-text" data-phase={phase}>{phaseLabel(phase)}</span><time>{formatKickoff(fixture.kickoff_time)}</time></div>
     <div className="v3-match-card-teams"><strong>{fixture.home_team ?? 'Home'}</strong><b>{phase === 'FUTURE' ? 'vs' : actualScore ?? '—'}</b><strong>{fixture.away_team ?? 'Away'}</strong></div>
     <div className="v3-match-card-picks"><span><small>1X2</small><strong>{call?.label ?? '—'}</strong><b>{call ? percent(call.probability) : '—'}</b></span><span><small>Scoring environment</small><strong>{environment?.label ?? '—'}</strong><b>{environment ? percent(environment.probability) : '—'}</b></span></div>
-    {assessment.state === 'no-edge' ? <small className="v3-card-note">Parity/no-edge → DRAW</small> : null}
+    {assessment.state === 'no-edge' ? <small className="v3-card-note">No clear edge</small> : null}
     <div className="v3-card-footer">{phase === 'FINISHED' ? <span className="v3-audit-text" data-result={directionAligned ? 'aligned' : 'different'}>1X2 {directionAligned ? 'aligned' : 'different'} · representative score {scoreAligned ? 'aligned' : 'different'}</span> : <span className="v3-muted">Representative score {score.value ?? '—'}</span>}<button type="button" className="v3-row-action" onClick={onOpen} disabled={!fixture.prediction}>Details</button></div>
   </article>;
 }
@@ -81,36 +81,32 @@ function MatchupDialog({ fixture, facts, factsLoading, open, onClose }: { fixtur
   const actual = actualOutcome(fixture.home_score, fixture.away_score); const actualScore = fixture.home_score != null && fixture.away_score != null ? `${fixture.home_score}-${fixture.away_score}` : null;
   const directionAligned = call && actual ? call.code === actual : null; const scoreAligned = score.value && actualScore ? score.value === actualScore : null;
   return <V3Dialog open={open} onClose={onClose} title={`${home} vs ${away}`} eyebrow="Matchup intelligence">
-    <section className="v3-modal-summary"><div><span>1X2 call</span><strong>{call?.label ?? '—'}</strong><small>{call ? `${percent(call.probability)}${assessment.state === 'no-edge' ? ' · parity/no-edge presented as DRAW' : ''}` : 'Unavailable'}</small></div><div><span>Scoring environment</span><strong>{environment?.label ?? '—'}</strong><small>{environment ? `${percent(environment.probability)} family probability · ${environment.expectedTotal.toFixed(2)} expected goals` : 'Unavailable'}</small></div></section>
+    <section className="v3-modal-summary"><div><span>1X2 call</span><strong>{call?.label ?? '—'}</strong><small>{call ? percent(call.probability) : assessment.state === 'no-edge' ? 'No meaningful edge between outcomes' : 'Unavailable'}</small></div><div><span>Scoring environment</span><strong>{environment?.label ?? '—'}</strong><small>{environment ? `${percent(environment.probability)}${environment.nearTie ? ' · blended near-tie' : ''} · ${environment.expectedTotal.toFixed(2)} projected goals` : 'Unavailable'}</small></div></section>
     {fixture.finished ? <section className="v3-modal-result"><span className="v3-kicker">Final comparison</span><h3>{home} {fixture.home_score ?? '–'}–{fixture.away_score ?? '–'} {away}</h3><div className="v3-comparison-line"><span>1X2</span><strong>{call?.label ?? '—'}</strong><b>{directionAligned == null ? '—' : directionAligned ? 'Aligned' : 'Different'}</b></div><div className="v3-comparison-line"><span>Exact score</span><strong>{score.value ?? '—'}</strong><b>{scoreAligned == null ? '—' : scoreAligned ? 'Aligned' : 'Different'}</b></div></section> : null}
-    <section className="v3-modal-section"><div className="v3-modal-section-head"><span className="v3-kicker">Frozen probability board</span><small>Pre-kickoff</small></div><div className="v3-modal-metric-grid"><Metric label={home} value={fixture.prediction?.markets ? percent(fixture.prediction.markets.home_win) : '—'} /><Metric label="Draw" value={fixture.prediction?.markets ? percent(fixture.prediction.markets.draw) : '—'} /><Metric label={away} value={fixture.prediction?.markets ? percent(fixture.prediction.markets.away_win) : '—'} /><Metric label="xG" value={fixture.prediction?.home_lambda == null || fixture.prediction.away_lambda == null ? '—' : `${fixture.prediction.home_lambda.toFixed(2)}–${fixture.prediction.away_lambda.toFixed(2)}`} /></div></section>
+    <section className="v3-modal-section"><div className="v3-modal-section-head"><span className="v3-kicker">Probability board</span><small>Pre-kickoff snapshot</small></div><div className="v3-modal-metric-grid"><Metric label={home} value={fixture.prediction?.markets ? percent(fixture.prediction.markets.home_win) : '—'} /><Metric label="Draw" value={fixture.prediction?.markets ? percent(fixture.prediction.markets.draw) : '—'} /><Metric label={away} value={fixture.prediction?.markets ? percent(fixture.prediction.markets.away_win) : '—'} /><Metric label="Projected goals" value={fixture.prediction?.home_lambda == null || fixture.prediction.away_lambda == null ? '—' : `${fixture.prediction.home_lambda.toFixed(2)}–${fixture.prediction.away_lambda.toFixed(2)}`} /></div></section>
+    {fixture.prediction?.scoring_environment_probabilities ? <section className="v3-modal-section"><div className="v3-modal-section-head"><span className="v3-kicker">Scoring distribution</span><small>{fixture.prediction.scoring_environment_state === 'BLENDED_NEAR_TIE' ? 'Near-tie disclosed' : 'Canonical full matrix'}</small></div><div className="v3-modal-metric-grid"><Metric label="Low" value={percent(fixture.prediction.scoring_environment_probabilities.low)} /><Metric label="Normal" value={percent(fixture.prediction.scoring_environment_probabilities.normal)} /><Metric label="High" value={percent(fixture.prediction.scoring_environment_probabilities.high)} /><Metric label="Subtype" value={humanize(fixture.prediction.dominant_subtype) ?? '—'} /></div></section> : null}
+    <section className="v3-modal-section"><div className="v3-modal-section-head"><span className="v3-kicker">Score interpretation</span><small>Different questions</small></div><div className="v3-comparison-line"><span>Representative score</span><strong>{fixture.prediction?.representative_score ?? '—'}</strong><b>{fixture.prediction?.representative_score_probability == null ? '—' : percent(fixture.prediction.representative_score_probability)}</b></div><div className="v3-comparison-line"><span>Largest individual cell</span><strong>{fixture.prediction?.raw_modal_score ?? '—'}</strong><b>{fixture.prediction?.raw_modal_probability == null ? '—' : percent(fixture.prediction.raw_modal_probability)}</b></div></section>
+    <p className="v3-modal-note">Contract {fixture.prediction?.decision_contract_version ?? 'unavailable'} · snapshot {fixture.prediction?.snapshot_id ?? '—'} · captured {formatTimestamp(fixture.prediction?.captured_at)} · hash {fixture.prediction?.decision_hash?.slice(0, 12) ?? '—'}</p>
     {factsLoading ? <p className="v3-modal-note">Loading supporting evidence…</p> : <div className="v3-modal-evidence-grid"><FactGroup title="Supporting evidence" facts={support} /><FactGroup title="Counterpoints / risks" facts={risks} risk /></div>}
     {fixture.prediction?.top_scorelines?.length ? <section className="v3-modal-section"><div className="v3-modal-section-head"><span className="v3-kicker">Representative scorelines</span><small>Individual cells, not the headline forecast</small></div><div className="v3-top-scorelines">{fixture.prediction.top_scorelines.slice(0, 5).map((row) => <span key={row.score}><strong>{row.score}</strong> {percent(row.prob)}</span>)}</div></section> : null}
   </V3Dialog>;
 }
 
 function consumerCall(fixture: MatchFixture): ConsumerCall {
-  const assessment = assessCall(fixture.prediction); const markets = fixture.prediction?.markets;
-  if (!assessment.top || !markets) return null;
-  if (assessment.state === 'no-edge') return { code: 'D', label: 'DRAW', probability: markets.draw };
-  return { code: assessment.top.code, label: callLabel(assessment.top.code, fixture.home_team ?? 'Home', fixture.away_team ?? 'Away'), probability: assessment.top.probability };
+  const prediction = fixture.prediction; const markets = prediction?.markets;
+  if (!prediction || !markets || prediction.result_decision === 'NO_MEANINGFUL_EDGE' || !['H', 'D', 'A'].includes(prediction.result_decision ?? '')) return null;
+  const code = prediction.result_decision as OutcomeCode;
+  const probability = code === 'H' ? markets.home_win : code === 'A' ? markets.away_win : markets.draw;
+  return { code, label: callLabel(code, fixture.home_team ?? 'Home', fixture.away_team ?? 'Away'), probability };
 }
-function scoreCall(fixture: MatchFixture) { return { value: fixture.prediction?.headline_score ?? fixture.prediction?.raw_modal_score ?? fixture.prediction?.top_scorelines?.[0]?.score ?? null, probability: fixture.prediction?.headline_score_probability ?? fixture.prediction?.raw_modal_probability ?? fixture.prediction?.top_scorelines?.[0]?.prob ?? null }; }
-function scoringEnvironment(fixture: MatchFixture): { label: 'Low scoring' | 'Normal scoring' | 'High scoring'; probability: number; expectedTotal: number } | null {
-  const home = fixture.prediction?.home_lambda; const away = fixture.prediction?.away_lambda;
-  if (home == null || away == null || home < 0 || away < 0) return null;
-  const lambda = home + away;
-  const p = Array.from({ length: 13 }, (_, goals) => Math.exp(-lambda) * Math.pow(lambda, goals) / factorial(goals));
-  const at = (goals: number) => p[goals] ?? 0;
-  const low = at(0) + at(1) + .4 * at(2);
-  const normal = .6 * at(2) + .7 * at(3) + .3 * at(4);
-  const high = .3 * at(3) + .7 * at(4) + p.slice(5).reduce((sum, value) => sum + value, 0);
-  const ranked = [{ label: 'Low scoring' as const, probability: low }, { label: 'Normal scoring' as const, probability: normal }, { label: 'High scoring' as const, probability: high }].sort((a, b) => b.probability - a.probability);
-  const leader = ranked[0] ?? { label: 'Normal scoring' as const, probability: normal };
-  const selected = lambda >= 2.6 && lambda <= 3 && Math.abs(normal - leader.probability) <= .02 ? { label: 'Normal scoring' as const, probability: normal } : leader;
-  return { ...selected, expectedTotal: lambda };
+function scoreCall(fixture: MatchFixture) { return { value: fixture.prediction?.representative_score ?? null, probability: fixture.prediction?.representative_score_probability ?? null }; }
+function scoringEnvironment(fixture: MatchFixture): { label: 'Low scoring' | 'Normal scoring' | 'High scoring'; probability: number; expectedTotal: number; nearTie: boolean } | null {
+  const prediction = fixture.prediction; const distribution = prediction?.scoring_environment_probabilities;
+  if (!prediction || !distribution || prediction.expected_total_goals == null) return null;
+  const key = prediction.primary_environment;
+  const selected = key === 'LOW_SCORING' ? { label: 'Low scoring' as const, probability: distribution.low } : key === 'NORMAL_SCORING' ? { label: 'Normal scoring' as const, probability: distribution.normal } : key === 'HIGH_SCORING' ? { label: 'High scoring' as const, probability: distribution.high } : null;
+  return selected ? { ...selected, expectedTotal: prediction.expected_total_goals, nearTie: prediction.scoring_environment_state === 'BLENDED_NEAR_TIE' } : null;
 }
-function factorial(value: number): number { let result = 1; for (let i = 2; i <= value; i += 1) result *= i; return result; }
 function Metric({ label, value }: { label: string; value: string }) { return <div><span>{label}</span><strong>{value}</strong></div>; }
 function FactGroup({ title, facts, risk = false }: { title: string; facts: FixtureFact[]; risk?: boolean }) { return <section className={`v3-fact-group${risk ? ' is-risk' : ''}`}><h3>{title}<span>{facts.length}</span></h3>{facts.length ? <ul>{facts.map((fact) => <li key={fact.id}>{fact.one_liner}</li>)}</ul> : <p>No independent evidence surfaced.</p>}</section>; }
 function distinctFacts(facts: FixtureFact[], limit = 5): FixtureFact[] { const seen = new Set<string>(); return [...facts].sort((a, b) => b.usefulness_score - a.usefulness_score).filter((fact) => { const key = fact.one_liner.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); if (seen.has(key)) return false; seen.add(key); return true; }).slice(0, limit); }
@@ -119,3 +115,5 @@ function percent(value: number): string { return `${(value * 100).toFixed(1)}%`;
 function phaseLabel(value: FixturePhase): string { return value === 'FUTURE' ? 'Upcoming' : value === 'LIVE' ? 'Live' : 'Final'; }
 function phaseFromFixture(fixture: MatchFixture): FixturePhase { if (fixture.finished) return 'FINISHED'; return Date.now() >= new Date(fixture.kickoff_time).getTime() ? 'LIVE' : 'FUTURE'; }
 function formatKickoff(value: string): string { return new Intl.DateTimeFormat(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value)); }
+function formatTimestamp(value: string | undefined): string { return value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short', timeZoneName: 'short' }).format(new Date(value)) : '—'; }
+function humanize(value: string | null): string | null { return value ? value.toLowerCase().replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase()) : null; }

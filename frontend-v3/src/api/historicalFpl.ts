@@ -62,6 +62,9 @@ export type HistoricalFixture = {
     headline_score_probability?: number | null;
     raw_modal_score?: string | null;
     raw_modal_probability?: number | null;
+    result_decision?: 'HOME' | 'DRAW' | 'AWAY' | 'NO_MEANINGFUL_EDGE' | null;
+    representative_score?: string | null;
+    representative_score_probability?: number | null;
     top_scorelines?: Array<{ score?: string; prob?: number }>;
   } | null;
 };

@@ -3,7 +3,7 @@ import { fetchHistoricalFpl, type HistoricalFixture, type HistoricalFplPayload, 
 import { V3Dialog } from './V3Dialog';
 
 type LoadState = { data: HistoricalFplPayload | null; loading: boolean; error: string | null; reload: () => void };
-type HistoricalCall = { code: 'H' | 'D' | 'A'; label: string; probability: number; state: 'edge' | 'no-edge' };
+type HistoricalCall = { code: 'H' | 'D' | 'A'; label: string; probability: number };
 
 function useHistorical(gameweek: number): LoadState {
   const [data, setData] = useState<HistoricalFplPayload | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [nonce, setNonce] = useState(0);
@@ -39,7 +39,7 @@ export function HistoryPage({ gameweek = 0 }: { gameweek?: number }) {
     </section>
 
     <section aria-labelledby="history-fixtures-heading">
-      <div className="v3-section-head"><div><span className="v3-kicker">Fixture audit</span><h2 id="history-fixtures-heading">Frozen calls vs final results</h2></div><small>No-edge is displayed as DRAW</small></div>
+      <div className="v3-section-head"><div><span className="v3-kicker">Fixture audit</span><h2 id="history-fixtures-heading">Frozen calls vs final results</h2></div><small>No-edge remains unforced</small></div>
       <div className="v3-card-grid v3-card-grid--history-matches">{fixtures.map((fixture) => <HistoricalMatchCard key={fixture.match_id} fixture={fixture} />)}</div>
     </section>
 
@@ -63,7 +63,7 @@ function HistoricalMatchCard({ fixture }: { fixture: HistoricalFixture }) {
     <div className="v3-card-meta"><time>{formatKickoff(fixture.kickoff_time)}</time><span>{actualScore ?? 'Pending'}</span></div>
     <div className="v3-fixture-teams"><strong>{fixture.home_team ?? 'Home'}</strong><b>{actualScore ?? 'vs'}</b><strong>{fixture.away_team ?? 'Away'}</strong></div>
     <div className="v3-match-card-picks"><span><small>1X2</small><strong>{call?.label ?? '—'}</strong><b>{call ? formatPercent(call.probability) : '—'}</b></span><span><small>Correct score</small><strong>{score ?? '—'}</strong></span></div>
-    {call?.state === 'no-edge' ? <small className="v3-card-note">Parity/no-edge → DRAW</small> : null}
+    {fixture.prediction?.result_decision === 'NO_MEANINGFUL_EDGE' ? <small className="v3-card-note">No clear edge</small> : null}
     <div className="v3-card-footer">{fixture.finished ? <span className="v3-audit-text" data-result={directionAligned ? 'aligned' : 'different'}>1X2 {directionAligned ? 'aligned' : 'different'}{score ? ` · score ${scoreAligned ? 'aligned' : 'different'}` : ''}</span> : <span className="v3-muted">Pending</span>}</div>
   </article>;
 }
@@ -71,8 +71,8 @@ function HistoricalMatchCard({ fixture }: { fixture: HistoricalFixture }) {
 function HistoricalPlayerModal({ player, open, onClose, gameweek }: { player: HistoricalPlayer; open: boolean; onClose: () => void; gameweek: number }) { return <V3Dialog open={open} onClose={onClose} title={player.name} eyebrow={`GW${gameweek} · ${player.team ?? '—'} · ${player.position ?? '—'}`}><section className="v3-modal-section"><div className="v3-modal-section-head"><span className="v3-kicker">Frozen historical projection</span><small>Decision-time evidence</small></div><div className="v3-modal-metric-grid"><Metric label="xPts" value={formatNumber(nullableNumber(player.xPts), 1)} /><Metric label="P10+" value={formatPercent(nullableProbability(player.p10))} /><Metric label="P15+" value={formatPercent(nullableProbability(player.p15))} /><Metric label="P20+" value={formatPercent(nullableProbability(player.p20))} /></div><p className="v3-modal-note">Only evidence captured in the historical contract is shown. Current player metadata is not backfilled.</p></section></V3Dialog>; }
 function Metric({ label, value }: { label: string; value: string }) { return <div><span>{label}</span><strong>{value}</strong></div>; }
 function evaluateFixtureCalls(fixtures: HistoricalFixture[]) { let assessed = 0; let aligned = 0; for (const fixture of fixtures) { const call = fixtureCall(fixture); const actual = actualOutcome(fixture); if (!call || !actual) continue; assessed += 1; if (call.code === actual) aligned += 1; } return { assessed, aligned }; }
-function fixtureCall(fixture: HistoricalFixture): HistoricalCall | null { const markets = fixture.prediction?.markets; const h = nullableProbability(markets?.home_win); const d = nullableProbability(markets?.draw); const a = nullableProbability(markets?.away_win); if (h == null || d == null || a == null) return null; const rows = [{ code: 'H' as const, probability: h }, { code: 'D' as const, probability: d }, { code: 'A' as const, probability: a }].sort((x, y) => y.probability - x.probability); const top = rows[0]!; const second = rows[1]!; const margin = top.probability - second.probability; const noEdge = !((top.probability >= 0.5 && margin >= 0.08) || (top.probability >= 0.4 && margin >= 0.04)); if (noEdge) return { code: 'D', label: 'DRAW', probability: d, state: 'no-edge' }; return { code: top.code, label: top.code === 'H' ? `${fixture.home_team ?? 'Home'} win` : top.code === 'A' ? `${fixture.away_team ?? 'Away'} win` : 'DRAW', probability: top.probability, state: 'edge' }; }
-function scoreCall(fixture: HistoricalFixture): string | null { return fixture.prediction?.headline_score ?? fixture.prediction?.raw_modal_score ?? fixture.prediction?.top_scorelines?.find((row) => typeof row.score === 'string')?.score ?? null; }
+function fixtureCall(fixture: HistoricalFixture): HistoricalCall | null { const markets = fixture.prediction?.markets; const h = nullableProbability(markets?.home_win); const d = nullableProbability(markets?.draw); const a = nullableProbability(markets?.away_win); if (h == null || d == null || a == null) return null; const decision = fixture.prediction?.result_decision; if (decision === 'NO_MEANINGFUL_EDGE' || !decision) return null; const code = decision === 'HOME' ? 'H' : decision === 'AWAY' ? 'A' : 'D'; const probability = code === 'H' ? h : code === 'A' ? a : d; return { code, label: code === 'H' ? `${fixture.home_team ?? 'Home'} win` : code === 'A' ? `${fixture.away_team ?? 'Away'} win` : 'DRAW', probability }; }
+function scoreCall(fixture: HistoricalFixture): string | null { return fixture.prediction?.representative_score ?? null; }
 function actualOutcome(fixture: HistoricalFixture): 'H' | 'D' | 'A' | null { if (!fixture.finished || fixture.home_score == null || fixture.away_score == null) return null; return fixture.home_score > fixture.away_score ? 'H' : fixture.away_score > fixture.home_score ? 'A' : 'D'; }
 function nullableNumber(value: unknown): number | null { if (value == null || value === '') return null; const parsed = Number(value); return Number.isFinite(parsed) ? parsed : null; }
 function nullableProbability(value: unknown): number | null { const parsed = nullableNumber(value); return parsed != null && parsed >= 0 && parsed <= 1 ? parsed : null; }

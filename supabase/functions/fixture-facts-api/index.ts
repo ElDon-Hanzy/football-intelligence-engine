@@ -17,12 +17,12 @@ type ContextFact={
   usefulness_score:number;candidate_rank:number|null;card_rank:null;alignment:Alignment;one_liner:string;payload:any;evidence_cutoff:string;
 };
 
-function topOutcome(markets:any):Outcome|null{
-  const h=Number(markets?.home_win),d=Number(markets?.draw),a=Number(markets?.away_win);
-  if(![h,d,a].every(Number.isFinite))return null;
-  if(h>=d&&h>=a)return 'H';
-  if(a>=d&&a>=h)return 'A';
-  return 'D';
+function canonicalOutcome(pred:any):Outcome|null{
+  const decision=String(pred?.result_decision||'');
+  if(decision==='HOME'||decision==='H')return 'H';
+  if(decision==='AWAY'||decision==='A')return 'A';
+  if(decision==='DRAW'||decision==='D')return 'D';
+  return null;
 }
 
 function numeric(value:any):number|null{
@@ -50,7 +50,7 @@ function buildContextFacts(args:{
   if(!pred)return [];
   const matchId=Number(match.id),homeId=Number(match.home_team_id),awayId=Number(match.away_team_id);
   const homeName=tm.get(homeId)?.name||'Home',awayName=tm.get(awayId)?.name||'Away';
-  const top=topOutcome(pred.markets);
+  const top=canonicalOutcome(pred);
   const facts:ContextFact[]=[];
   let seq=1;
   const get=(teamId:number,type:string,window:number|null,venue:string|null):StatRow|undefined=>stats.get(statKey(teamId,type,window,venue));
@@ -148,7 +148,7 @@ Deno.serve(async(req)=>{
       sb.from('teams').select('id,name,short_name'),
       sb.from('current_fixture_modal_facts_v01').select('id,snapshot_run_id,match_id,team_id,opponent_team_id,fact_type,usefulness_score,candidate_rank,card_rank,alignment,one_liner,payload,evidence_cutoff').eq('gameweek',gw).order('match_id').order('usefulness_score',{ascending:false}),
       sb.from('team_recent_epl_result_snapshots').select('team_id,sequence_no,opponent_team_id,fixture_kickoff,venue,goals_for,goals_against,result').eq('snapshot_run_id',run.id).order('team_id').order('sequence_no'),
-      sb.from('current_production_fixture_prediction_v01').select('id,match_id,captured_at,markets,home_lambda,away_lambda,source_snapshot').eq('gameweek',gw),
+      sb.from('current_fixture_decision_contract_v01').select('snapshot_id,match_id,captured_at,markets,home_lambda,away_lambda,source_snapshot,result_decision,decision_contract_version,decision_hash').eq('gameweek',gw),
       sb.from('team_fact_snapshots').select('id,team_id,fact_type,window_matches,venue_scope,numeric_value,sample_size,payload').eq('snapshot_run_id',run.id),
       sb.from('current_fixture_tactical_matchups').select('id,match_id,team_id,opponent_team_id,kickoff_time,evidence_cutoff,signal_key,score,direction,confidence,model_effect_enabled').eq('gameweek',gw)
     ]);
@@ -165,7 +165,7 @@ Deno.serve(async(req)=>{
       const contextFacts=buildContextFacts({match:m,pred,run,tm,stats:statBy,tactical:tactical||[]});
       // C0280 explanation rows are keyed to the immutable fixture prediction
       // snapshot, not the team-fact snapshot run. Exact alignment is mandatory.
-      const signedFacts=(modalBy.get(Number(m.id))||[]).filter((x:any)=>Number(x.snapshot_run_id)===Number(pred?.id));
+      const signedFacts=(modalBy.get(Number(m.id))||[]).filter((x:any)=>Number(x.snapshot_run_id)===Number(pred?.snapshot_id));
       const mergedFacts=[...signedFacts,...contextFacts]
         .filter((x:any)=>!/(^|_)(L5|L10|L20)(_|$)|last\s+(five|10|ten|20|twenty)/i.test(`${x.fact_type} ${x.one_liner}`))
         .sort((a:any,b:any)=>Number(b.usefulness_score)-Number(a.usefulness_score));
@@ -173,7 +173,7 @@ Deno.serve(async(req)=>{
         match_id:Number(m.id),gameweek:Number(m.gameweek),kickoff_time:m.kickoff_time,
         home:{id:Number(m.home_team_id),name:tm.get(Number(m.home_team_id))?.name||null,short_name:tm.get(Number(m.home_team_id))?.short_name||null,recent:recentBy.get(Number(m.home_team_id))||[]},
         away:{id:Number(m.away_team_id),name:tm.get(Number(m.away_team_id))?.name||null,short_name:tm.get(Number(m.away_team_id))?.short_name||null,recent:recentBy.get(Number(m.away_team_id))||[]},
-        alignment_basis:pred?{snapshot_id:Number(pred.id),captured_at:pred.captured_at,source_change_id:pred.source_snapshot?.change_id||null,top_outcome:topOutcome(pred.markets),markets:pred.markets||{}}:null,
+        alignment_basis:pred?{snapshot_id:Number(pred.snapshot_id),captured_at:pred.captured_at,source_change_id:pred.source_snapshot?.change_id||null,top_outcome:canonicalOutcome(pred),result_decision:pred.result_decision,decision_contract_version:pred.decision_contract_version,decision_hash:pred.decision_hash,markets:pred.markets||{}}:null,
         card_facts:mergedFacts.filter((x:any)=>x.alignment==='SUPPORTS').slice(0,3),modal_facts:mergedFacts
       };
     });

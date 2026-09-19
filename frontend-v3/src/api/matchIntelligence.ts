@@ -16,8 +16,21 @@ export type MatchPrediction = {
   headline_score_probability: number | null;
   raw_modal_score: string | null;
   raw_modal_probability: number | null;
-  script_family: string | null;
-  script_confidence: number | null;
+  decision_contract_version: string | null;
+  result_decision: OutcomeCode | 'NO_MEANINGFUL_EDGE' | null;
+  direction_strength: string | null;
+  outcome_edge: number | null;
+  primary_environment: string | null;
+  scoring_environment_probabilities: { low: number; normal: number; high: number } | null;
+  scoring_environment_state: 'PRIMARY' | 'BLENDED_NEAR_TIE' | 'INSUFFICIENT_EVIDENCE' | null;
+  expected_total_goals: number | null;
+  dominant_subtype: string | null;
+  selected_family: string | null;
+  selected_family_probability: number | null;
+  representative_score: string | null;
+  representative_score_probability: number | null;
+  chronology_and_coverage_valid: boolean;
+  decision_hash: string | null;
   selector: Record<string, unknown> | null;
   top_scorelines: Array<{ score: string; prob: number }>;
 };
@@ -88,6 +101,13 @@ function parsePrediction(value: unknown): MatchPrediction | null {
         return label && prob != null ? { score: label, prob } : null;
       }).filter((item): item is { score: string; prob: number } => item != null)
     : [];
+  const environmentRaw = object(row.scoring_environment_probabilities);
+  const low = number(environmentRaw?.low);
+  const normal = number(environmentRaw?.normal);
+  const high = number(environmentRaw?.high);
+  const resultDecisionRaw = string(row.result_decision);
+  const resultDecision = resultDecisionRaw === 'HOME' ? 'H' : resultDecisionRaw === 'AWAY' ? 'A' : resultDecisionRaw === 'DRAW' ? 'D' : resultDecisionRaw;
+  const environmentState = string(row.scoring_environment_state);
   return {
     snapshot_id: number(row.snapshot_id) ?? undefined,
     source_change_id: string(row.source_change_id),
@@ -99,8 +119,21 @@ function parsePrediction(value: unknown): MatchPrediction | null {
     headline_score_probability: number(row.headline_score_probability),
     raw_modal_score: string(row.raw_modal_score),
     raw_modal_probability: number(row.raw_modal_probability),
-    script_family: string(row.script_family),
-    script_confidence: number(row.script_confidence),
+    decision_contract_version: string(row.decision_contract_version),
+    result_decision: ['H', 'D', 'A', 'NO_MEANINGFUL_EDGE'].includes(resultDecision ?? '') ? resultDecision as MatchPrediction['result_decision'] : null,
+    direction_strength: string(row.direction_strength),
+    outcome_edge: number(row.outcome_edge),
+    primary_environment: string(row.primary_environment),
+    scoring_environment_probabilities: low != null && normal != null && high != null ? { low, normal, high } : null,
+    scoring_environment_state: ['PRIMARY', 'BLENDED_NEAR_TIE', 'INSUFFICIENT_EVIDENCE'].includes(environmentState ?? '') ? environmentState as MatchPrediction['scoring_environment_state'] : null,
+    expected_total_goals: number(row.expected_total_goals),
+    dominant_subtype: string(row.dominant_subtype),
+    selected_family: string(row.selected_family),
+    selected_family_probability: number(row.selected_family_probability),
+    representative_score: string(row.representative_score),
+    representative_score_probability: number(row.representative_score_probability),
+    chronology_and_coverage_valid: row.chronology_and_coverage_valid === true,
+    decision_hash: string(row.decision_hash),
     selector: object(row.selector),
     top_scorelines: topScorelines,
   };
@@ -203,11 +236,11 @@ export function assessCall(prediction: MatchPrediction | null): {
   const top = outcomes[0]!;
   const second = outcomes[1]!;
   const margin = top.probability - second.probability;
-  const state: MatchCallState = top.probability >= 0.5 && margin >= 0.08
-    ? 'strong'
-    : top.probability >= 0.4 && margin >= 0.04
-      ? 'lean'
-      : 'no-edge';
+  const state: MatchCallState = prediction.result_decision === 'NO_MEANINGFUL_EDGE'
+    ? 'no-edge'
+    : prediction.direction_strength === 'STRONG'
+      ? 'strong'
+      : 'lean';
   return { state, top, second, margin };
 }
 

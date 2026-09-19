@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Model Registry
 
-_Last reconciled: 2026-09-20 — C0284 P3 canonical decision contract_
+_Last reconciled: 2026-09-20 — C0284 P3 canonical decision consumer cutover_
 
 ## 1. Registry policy
 The live machine-readable authority is the C0213 component inventory/registry. Lifecycle, canonical status and numeric production effect are separate. Code existence or diagnostic consumption never grants production effect. Every production-effect component requires current definition-hash-bound behavioral proof. Research/shadow output remains observational until its chronology-safe promotion contract passes.
@@ -17,7 +17,7 @@ Production fixture path is now:
 
 `current-season state + canonical decaying prior → forward_fixture_v0.3.0_c0284_current_season → current production fixture selector → c0284_fixture_decision_v01`.
 
-The C0284 decision contract derives the full Low/Normal/High distribution from the complete score matrix, keeps Shootout/Demolition beneath High, discloses near ties, and keeps `NO_MEANINGFUL_EDGE` independent from DRAW. Raw modal and outcome-coherent representative scores are separate fields. The contract is deployed and tested; public consumers remain blocked from publication until their lineage cutover is verified.
+The C0284 decision contract derives the full Low/Normal/High distribution from the complete score matrix, keeps Shootout/Demolition beneath High, discloses near ties, and keeps `NO_MEANINGFUL_EDGE` independent from DRAW. Raw modal and outcome-coherent representative scores are separate fields. The contract and API/V3 consumer cutover are deployed and tested. Publication remains blocked pending P4 immutable freeze and mixed-lineage prevention, followed by P5-P7 evidence/UI/FPL lineage gates.
 
 Raw C0147 remains shadow/research. The player projection path combines team/fixture lambda state, current xG/xA evidence, xMins/start state, penalties, realized tactical roles, clean-sheet / Defensive Contributions / bonus probabilities and event-distribution tails.
 

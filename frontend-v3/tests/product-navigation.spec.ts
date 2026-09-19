@@ -153,7 +153,7 @@ test('markets show large result stamps without probability or xG', async ({ page
 test('no-edge fixture is consumer-labelled DRAW and finished audit is understated', async ({ page }) => {
   await mockProductApis(page); await page.goto('/#matches');
   const derby = page.locator('.v3-match-card').filter({ hasText: 'Man Utd' }); await expect(derby.getByText('DRAW', { exact: true })).toBeVisible(); await expect(derby.getByText('Parity/no-edge → DRAW', { exact: true })).toBeVisible();
-  const finished = page.locator('.v3-match-card').filter({ hasText: 'Chelsea' }); await expect(finished.getByText(/1X2 .* · score /)).toBeVisible(); await expect(page.getByText('✓ Correct')).toHaveCount(0); await expect(page.getByText('✕ Miss')).toHaveCount(0);
+  const finished = page.locator('.v3-match-card').filter({ hasText: 'Chelsea' }); await expect(finished.getByText(/1X2 .* · representative score /)).toBeVisible(); await expect(page.getByText('✓ Correct')).toHaveCount(0); await expect(page.getByText('✕ Miss')).toHaveCount(0);
 });
 
 test('player cards open intelligence modals on current Insights and historical History', async ({ page }) => {

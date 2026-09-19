@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-18 (Dubai) — C0281 completed / verified_
+_Last updated: 2026-09-19 (Dubai) — tracker/architecture reconciliation D_
 
 ## 1. Mission and immutable rules
 Build one chronology-safe football intelligence engine for FPL decision intelligence and football forecasting/research. FPL objective: maximize probability of Overall Rank #1, or expected final rank if #1 becomes unrealistic.
@@ -15,7 +15,11 @@ Sources of truth: Supabase `knooiwezzsxcwhtjtdap`; GitHub `ElDon-Hanzy/football-
 C0230 is advisory/nonblocking. C0240 is supporting evidence, not another selector. C0276 is the bounded autonomy/control plane, not another optimizer.
 
 ## 3. Whole-engine reconciliation
-C0278 is **Completed / Verified**. C0265 remains untouched; C0240 concurrency unchanged; no historical rewrite or external FPL execution.
+C0278 is **Completed / Verified**. Tracker reconciliation D on 2026-09-19 removed stale indefinite-monitoring and superseded backlog states. C0265 remains untouched; C0240 concurrency unchanged; no historical rewrite or external FPL execution.
+
+Transfer-window program disposition: C0203/C0205/C0206 are **Completed / Verified**. Their summer-window objectives are closed; ordinary in-season minutes, roles, set pieces and team state now flow through current-season evidence. C0207-C0211 are closed/superseded rather than left as generic transfer backlogs.
+
+Legacy research/UI cleanup also closed or completed C0034, C0049, C0066, C0074, C0091, C0104, C0105, C0112, C0154, C0163-C0166, C0168, C0176, C0196, C0198, C0216 and C0264 according to their evidence/supersession state. C0082 remains a genuine external licensed-data capability gap.
 
 ## 4. C0281 deadline convergence — Completed / Verified
 GW5 exposed timeout, async-state and moving-lineage convergence failures. C0281 repairs deadline control without weakening decision governance.
@@ -28,34 +32,43 @@ Empirical 14-day runtime evidence at closeout: projection P99 ~46.6s, optimizer 
 
 Fault injection and the full GW5 deadline rehearsal passed. The retrospective GW5 T-3 test correctly fails closed because GW5 predates C0281 and has no coherent T-4 checkpoint.
 
-Correction: a prior tracker note said the P5 live phase was CLOSED. The recorded call at 17:20:58 UTC was actually `T2_DELTA`, roughly nine minutes before the 17:30 UTC deadline.
-
 Closeout: `project-management/C0281_DEADLINE_CONVERGENCE_FINALIZATION_CLOSEOUT_20260918.md`.
 
 ## 5. C0277 seasonal chip option value — Completed / Verified
 C0277 separates exact numerical decision horizon from longer seasonal structural opportunity. Current selector remains **RESERVE_FOR_FUTURE**, chip **NONE**, `PLAY_NOW=false` unless later evidence changes it. Unknown future option value is not zero; structural scenarios cannot authorize spending a chip.
 
-## 6. C0279 season-state / score-family / player-upside integration
-C0279 remains **promotion blocked / zero production effect** after P8 validation. Its shadow architecture and frozen prospective cohort remain available for future evidence. It must not affect production until its promotion gate is satisfied.
+## 6. Active bounded research
+- **C0197**: high-score/shootout prospective evidence through GW6, then adjudicate.
+- **C0224**: parity/draw shadow is explicitly bounded through GW6; after GW6 it must be promoted, retired or replaced by a newly specified bounded hypothesis. No indefinite monitoring or threshold retuning.
+- **C0230**: advisory team-regime diagnostic through GW6 only; after GW6 keep as low-cost advisory or retire. It cannot numerically alter projections or block final authorization.
+- **C0279**: promotion blocked / zero production effect. Frozen GW5 cohort awaits settled prospective evidence and full player recalibration before P9.
+- **C0280**: P9 explanation contract promoted; P2-P8 predictive effects remain held pending settled prospective evidence.
 
 ## 7. C0265 / C0270 integrity watch
 C0265 remains **Open / Planned / Critical**, deliberately unchanged. Do not repair without separate authorization. C0270 remains prospective shadow monitoring; numerical coincidences are not causal validation.
 
-## 8. Research / product governance
-Unpromoted research remains zero-effect. V3 is the current consumer product surface; V2 remains fallback until explicitly retired. UI preserves Actual / Recommendation / Decision snapshot / Realized lanes. `FINAL` never implies external execution.
+## 8. C0273 autonomy planning — Completed / Verified
+C0273's authorized scope was planning/documentation, not production implementation. Its master plans, SOPs, red-team, autonomy boundaries, source/deadline/manager/result/publication contracts, failure/recovery model, resource isolation, hosting/cutover roadmap and implementation gates are complete. C0276/C0278/C0281/C0282 subsequently implemented or reconciled substantial pre-VPS stabilization concerns. A future VPS/runtime migration is a separate implementation decision and must not be represented as unfinished C0273 planning.
 
-## 9. Current engineering dispositions
-- C0264: Blocked; experimental branch closed/unmerged.
-- C0265: Open / Planned / Critical; no fix authorized.
-- C0270: In Progress / shadow.
-- C0273: broader autonomy/website/VPS work remains open/deferred where acceptance evidence is incomplete.
-- C0276: active bounded control plane with C0281 deadline protections.
+## 9. V3 / product state
+C0282 is **Completed / Verified**. V3 is the current consumer product surface; V2 remains fallback until explicitly retired. UI preserves Actual / Recommendation / Decision snapshot / Realized lanes. `FINAL` never implies external execution. Pages run #955 passed V2/V3 E2E, accessibility, deployment, rollback isolation and deployed-entrypoint verification.
+
+## 10. Current engineering dispositions
+- C0082: external licensed spatial/tactical-data blocker; no passive collection.
+- C0197: bounded prospective research through GW6.
+- C0224/C0230: bounded shadow/advisory through GW6 with mandatory adjudication.
+- C0265: Open / Planned / Critical; intentionally untouched.
+- C0270: active prospective anomaly watch.
+- C0273: **Completed / Verified** planning program.
+- C0276: **Completed / Verified** bounded control plane, operating with C0281 deadline protections.
 - C0277: **Completed / Verified**.
 - C0278: **Completed / Verified**.
-- C0279: **Promotion blocked / zero production effect**.
+- C0279: promotion blocked / zero production effect.
+- C0280: prospective GW5 evaluation active; only explanation contract promoted.
 - C0281: **Completed / Verified**.
+- C0282: **Completed / Verified**.
 
-## 10. Canonical references
-`PROJECT_DESCRIPTION.md`, `DECISIONS_AND_HISTORY.md`, `SYSTEM_ARCHITECTURE.md`, `MODEL_REGISTRY.md`, `WEEKLY_DATA_PIPELINE.md`, `MODEL_CONSUMPTION_AUDIT.md`, `skills/fie/SKILL.md`, C0277 closeout, C0278 reconciliation, C0279 canonical plan, and C0281 closeout.
+## 11. Canonical references
+`PROJECT_DESCRIPTION.md`, `DECISIONS_AND_HISTORY.md`, `SYSTEM_ARCHITECTURE.md`, `MODEL_REGISTRY.md`, `WEEKLY_DATA_PIPELINE.md`, `MODEL_CONSUMPTION_AUDIT.md`, `skills/fie/SKILL.md`, C0277 closeout, C0278 reconciliation, C0279 canonical plan, C0280 closeouts, C0281 closeout and C0282 plan/closeout evidence.
 
 When documentation disagrees with live runtime, verify live evidence first and reconcile documentation rather than weakening runtime gates.

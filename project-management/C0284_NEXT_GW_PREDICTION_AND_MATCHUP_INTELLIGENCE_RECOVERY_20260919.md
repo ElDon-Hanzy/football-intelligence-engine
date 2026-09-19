@@ -314,3 +314,14 @@ Passing unit tests, deploying functions, creating migrations or improving one di
 - Re-deployed `refresh-forward-fixture-forecasts` version 3 with `verify_jwt=false`; the function retains its custom engine-token authorization.
 - Manually invoked GW6 through the same scheduler path. Request 8723 returned HTTP 200 and inserted ten append-only `forward_fixture_v0.2.0_current_season` shadow snapshots.
 - No selector or production promotion occurred. C0166 remains active until P1/P2 validation passes.
+
+### 2026-09-19 — P1 cutoff-safe season-state gate completed
+
+- Reconciled every latest 2026 team state to its own `as_of` cutoff using finished FPL fixture rows. All 20 teams match on result sample, goals for and goals against.
+- Found the shared state calculation still used the retired adaptive curves `n/(n+3)` and `n/(n+2)` for promoted teams. At match five this retained 37.5% or 28.6% prior influence instead of the agreed 20%.
+- Found a hidden `bigint` overload used by `count(*)`; changing only the integer function would have left the production calculation unchanged. Both overloads now resolve to one schedule: current season 75% for matches 1-4, 80/85/90/95% for matches 5-8 and 100% from match 9.
+- Versioned the state evidence hash with the weight policy and weight output, ensuring policy corrections append a new immutable state rather than being suppressed as duplicate evidence.
+- Added `current_season_state_integrity_v01`, which separately reports result and xG sample counts and blocks result-sample, result-total or weight-schedule mismatches.
+- Refreshed all 20 states under the corrected policy. Nineteen rows pass fully; Coventry, Hull and Ipswich correctly expose 4/5 xG coverage as a warning rather than pretending five xG observations exist. No result or weight block remains.
+- The new view is security-invoker, denied to anonymous users and readable only by authenticated/service roles. Post-migration advisors found no new C0284-specific security or performance error.
+- Production selection remains unchanged pending the chronological P2 benchmark.

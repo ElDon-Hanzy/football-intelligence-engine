@@ -141,6 +141,18 @@ export const gw4WorkspaceFixture = {
     team_short,
     fixtures: [{ match_id: player_id, fpl_fixture_id: player_id, venue, opponent_team_id: 99, opponent: opponent_short, opponent_short, kickoff_at: '2026-09-12T19:00:00Z', phase, finished: phase === 'FINISHED' }],
   })),
+  league_top_xpts: [
+    [1, 4, 'Gabriel', 'DEF', 'ARS', 6.17, 85.92, .127],
+    [2, 161, 'Palmer', 'MID', 'CHE', 6.00, 88.00, .16],
+    [3, 470, 'B.Fernandes', 'MID', 'MUN', 5.61, 86.48, .147],
+    [4, 471, 'Mbeumo', 'MID', 'MUN', 5.57, 85.32, .144],
+    [5, 170, 'João Pedro', 'FWD', 'CHE', 5.51, 84.69, .145],
+    [6, 437, 'Foden', 'MID', 'MCI', 5.20, 64.57, .09],
+    [7, 417, 'Isak', 'FWD', 'LIV', 5.11, 74.64, .128],
+    [8, 98, 'Schade', 'MID', 'BRE', 4.98, 85.59, .103],
+    [9, 29, 'Tzolis', 'MID', 'ARS', 4.94, 68.99, .082],
+    [10, 427, 'Guéhi', 'DEF', 'MCI', 4.91, 88.28, .107],
+  ].map(([rank, player_id, name, position, team_short, expected_points, expected_minutes, p_10_plus]) => ({ rank, player_id, name, position, team: team_short, team_short, expected_points, expected_minutes, p_start: .9, p_10_plus, p_15_plus: .03, p_20_plus: .01 })),
   semantics: {
     final_does_not_imply_execution_authorized: true,
     actual_is_never_inferred_from_recommendation: true,

@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Decisions & History
 
-_Last reconciled: 2026-09-18 (Dubai) — through C0281 closeout_
+_Last reconciled: 2026-09-19 (Dubai) — tracker/architecture reconciliation D_
 
 This file preserves durable decisions governing the current engine. Runtime evidence outranks stale historical descriptions; history is not rewritten.
 
@@ -18,6 +18,19 @@ This file preserves durable decisions governing the current engine. Runtime evid
 - C0240 is supporting adversarial evidence, not a second selector. C0230 is advisory/nonblocking.
 - C0276 is the bounded autonomous control plane: exact lineage, bounded retry, one governed final-control loop, fail closed on unresolved mandatory evidence. Publication is not external execution.
 
+## Tracker/architecture reconciliation D — 2026-09-19
+The tracker must represent bounded decisions and genuine capability gaps, not indefinite passive data collection. A completed infrastructure foundation does not stay open merely because future observations continue to arrive. A rejected generic hypothesis does not remain Monitoring until it happens to become significant. Superseded backlogs are terminally closed while historical evidence remains preserved.
+
+Transfer-window programs C0203/C0205/C0206 are Completed/Verified. The summer-window integration, append-only transfer ledger and governed newcomer/bootstrap research have been adjudicated. Generic transfer follow-ons C0207-C0211 are closed/superseded by current-season state, C0279/C0280 and the current uncertainty architecture. Future concrete defects must be registered as bounded changes rather than keeping transfer-window projects permanently alive.
+
+Legacy reconciliation closed/completed C0034, C0049, C0066, C0074, C0091, C0104, C0105, C0112, C0154, C0163-C0166, C0168, C0176, C0196, C0198, C0216 and C0264 according to evidence, rejection or supersession. C0082 remains a genuine external licensed-data capability gap rather than passive collection.
+
+C0224 parity/draw shadow and C0230 team-regime advisory are explicitly bounded through GW6. After GW6 they require terminal adjudication or a newly specified bounded hypothesis; indefinite Monitoring is prohibited. C0197 already has a GW6 prospective boundary.
+
+C0273 is Completed/Verified as a planning program. Its authorized acceptance scope was architecture/planning/documentation, which was fulfilled. Later C0276/C0278/C0281/C0282 implemented or reconciled substantial stabilization concerns. Any future VPS/runtime migration is a new implementation decision, not unfinished C0273 planning.
+
+C0265 remains intentionally untouched. Reconciliation does not authorize repair.
+
 ## C0281 durable deadline-control decisions — 2026-09-18
 GW5 demonstrated that a nominal T-2 final window is insufficient when tail latency, asynchronous request state and changing lineages interact. Deadline control is therefore a convergence problem, not merely a scheduler priority.
 
@@ -33,6 +46,7 @@ Async RUNNING nodes are no longer allowed to livelock indefinitely: non-2xx HTTP
 
 The GW5 incident also established a process lesson: inspect existing architecture before proposing new capabilities. C0243/C0248 already contained price-timing logic; C0281 integrates it rather than duplicating it.
 
-A prior P5 tracker sentence claiming the live phase was CLOSED was incorrect. Recorded runtime evidence shows the live phase call at 17:20:58 UTC was `T2_DELTA`, around nine minutes before the 17:30 UTC deadline.
-
 C0281 completed fault injection and a full deadline rehearsal successfully. No historical forecasts were rewritten and no external FPL transfer/chip execution occurred.
+
+## C0282 product/live-state closeout — 2026-09-18
+V3 post-deadline population and QA completed successfully. Actual locked picks remain independently captured and immutable; recommendation remains separate and unauthorized for external execution; live/realized values respect fixture evidence. GitHub Pages run #955 passed the V2/V3 deployment, E2E, accessibility and rollback-isolation chain. V2 remains fallback until separately retired.

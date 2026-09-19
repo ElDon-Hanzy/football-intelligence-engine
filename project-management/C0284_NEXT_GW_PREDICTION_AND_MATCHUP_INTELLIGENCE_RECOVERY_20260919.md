@@ -1,6 +1,6 @@
 # C0284 — Next-GW Prediction & Matchup Intelligence Recovery
 
-**Status:** Planned / Critical  
+**Status:** In Progress / Critical  
 **Date:** 2026-09-19  
 **Deadline:** Before the next Gameweek forecast is published  
 **Priority:** Production blocker  
@@ -302,3 +302,15 @@ fixture rows at cutoff
 ```
 
 Passing unit tests, deploying functions, creating migrations or improving one diagnostic fixture is insufficient on its own.
+
+## 8. Execution log
+
+### 2026-09-19 — P0 activation repair started
+
+- Confirmed active jobs: forward forecast job 6 runs every four hours; C0166 production job 20 runs at minutes 03/18/33/48.
+- Confirmed the production selector hard-prioritizes C0166 and does not recognize the C0283 generator.
+- Confirmed job 6 appeared successful in pg_cron while all three downstream HTTP requests were rejected with `401 UNAUTHORIZED_NO_AUTH_HEADER` before the custom engine-token check.
+- Root cause: `refresh-forward-fixture-forecasts` had platform JWT verification enabled although the internal scheduler authenticates with `x-engine-token`.
+- Re-deployed `refresh-forward-fixture-forecasts` version 3 with `verify_jwt=false`; the function retains its custom engine-token authorization.
+- Manually invoked GW6 through the same scheduler path. Request 8723 returned HTTP 200 and inserted ten append-only `forward_fixture_v0.2.0_current_season` shadow snapshots.
+- No selector or production promotion occurred. C0166 remains active until P1/P2 validation passes.

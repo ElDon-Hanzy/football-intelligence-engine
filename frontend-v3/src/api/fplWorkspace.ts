@@ -183,6 +183,20 @@ export type FplWorkspaceApi = {
     player_actuals: PlayerActual[];
   };
   players: WorkspacePlayer[];
+  league_top_xpts: Array<{
+    rank: number;
+    player_id: number;
+    name: string;
+    position: string | null;
+    team: string | null;
+    team_short: string | null;
+    expected_points: number | null;
+    expected_minutes: number | null;
+    p_start: number | null;
+    p_10_plus: number | null;
+    p_15_plus: number | null;
+    p_20_plus: number | null;
+  }>;
   semantics: {
     final_does_not_imply_execution_authorized: true;
     actual_is_never_inferred_from_recommendation: true;

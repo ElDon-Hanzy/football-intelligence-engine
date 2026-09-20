@@ -12,6 +12,7 @@
 
 - 2026-09-19: P0-P2 verified; `forward_fixture_v0.3.0_c0284_current_season` promoted for GW6-GW8 and the superseded C0166 writer paused.
 - 2026-09-20: P3 canonical database contract implemented and verified in production as `current_fixture_decision_contract_v01`. The contract makes the full Low/Normal/High distribution authoritative, marks near ties as `BLENDED_NEAR_TIE`, preserves raw-modal and representative scores separately, and returns `NO_MEANINGFUL_EDGE` without inventing a draw. All six GW6 contract tests pass. P3 remains open until API/FPL/UI consumers cut over to this single contract; publication remains blocked.
+- 2026-09-20: P3 consumer cutover and production deployment verified. `fpl-api` v21, `betting-api` v13 and `human-insights-api` v3 return aligned canonical snapshot/headline semantics. Pages run #992 passed all gates and deployed commit `b25acb9`; independent live-browser validation opened the GW4 matchup modal and confirmed the canonical contract version, complete scoring distribution, near-tie disclosure, separate representative/raw-modal scores, decision hash and evidence sections. P3 is closed. P4 immutable freeze and mixed-lineage prevention is next; publication remains blocked.
 
 ## 1. Executive decision
 

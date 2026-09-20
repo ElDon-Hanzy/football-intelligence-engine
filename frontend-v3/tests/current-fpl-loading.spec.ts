@@ -31,9 +31,9 @@ async function routeCurrentFpl(page: Page, actualResponseGameweek: number, count
     if (requested <= 0) {
       counters.defaultActual += 1;
       await route.fulfill({
-        status: 500,
+        status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ ok: false, error: 'Default actual/live must not be used by the current FPL path' }),
+        body: JSON.stringify({ ...gw4ActualLiveFixture, gameweek: actualResponseGameweek }),
       });
       return;
     }
@@ -47,7 +47,7 @@ async function routeCurrentFpl(page: Page, actualResponseGameweek: number, count
   });
 }
 
-test('current FPL resolves workspace first and requests actual/live explicitly for that Gameweek', async ({ page }) => {
+test('current FPL requests workspace and current actual/live concurrently', async ({ page }) => {
   const counters = { defaultActual: 0, explicitActual: 0 };
   await routeCurrentFpl(page, 4, counters);
 
@@ -56,18 +56,18 @@ test('current FPL resolves workspace first and requests actual/live explicitly f
   await expect(page.locator('main')).toHaveAttribute('data-gameweek', '4');
   await expect(page.locator('.v3-fpl-hero .v3-kicker')).toContainText('Gameweek 4');
 
-  expect(counters.defaultActual).toBe(0);
-  expect(counters.explicitActual).toBe(1);
+  expect(counters.defaultActual).toBe(1);
+  expect(counters.explicitActual).toBe(0);
 });
 
-test('current FPL fails closed when explicit actual/live returns another Gameweek', async ({ page }) => {
+test('current FPL fails closed when concurrent actual/live returns another Gameweek', async ({ page }) => {
   const counters = { defaultActual: 0, explicitActual: 0 };
   await routeCurrentFpl(page, 5, counters);
 
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'FPL workspace is unavailable.' })).toBeVisible();
-  await expect(page.getByText('Actual-live Gameweek mismatch: requested GW4, received GW5')).toBeVisible();
+  await expect(page.getByText('Current Gameweek mismatch: workspace GW4, live results GW5')).toBeVisible();
 
-  expect(counters.defaultActual).toBe(0);
-  expect(counters.explicitActual).toBe(1);
+  expect(counters.defaultActual).toBe(1);
+  expect(counters.explicitActual).toBe(0);
 });

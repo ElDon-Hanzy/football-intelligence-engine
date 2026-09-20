@@ -110,8 +110,12 @@ test('current production APIs populate every v2 data surface', async ({ request 
   expect(manager.gameweek).toBe(gw);
   if (fpl.snapshot_stage === 'HISTORICAL_FROZEN') {
     expect(fpl.decision).toBeTruthy();
+  } else if (manager.plan == null) {
+    expect(manager.saved_plan).toBeNull();
+    expect(manager.live_plan).toBeNull();
+    expect(manager.manager_state).toBeNull();
+    expect(manager.semantics?.missing_manager_state_is_not_zero).toBe(true);
   } else {
-    expect(manager.plan).toBeTruthy();
     expect(manager.manager_state).toBeTruthy();
     expect(manager.plan.starting_xi).toHaveLength(11);
     expect(manager.plan.bench_order).toHaveLength(4);
@@ -192,6 +196,7 @@ test('every current v2 page renders its populated sections without silent blanks
   desktopOnly(testInfo.project.name);
   test.setTimeout(360_000);
   const gw = await currentGameweek(request);
+  const manager = await json(request, `${endpoints.managerPlan}?gw=${gw}`, true);
 
   await assertNoPageErrors(page, async () => {
     await openView(page, 'home', gw, 'Command Center');
@@ -200,8 +205,14 @@ test('every current v2 page renders its populated sections without silent blanks
     await expect(page.locator('.state-panel')).toHaveCount(0);
 
     await openView(page, 'fpl', gw, /^(FPL decision workspace|FPL decision history)$/);
-    await expect(page.locator('.player-tile-grid .player-tile')).toHaveCount(11, { timeout: LIVE_TIMEOUT });
-    await expect(page.locator('.bench-list .player-tile')).toHaveCount(4, { timeout: LIVE_TIMEOUT });
+    if (manager.plan == null) {
+      await expect(page.getByText('No authoritative manager plan is saved for this Gameweek.', { exact: true })).toBeVisible({ timeout: LIVE_TIMEOUT });
+      await expect(page.locator('.player-tile-grid .player-tile')).toHaveCount(0, { timeout: LIVE_TIMEOUT });
+      await expect(page.locator('.bench-list .player-tile')).toHaveCount(0, { timeout: LIVE_TIMEOUT });
+    } else {
+      await expect(page.locator('.player-tile-grid .player-tile')).toHaveCount(11, { timeout: LIVE_TIMEOUT });
+      await expect(page.locator('.bench-list .player-tile')).toHaveCount(4, { timeout: LIVE_TIMEOUT });
+    }
     const fullPool = page.locator('.full-pool-details summary');
     await expect(fullPool).toBeVisible({ timeout: LIVE_TIMEOUT });
     await fullPool.click();

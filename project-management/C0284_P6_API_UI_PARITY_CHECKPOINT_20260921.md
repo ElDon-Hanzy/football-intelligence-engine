@@ -18,6 +18,7 @@
 - Each fixture: five targets and four genuine non-zero model inputs; contextual evidence has zero weight/effect/contribution.
 - Local: TypeScript pass, production build pass, 20/20 domain-contract tests pass, diff integrity pass.
 - The protected smoke was corrected for the real GW rollover: the live catalog is GW6 while the latest authorized/default FPL workspace remains completed GW5 until P7. It now validates the latest available workspace against its matching actual/live contract without fabricating a GW6 decision cycle. The live smoke passed with `execution_authorized=false`.
+- Pages run #1006 passed 112 V2 browser cases but exposed two stale live-population assumptions that required a GW6 manager plan. The V2 gate now accepts the explicit fail-closed state only when plan/saved-plan/live-plan/manager-state are null and `missing_manager_state_is_not_zero=true`; it still requires 11 starters and four bench players whenever a plan exists. V2 typecheck and 24/24 unit tests pass.
 
 ## Remaining P6 gate
 

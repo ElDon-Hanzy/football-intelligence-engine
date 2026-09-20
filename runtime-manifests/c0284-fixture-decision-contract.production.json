@@ -21,6 +21,24 @@
     "no_edge_converted_to_draw_violations": 0
   },
   "publication_authorized": false,
-  "remaining_gate": "API_FPL_UI_CONSUMER_CUTOVER_AND_FREEZE_LINEAGE",
-  "parity_status": "DATABASE_CONTRACT_GREEN_CONSUMERS_PENDING"
-}
+  "remaining_gate": "P5_DECISION_EVIDENCE_P6_UI_P7_PLAYER_FPL_LINEAGE",
+  "parity_status": "DATABASE_CONTRACT_GREEN_CONSUMERS_PENDING",
+  "p4": {
+    "status": "VERIFIED_FAIL_CLOSED",
+    "freeze_id": 1,
+    "gameweek": 6,
+    "fixture_count": 10,
+    "frozen": true,
+    "lineage_hash": "3dbc7c825052c55144805093ddb45268bd90bdaa493846d1a377f7f41c2ea3be",
+    "payload_hash": "76704121da9e7ac4ea8f0a78a44504b6363c2997860304ed5496224f1f19a0dc",
+    "publication_authorized": false,
+    "authorized_rows": 0,
+    "blockers": [
+      "DECISION_CYCLE_MISSING",
+      "PLAYER_PREDICTION_RUN_MISSING"
+    ],
+    "latest_frozen_player_run_id": 1461,
+    "decision_cycle_status": "MISSING",
+    "historical_forecasts_rewritten": false
+  }
+}\n

@@ -14,11 +14,13 @@ const fixture = {
   away_score: null,
   prediction: {
     snapshot_id: 9031,
-    source_change_id: 'C0166',
+    source_change_id: 'C0284',
     captured_at: '2026-09-12T12:00:00Z',
     markets: { home_win: .46, draw: .28, away_win: .26 },
-    headline_score: '2-1',
-    headline_score_probability: .12,
+    result_decision: 'HOME', direction_strength: 'LEAN',
+    primary_environment: 'NORMAL_SCORING', scoring_environment_probabilities: { low: .2, normal: .55, high: .25 }, scoring_environment_state: 'PRIMARY', expected_total_goals: 2.8,
+    representative_score: '2-1', representative_score_probability: .12, raw_modal_score: '1-1', raw_modal_probability: .11,
+    decision_contract_version: 'c0284_fixture_decision_v01', chronology_and_coverage_valid: true, decision_hash: 'fixture-31',
     top_scorelines: [{ score: '2-1', prob: .12 }],
   },
 };

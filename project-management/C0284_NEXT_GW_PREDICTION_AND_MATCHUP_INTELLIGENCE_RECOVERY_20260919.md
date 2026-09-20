@@ -351,3 +351,4 @@ Passing unit tests, deploying functions, creating migrations or improving one di
 - Removed V3 lambda-based family reconstruction, the arbitrary Normal boundary override and no-edge-to-DRAW coercion from both current-match and history surfaces.
 - Live verification returned one canonical contract version across all ten GW6 fixtures, three near ties and zero missing representative score, raw modal or decision hash fields.
 - P3 is closed. Publication remains blocked because all GW6 forecast rows are still `frozen=false`; P4 owns immutable snapshot freeze and mixed-lineage publication authorization.
+- Pages run #986 later caught a legacy V2 cross-API headline mismatch. The gate was not weakened: FPL, Betting and Human Insights were aligned to the canonical decision contract and live GW5 verification returned 0 snapshot/headline mismatches across 10 fixtures. A corrected Pages run is required before deployed UI evidence is accepted.

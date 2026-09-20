@@ -28,3 +28,7 @@ The contract makes the complete Low/Normal/High probability distribution canonic
 ## Gate status
 
 P3 is verified and closed. Publication remains blocked. P4 immutable freeze, mixed-lineage prevention and fail-closed publication authorization are next.
+
+### Post-close parity repair
+
+Pages run #986 correctly blocked a legacy V2 mismatch: Betting exposed the representative headline while FPL's compatibility `headline_score` field was absent. The assertion was preserved. Production `fpl-api` v21, `betting-api` v13 and `human-insights-api` v3 now all read the canonical contract and return identical snapshot/headline pairs across 10/10 live GW5 fixtures. This repair changes no forecast and does not reopen model selection.

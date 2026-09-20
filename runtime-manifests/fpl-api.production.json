@@ -1,21 +1,21 @@
 {
   "function": "fpl-api",
   "supabase_project": "knooiwezzsxcwhtjtdap",
-  "observed_at": "2026-09-20T04:00:00+04:00",
+  "observed_at": "2026-09-20T08:08:00+04:00",
   "production": {
-    "version": 20,
-    "bundle_sha256": "bf9bea68cd5b7977439172a463814fcb5066e9db8a8600661b899c35c6254a1f",
+    "version": 21,
+    "bundle_sha256": "42e2b82389b4ecab1170fc7f29391c2040c820b1ac642ec1a6375b9afc00d2d8",
     "contract_version": "fpl_api_v19_c0284_fixture_decision_contract",
     "verify_jwt": false
   },
   "repository": {
     "branch": "main",
     "path": "supabase/functions/fpl-api/index.ts",
-    "git_blob_sha": "a450f7a9c11d6fe0e966b1d6e5671c6f4645ed72",
-    "source_commit": "5fd8e52444ac030f95ff4887709617222185dc2a"
+    "git_blob_sha": null,
+    "source_commit": "PENDING_THIS_COMMIT"
   },
   "parity_status": "GREEN",
   "runtime_redeployed": true,
   "public_v3_deploy_allowed": true,
-  "reason": "C0284 P3 consumer cutover is reconciled to deployed fpl-api v20. The API reads current_fixture_decision_contract_v01 and preserves no-edge, scoring-family and score-lineage semantics without frontend invention."
+  "reason": "C0284 P3 consumer parity repair is deployed as fpl-api v21. Compatibility headline fields now alias the canonical representative score while raw-modal and representative score semantics remain separate."
 }

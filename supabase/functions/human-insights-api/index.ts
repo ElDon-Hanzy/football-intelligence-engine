@@ -36,10 +36,8 @@ Deno.serve(async(req)=>{
       sb.from('players').select('id,web_name,position,team_id,now_cost,selected_by_percent,penalties_order,direct_freekicks_order,corners_and_indirect_freekicks_order'),
       sb.from('teams').select('id,name,short_name'),
       sb.from('matches').select('id,gameweek,home_team_id,away_team_id,kickoff_time,home_score,away_score,finished').eq('source','fpl').eq('gameweek',gw).order('kickoff_time'),
-      // C0250: consume the same canonical production selector as fpl-api/betting-api.
-      // Reading raw fixture_prediction_snapshots allowed equal-timestamp C0159/C0166 rows
-      // to be chosen non-deterministically and produced cross-page score disagreements.
-      sb.from('current_production_fixture_prediction_v01').select('id,match_id,captured_at,home_lambda,away_lambda,top_scorelines,markets,confidence,headline_score,headline_score_probability,raw_modal_score,raw_modal_probability,source_snapshot').eq('gameweek',gw),
+      // C0284 P3: all public fixture consumers use the same canonical decision contract.
+      sb.from('current_fixture_decision_contract_v01').select('snapshot_id,match_id,captured_at,home_lambda,away_lambda,top_scorelines,markets,confidence,representative_score,representative_score_probability,raw_modal_score,raw_modal_probability,source_snapshot,decision_contract_version,result_decision,direction_strength,primary_environment,scoring_environment_probabilities,scoring_environment_state,dominant_subtype,selected_family,selected_family_probability,chronology_and_coverage_valid,decision_hash').eq('gameweek',gw),
       sb.from('fpl_manager_plans').select('*').eq('gameweek',gw).order('captured_at',{ascending:false}).limit(1).maybeSingle()
     ]);
     if(fxe)throw fxe;
@@ -77,9 +75,12 @@ Deno.serve(async(req)=>{
       const home=tm.get(Number(m.home_team_id)),away=tm.get(Number(m.away_team_id));
       return {
         match_id:Number(m.id),home:home?.name||null,away:away?.name||null,kickoff_time:m.kickoff_time,
-        snapshot_id:Number(f.id),source_change_id:f.source_snapshot?.change_id??null,source_generator:f.source_snapshot?.generator??null,
+        snapshot_id:Number(f.snapshot_id),source_change_id:f.source_snapshot?.change_id??null,source_generator:f.source_snapshot?.generator??null,
         captured_at:f.captured_at,home_lambda:n(f.home_lambda),away_lambda:n(f.away_lambda),top_scorelines:f.top_scorelines||[],markets:f.markets||{},confidence:n(f.confidence),
-        headline_score:f.headline_score||null,headline_score_probability:n(f.headline_score_probability),raw_modal_score:f.raw_modal_score||null,raw_modal_probability:n(f.raw_modal_probability)
+        headline_score:f.representative_score||null,headline_score_probability:n(f.representative_score_probability),raw_modal_score:f.raw_modal_score||null,raw_modal_probability:n(f.raw_modal_probability),
+        decision_contract_version:f.decision_contract_version,result_decision:f.result_decision,direction_strength:f.direction_strength,primary_environment:f.primary_environment,
+        scoring_environment_probabilities:f.scoring_environment_probabilities,scoring_environment_state:f.scoring_environment_state,dominant_subtype:f.dominant_subtype,
+        selected_family:f.selected_family,selected_family_probability:n(f.selected_family_probability),chronology_and_coverage_valid:f.chronology_and_coverage_valid,decision_hash:f.decision_hash
       };
     }).filter(Boolean);
 

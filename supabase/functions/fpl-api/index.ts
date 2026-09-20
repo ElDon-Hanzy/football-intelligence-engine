@@ -539,6 +539,8 @@ Deno.serve(async (req: Request) => {
               top_scorelines: p.top_scorelines || [],
               markets: p.markets || {},
               confidence: p.confidence,
+              headline_score: headline,
+              headline_score_probability: headlineProb,
               raw_modal_score: p.raw_modal_score || null,
               raw_modal_probability: p.raw_modal_probability ?? null,
               decision_contract_version: p.decision_contract_version,

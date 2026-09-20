@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-20 (Dubai) — C0284 P3 consumer cutover verified_
+_Last updated: 2026-09-20 (Dubai) — C0284 P3 deployed-browser verification complete_
 
 ## 1. Mission and immutable rules
 Build one chronology-safe football intelligence engine for FPL decision intelligence and football forecasting/research. FPL objective: maximize probability of Overall Rank #1, or expected final rank if #1 becomes unrealistic.
@@ -68,7 +68,7 @@ C0282 is **Completed / Verified**. V3 is the current consumer product surface; V
 - C0281: **Completed / Verified**.
 - C0282: **Completed / Verified**.
 - C0283: deployed reconciliation components exist, but the current-season-first forward generator is not the active production writer; activation and promotion are governed by C0284.
-- C0284: **In Progress / P0-P3 Verified / P4 next / Production blocker**. The cutoff-safe current-season state and canonical prior decay are active. `forward_fixture_v0.3.0_c0284_current_season` is active for GW6-GW8; C0166 writer job 20 is paused with snapshots retained for rollback. The canonical result/family contract remains green. After Pages run #986 caught a legacy cross-API headline mismatch, `fpl-api` v21, `betting-api` v13 and `human-insights-api` v3 were aligned; live GW5 verification found 0 snapshot/headline mismatches across 10 fixtures. A corrected Pages deployment is still required. P4-P7 remain publication blockers; no next-GW public forecast is authorized.
+- C0284: **In Progress / P0-P3 Verified and Live / P4 next / Production blocker**. The cutoff-safe current-season state and canonical prior decay are active. `forward_fixture_v0.3.0_c0284_current_season` is the single active lineage for GW6-GW8; C0166 writer job 20 is paused with snapshots retained for rollback. `fpl-api` v21, `betting-api` v13 and `human-insights-api` v3 are aligned to the canonical contract. Pages run #992 passed every build, parity, live-workspace, V2/V3 browser, accessibility, artifact-isolation, deployment and post-deploy gate. Independent live-browser verification confirmed the deployed matchup modal exposes the C0284 contract, complete Low/Normal/High distribution, near-tie disclosure, separate representative/raw-modal scores and decision hash without page errors. P4-P7 remain publication blockers; no next-GW public forecast is authorized.
 
 ## 11. Canonical references
 `PROJECT_DESCRIPTION.md`, `DECISIONS_AND_HISTORY.md`, `SYSTEM_ARCHITECTURE.md`, `MODEL_REGISTRY.md`, `WEEKLY_DATA_PIPELINE.md`, `MODEL_CONSUMPTION_AUDIT.md`, `skills/fie/SKILL.md`, C0277 closeout, C0278 reconciliation, C0279 canonical plan, C0280 closeouts, C0281 closeout and C0282 plan/closeout evidence.

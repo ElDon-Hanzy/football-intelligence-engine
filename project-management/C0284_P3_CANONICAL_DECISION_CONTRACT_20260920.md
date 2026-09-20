@@ -32,3 +32,13 @@ P3 is verified and closed. Publication remains blocked. P4 immutable freeze, mix
 ### Post-close parity repair
 
 Pages run #986 correctly blocked a legacy V2 mismatch: Betting exposed the representative headline while FPL's compatibility `headline_score` field was absent. The assertion was preserved. Production `fpl-api` v21, `betting-api` v13 and `human-insights-api` v3 now all read the canonical contract and return identical snapshot/headline pairs across 10/10 live GW5 fixtures. This repair changes no forecast and does not reopen model selection.
+
+## Deployed closeout verification
+
+- GitHub Pages run #992 (`35498809122`) completed successfully from commit `b25acb9b1f2f752310684dfce7cbdd410d530b73`.
+- All V2 and V3 builds, unit/contract suites, responsive browser suites, accessibility checks, serving-parity checks, live public-client smoke, artifact-isolation checks and post-deploy entrypoint checks passed.
+- Independent browser validation on 2026-09-20 loaded the deployed V3 GW4 Match center, rendered 10/10 fixtures and opened the Aston Villa vs Nott'm Forest matchup modal without an application error.
+- The live modal displayed contract `c0284_fixture_decision_v01`, snapshot 5583, the complete Low/Normal/High distribution, `BLENDED_NEAR_TIE` disclosure, separate representative score `2-1` and raw modal score `1-1`, the decision hash and both supporting and counterpoint evidence.
+- Production GW6-GW8 each remain 10/10 on the single `forward_fixture_v0.3.0_c0284_current_season` lineage. The C0166 writer remains paused. No historical forecast or C0265 record was modified.
+
+P3 is complete and live. P4 remains the next publication blocker.

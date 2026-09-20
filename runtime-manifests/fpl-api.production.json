@@ -11,8 +11,8 @@
   "repository": {
     "branch": "main",
     "path": "supabase/functions/fpl-api/index.ts",
-    "git_blob_sha": null,
-    "source_commit": "PENDING_THIS_COMMIT"
+    "git_blob_sha": "f97e27c2ec8e52c0a3a7770524130b91d2ef0658",
+    "source_commit": "64048cf595f49e6bd423b51eb45cf97e1e93adac"
   },
   "parity_status": "GREEN",
   "runtime_redeployed": true,

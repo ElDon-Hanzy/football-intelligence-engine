@@ -232,6 +232,8 @@ export async function fetchFplWorkspace(gameweek = 0, signal?: AbortSignal): Pro
       apikey: PUBLIC_SUPABASE_ANON_JWT,
     },
     ttlMs: 15_000,
+    timeoutMs: 20_000,
+    staleIfErrorMs: 60 * 60_000,
     signal,
   });
   if (!isWorkspacePayload(payload)) {

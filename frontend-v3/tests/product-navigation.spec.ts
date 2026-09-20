@@ -163,7 +163,7 @@ test('player cards open intelligence modals on current Insights and historical H
 });
 
 test('matchup modal keeps frozen probabilities and compact result comparison', async ({ page }) => {
-  await mockProductApis(page); await page.goto('/#matches'); const chelsea = page.locator('.v3-match-card').filter({ hasText: 'Chelsea' }); await chelsea.getByRole('button', { name: 'Details' }).click(); const dialog = page.getByRole('dialog'); await expect(dialog).toBeVisible(); await expect(dialog.getByText('Probability board', { exact: true })).toBeVisible(); await expect(dialog.getByRole('heading', { name: /Counterpoints \/ risks/ })).toBeVisible(); await expect(dialog.getByText('Transition exposure remains a credible counterpoint.', { exact: true })).toBeVisible();
+  await mockProductApis(page); await page.goto('/#matches'); const fixture = page.locator('.v3-match-card').first(); await expect(fixture).toBeVisible(); await fixture.getByRole('button', { name: 'Details' }).click(); const dialog = page.getByRole('dialog'); await expect(dialog).toBeVisible(); await expect(dialog.getByText('Probability board', { exact: true })).toBeVisible(); await expect(dialog.getByRole('heading', { name: /Counterpoints \/ risks/ })).toBeVisible(); await expect(dialog.getByText('Transition exposure remains a credible counterpoint.', { exact: true })).toBeVisible();
 });
 
 test('all V3 pages keep the global GW control responsive and avoid serious accessibility violations', async ({ page }) => {

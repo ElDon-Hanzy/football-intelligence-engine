@@ -140,6 +140,8 @@ function fetchCurrentActualLive(): Promise<ActualLiveApi> {
       apikey: PUBLIC_SUPABASE_ANON_JWT,
     },
     ttlMs: CURRENT_ACTUAL_REUSE_MS,
+    timeoutMs: 20_000,
+    staleIfErrorMs: 60 * 60_000,
   }).then((payload) => {
     if (!isActualLiveApi(payload)) throw new Error('Actual-live contract mismatch');
     const hydrated = comparisonHydrated(payload);
@@ -177,6 +179,8 @@ export async function fetchActualLive(gameweek = 0, signal?: AbortSignal): Promi
       apikey: PUBLIC_SUPABASE_ANON_JWT,
     },
     ttlMs: CURRENT_ACTUAL_REUSE_MS,
+    timeoutMs: 20_000,
+    staleIfErrorMs: 60 * 60_000,
     signal,
   });
   if (!isActualLiveApi(payload)) throw new Error('Actual-live contract mismatch');

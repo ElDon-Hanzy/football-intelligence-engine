@@ -42,9 +42,14 @@ function CurrentFplLiveWorkspace() {
     setLoading(true);
     setError(null);
     setSelectedPlayerId(null);
-    void fetchFplWorkspace(0, controller.signal)
-      .then(async (current) => {
-        const actual = await fetchActualLive(current.gameweek, controller.signal);
+    void Promise.all([
+      fetchFplWorkspace(0, controller.signal),
+      fetchActualLive(0, controller.signal),
+    ])
+      .then(([current, actual]) => {
+        if (actual.gameweek !== current.gameweek) {
+          throw new Error(`Current Gameweek mismatch: workspace GW${current.gameweek}, live results GW${actual.gameweek}`);
+        }
         setWorkspace(current);
         setLive(actual);
         setLoading(false);

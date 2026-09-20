@@ -35,8 +35,9 @@ const timedFetch = async (url) => {
 };
 
 // C0269 reliability contract: never cold-start catalog, workspace and actual-live all at t0.
-// The current page starts catalog + workspace together, proves their Gameweek identity,
-// then requests actual/live explicitly for that resolved Gameweek.
+// The catalog's live Gameweek may advance before the next fail-closed FPL decision cycle
+// is authorized. Validate the latest available workspace independently, then request its
+// matching actual/live contract. P7 owns advancing the workspace to the live Gameweek.
 const currentPageStarted = performance.now();
 const initialStarted = performance.now();
 const [catalogCall, workspaceCall] = await Promise.all([
@@ -52,11 +53,11 @@ const currentGameweek = Number(catalogCall.payload?.live_gameweek);
 if (!Number.isInteger(currentGameweek) || currentGameweek < 1 || currentGameweek > 38) {
   throw new Error(`Live Gameweek catalog returned invalid live_gameweek=${catalogCall.payload?.live_gameweek ?? 'missing'}`);
 }
-if (workspaceCall.payload?.gameweek !== currentGameweek) {
-  throw new Error(`Default workspace GW ${workspaceCall.payload?.gameweek ?? 'missing'} does not match live catalog GW ${currentGameweek}`);
-}
+const workspaceGameweek = Number(workspaceCall.payload?.gameweek);
+if (!Number.isInteger(workspaceGameweek) || workspaceGameweek < 1 || workspaceGameweek > currentGameweek) throw new Error(`Default workspace returned invalid GW ${workspaceCall.payload?.gameweek ?? 'missing'} for live catalog GW ${currentGameweek}`);
+if (currentGameweek - workspaceGameweek > 1) throw new Error(`Default workspace GW${workspaceGameweek} is more than one cycle behind live catalog GW${currentGameweek}`);
 
-const actualCall = await timedFetch(`${apiRoot}/fpl-v3-actual-live-api?gw=${currentGameweek}`);
+const actualCall = await timedFetch(`${apiRoot}/fpl-v3-actual-live-api?gw=${workspaceGameweek}`);
 const currentPageTotalMs = performance.now() - currentPageStarted;
 if (!actualCall.response.ok) throw new Error(`Live V3 actual endpoint returned HTTP ${actualCall.response.status}`);
 
@@ -66,7 +67,7 @@ const failures = [];
 
 if (payload?.ok !== true) failures.push('workspace payload.ok is not true');
 if (payload?.contract_version !== 'fpl_v3_workspace_v02_player_evidence') failures.push(`unexpected workspace contract_version=${payload?.contract_version ?? 'missing'}`);
-if (payload?.gameweek !== currentGameweek) failures.push(`workspace GW ${payload?.gameweek ?? 'missing'} does not match catalog GW ${currentGameweek}`);
+if (payload?.gameweek !== workspaceGameweek) failures.push(`workspace payload GW ${payload?.gameweek ?? 'missing'} changed from resolved GW ${workspaceGameweek}`);
 if (!['PRE_DEADLINE', 'POST_DEADLINE_ACTIVE', 'GW_COMPLETE'].includes(payload?.lifecycle)) failures.push(`unexpected lifecycle=${payload?.lifecycle ?? 'missing'}`);
 if (!['VERIFIED', 'NOT_VERIFIED'].includes(payload?.actual?.verification_status)) failures.push(`unexpected workspace actual verification=${payload?.actual?.verification_status ?? 'missing'}`);
 if (payload?.recommendation && typeof payload.recommendation.execution_authorized !== 'boolean') failures.push('recommendation.execution_authorized is not boolean');

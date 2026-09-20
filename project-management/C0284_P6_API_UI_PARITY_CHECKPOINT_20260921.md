@@ -17,6 +17,7 @@
 - Live `fpl-api` versus `fixture-facts-api`: 10/10 fixtures; zero snapshot, decision-hash, lambda, target, contribution or risk-target mismatches.
 - Each fixture: five targets and four genuine non-zero model inputs; contextual evidence has zero weight/effect/contribution.
 - Local: TypeScript pass, production build pass, 20/20 domain-contract tests pass, diff integrity pass.
+- The protected smoke was corrected for the real GW rollover: the live catalog is GW6 while the latest authorized/default FPL workspace remains completed GW5 until P7. It now validates the latest available workspace against its matching actual/live contract without fabricating a GW6 decision cycle. The live smoke passed with `execution_authorized=false`.
 
 ## Remaining P6 gate
 

@@ -58,6 +58,38 @@ export type FixtureFact = {
   one_liner: string;
 };
 
+export type DecisionEvidenceItem = {
+  id: string;
+  target: string;
+  text: string;
+  kind: 'MODEL_INPUT' | 'OBSERVED_CONTEXT';
+  side: 'HOME' | 'AWAY' | null;
+  value: unknown;
+  weight: number;
+  signed_contribution: number;
+  sample: number;
+  cutoff: string;
+  source: string;
+};
+
+export type DecisionRisk = { id: string; target: string; text: string; severity: string };
+export type DecisionTarget = { target: string; model_inputs: DecisionEvidenceItem[]; observed_context: DecisionEvidenceItem[]; risks: DecisionRisk[] };
+export type DecisionEvidence = {
+  contract_version: string;
+  snapshot_id: number;
+  match_id: number;
+  gameweek: number;
+  cutoff: string;
+  decision_hash: string;
+  evidence_hash: string;
+  conclusion: { result_decision: string; result_margin: number; home_projected_goals: number; away_projected_goals: number };
+  targets: DecisionTarget[];
+  reliability: { classification: string; home: { result_sample: number; xg_sample: number; prior_weight: number }; away: { result_sample: number; xg_sample: number; prior_weight: number }; missing_is_not_zero: boolean };
+  synthesis: string;
+  player_implications: { scope: string; publication_authority: boolean; requires_p7_lineage: boolean; home: string; away: string };
+  audit: Record<string, boolean>;
+};
+
 export type FixtureFacts = {
   match_id: number;
   alignment_basis: {
@@ -66,6 +98,7 @@ export type FixtureFacts = {
     source_change_id: string | null;
   } | null;
   modal_facts: FixtureFact[];
+  decision_evidence: DecisionEvidence | null;
 };
 
 export type MatchIntelligence = {
@@ -191,7 +224,36 @@ function parseFacts(value: unknown): FixtureFacts | null {
       source_change_id: string(basisRaw?.source_change_id),
     } : null,
     modal_facts: modalFacts,
+    decision_evidence: parseDecisionEvidence(row?.decision_evidence),
   };
+}
+
+function parseEvidenceItem(value: unknown): DecisionEvidenceItem | null {
+  const row = object(value); const id = string(row?.id); const target = string(row?.target); const text = string(row?.text);
+  const kind = string(row?.kind); const sample = number(row?.sample); const cutoff = string(row?.cutoff); const source = string(row?.source);
+  const weight = number(row?.weight); const contribution = number(row?.signed_contribution); const side = string(row?.side);
+  if (!id || !target || !text || !['MODEL_INPUT', 'OBSERVED_CONTEXT'].includes(kind ?? '') || sample == null || !cutoff || !source || weight == null || contribution == null) return null;
+  return { id, target, text, kind: kind as DecisionEvidenceItem['kind'], side: side === 'HOME' || side === 'AWAY' ? side : null, value: row?.value, weight, signed_contribution: contribution, sample, cutoff, source };
+}
+
+function parseDecisionEvidence(value: unknown): DecisionEvidence | null {
+  const row = object(value); const conclusion = object(row?.conclusion); const reliability = object(row?.reliability);
+  const homeReliability = object(reliability?.home); const awayReliability = object(reliability?.away); const implications = object(row?.player_implications); const audit = object(row?.audit);
+  const contractVersion = string(row?.contract_version); const snapshotId = number(row?.snapshot_id); const matchId = number(row?.match_id); const gameweek = number(row?.gameweek);
+  const cutoff = string(row?.cutoff); const decisionHash = string(row?.decision_hash); const evidenceHash = string(row?.evidence_hash); const synthesis = string(row?.synthesis);
+  const resultDecision = string(conclusion?.result_decision); const resultMargin = number(conclusion?.result_margin); const homeGoals = number(conclusion?.home_projected_goals); const awayGoals = number(conclusion?.away_projected_goals);
+  const reliabilityClass = string(reliability?.classification); const homeResultSample = number(homeReliability?.result_sample); const homeXgSample = number(homeReliability?.xg_sample); const homePriorWeight = number(homeReliability?.prior_weight); const awayResultSample = number(awayReliability?.result_sample); const awayXgSample = number(awayReliability?.xg_sample); const awayPriorWeight = number(awayReliability?.prior_weight);
+  const scope = string(implications?.scope); const homeImplication = string(implications?.home); const awayImplication = string(implications?.away);
+  if (!contractVersion || snapshotId == null || matchId == null || gameweek == null || !cutoff || !decisionHash || !evidenceHash || !synthesis || !resultDecision || resultMargin == null || homeGoals == null || awayGoals == null || !reliabilityClass || homeResultSample == null || homeXgSample == null || homePriorWeight == null || awayResultSample == null || awayXgSample == null || awayPriorWeight == null || !scope || !homeImplication || !awayImplication) return null;
+  const targets: DecisionTarget[] = Array.isArray(row?.targets) ? row.targets.map((raw) => {
+    const target = object(raw); const name = string(target?.target); if (!name) return null;
+    const inputs = Array.isArray(target?.model_inputs) ? target.model_inputs.map(parseEvidenceItem).filter((item): item is DecisionEvidenceItem => item != null) : [];
+    const context = Array.isArray(target?.observed_context) ? target.observed_context.map(parseEvidenceItem).filter((item): item is DecisionEvidenceItem => item != null) : [];
+    const risks: DecisionRisk[] = Array.isArray(target?.risks) ? target.risks.map((rawRisk) => { const risk = object(rawRisk); const id = string(risk?.id); const riskTarget = string(risk?.target); const text = string(risk?.text); const severity = string(risk?.severity); return id && riskTarget && text && severity ? { id, target: riskTarget, text, severity } : null; }).filter((item): item is DecisionRisk => item != null) : [];
+    return { target: name, model_inputs: inputs, observed_context: context, risks };
+  }).filter((item): item is DecisionTarget => item != null) : [];
+  if (targets.length !== 5) return null;
+  return { contract_version: contractVersion, snapshot_id: snapshotId, match_id: matchId, gameweek, cutoff, decision_hash: decisionHash, evidence_hash: evidenceHash, conclusion: { result_decision: resultDecision, result_margin: resultMargin, home_projected_goals: homeGoals, away_projected_goals: awayGoals }, targets, reliability: { classification: reliabilityClass, home: { result_sample: homeResultSample, xg_sample: homeXgSample, prior_weight: homePriorWeight }, away: { result_sample: awayResultSample, xg_sample: awayXgSample, prior_weight: awayPriorWeight }, missing_is_not_zero: reliability?.missing_is_not_zero === true }, synthesis, player_implications: { scope, publication_authority: implications?.publication_authority === true, requires_p7_lineage: implications?.requires_p7_lineage === true, home: homeImplication, away: awayImplication }, audit: Object.fromEntries(Object.entries(audit ?? {}).filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean')) };
 }
 
 export async function fetchMatchIntelligence(gameweek: number, signal?: AbortSignal): Promise<MatchIntelligence> {
@@ -264,5 +326,6 @@ export function alignedFacts(fixture: MatchFixture, facts: FixtureFacts | undefi
   const source = fixture.prediction.source_change_id;
   const basisSource = facts.alignment_basis.source_change_id;
   if (source && basisSource && source !== basisSource) return null;
+  if (facts.decision_evidence && (facts.decision_evidence.match_id !== fixture.match_id || facts.decision_evidence.snapshot_id !== fixture.prediction.snapshot_id || facts.decision_evidence.decision_hash !== fixture.prediction.decision_hash)) return null;
   return facts;
 }

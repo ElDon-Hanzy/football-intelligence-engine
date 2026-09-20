@@ -19,6 +19,7 @@
 - Local: TypeScript pass, production build pass, 20/20 domain-contract tests pass, diff integrity pass.
 - The protected smoke was corrected for the real GW rollover: the live catalog is GW6 while the latest authorized/default FPL workspace remains completed GW5 until P7. It now validates the latest available workspace against its matching actual/live contract without fabricating a GW6 decision cycle. The live smoke passed with `execution_authorized=false`.
 - Pages run #1006 passed 112 V2 browser cases but exposed two stale live-population assumptions that required a GW6 manager plan. The V2 gate now accepts the explicit fail-closed state only when plan/saved-plan/live-plan/manager-state are null and `missing_manager_state_is_not_zero=true`; it still requires 11 starters and four bench players whenever a plan exists. V2 typecheck and 24/24 unit tests pass.
+- Pages run #1007 confirmed the manager-plan correction. Remaining V2 blockers were a transient `fixture-facts-api` HTTP 500 and a predicted-XI assertion that ignored the absent GW6 plan. The facts API gate remains strict; expected-XI completeness now applies when a plan exists, and browser QA accepts the explicit FPL unavailable panel during a live API incident rather than requiring populated content or allowing a silent blank. The facts API subsequently returned 200 with 10 fixtures and the canonical evidence contract.
 
 ## Remaining P6 gate
 

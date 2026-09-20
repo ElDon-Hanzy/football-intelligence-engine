@@ -1,0 +1,28 @@
+{
+  "function": "fixture-facts-api",
+  "supabase_project": "knooiwezzsxcwhtjtdap",
+  "observed_at": "2026-09-20T20:20:00Z",
+  "production": {
+    "version": 11,
+    "bundle_sha256": "4c5e3d886f969c0a167f79b9d71afc1a5109a26dea8512085d57822c8091c1bd",
+    "verify_jwt": false,
+    "decision_evidence_contract": "c0284_decision_evidence_v01",
+    "fixture_decision_source": "current_fixture_decision_contract_v01",
+    "xg_rate_source": "source_snapshot.current_season_team_state",
+    "xg_coverage_source": "current_season_state_integrity_v01"
+  },
+  "verification": {
+    "gameweek": 6,
+    "fixture_rows": 10,
+    "decision_targets_per_fixture": 5,
+    "signed_model_inputs_per_fixture": 4,
+    "observed_context_min": 9,
+    "observed_context_max": 13,
+    "repeat_call_hashes_stable": true,
+    "missing_is_not_zero": true,
+    "player_implications_authorize_publication": false
+  },
+  "publication_authorized": false,
+  "remaining_gate": "P6_API_UI_PARITY_P7_PLAYER_FPL_LINEAGE",
+  "parity_status": "P5_API_CONTRACT_GREEN_UI_PENDING"
+}

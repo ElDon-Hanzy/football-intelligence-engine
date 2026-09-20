@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-20 (Dubai) — C0284 P4 immutable freeze gate verified_
+_Last updated: 2026-09-21 (Dubai) — C0284 P5 decision-evidence gate verified_
 
 ## 1. Mission and immutable rules
 Build one chronology-safe football intelligence engine for FPL decision intelligence and football forecasting/research. FPL objective: maximize probability of Overall Rank #1, or expected final rank if #1 becomes unrealistic.
@@ -68,7 +68,7 @@ C0282 is **Completed / Verified**. V3 is the current consumer product surface; V
 - C0281: **Completed / Verified**.
 - C0282: **Completed / Verified**.
 - C0283: deployed reconciliation components exist, but the current-season-first forward generator is not the active production writer; activation and promotion are governed by C0284.
-- C0284: **In Progress / P0-P3 Verified and Live / P4 next / Production blocker**. The cutoff-safe current-season state and canonical prior decay are active. `forward_fixture_v0.3.0_c0284_current_season` is the single active lineage for GW6-GW8; C0166 writer job 20 is paused with snapshots retained for rollback. `fpl-api` v21, `betting-api` v13 and `human-insights-api` v3 are aligned to the canonical contract. Pages run #992 passed every build, parity, live-workspace, V2/V3 browser, accessibility, artifact-isolation, deployment and post-deploy gate. Independent live-browser verification confirmed the deployed matchup modal exposes the C0284 contract, complete Low/Normal/High distribution, near-tie disclosure, separate representative/raw-modal scores and decision hash without page errors. P4-P7 remain publication blockers; no next-GW public forecast is authorized.
+- C0284: **In Progress / P0-P5 Verified / P6 next / Production blocker**. The cutoff-safe current-season state and canonical prior decay are active. `forward_fixture_v0.3.0_c0284_current_season` is the single active lineage for GW6-GW8; C0166 writer job 20 is paused with snapshots retained for rollback. The GW6 immutable freeze contains 10 fixtures and remains fail-closed with zero authorized rows until P7 supplies matching fixture/player/FPL lineage. `fixture-facts-api` v11 now serves the P5 `c0284_decision_evidence_v01` contract for all 10 GW6 fixtures: five decision targets, genuine signed model inputs, zero-effect observed context, targeted risks, reliability, conflict synthesis and non-authorizing player implications. xG rates are sourced from promoted cutoff states and explicit integrity coverage; missing is never zero. P6-P7 remain publication blockers; no next-GW public forecast is authorized.
 
 ## 11. Canonical references
 `PROJECT_DESCRIPTION.md`, `DECISIONS_AND_HISTORY.md`, `SYSTEM_ARCHITECTURE.md`, `MODEL_REGISTRY.md`, `WEEKLY_DATA_PIPELINE.md`, `MODEL_CONSUMPTION_AUDIT.md`, `skills/fie/SKILL.md`, C0277 closeout, C0278 reconciliation, C0279 canonical plan, C0280 closeouts, C0281 closeout and C0282 plan/closeout evidence.

@@ -18,6 +18,8 @@ export async function fetchGameweekCatalog(signal?: AbortSignal): Promise<Gamewe
         apikey: PUBLIC_SUPABASE_ANON_JWT,
       },
       ttlMs: 60_000,
+      timeoutMs: 8_000,
+      staleIfErrorMs: 60 * 60_000,
       signal,
     });
     if (!raw || typeof raw !== 'object') throw new Error('Gameweek catalog contract mismatch');

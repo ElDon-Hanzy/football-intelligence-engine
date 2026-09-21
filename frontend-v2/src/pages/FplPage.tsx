@@ -20,7 +20,10 @@ export function FplPage({ requestedGameweek }: { requestedGameweek: number }) {
 
   if (fpl.isPending || managerPlan.isPending) return <FplSkeleton />;
 
-  if (fpl.isError && managerPlan.isError) {
+  // The projection contract is the primary workspace payload. A manager-plan
+  // response cannot make the page usable when that contract failed, so surface
+  // the bounded fail-closed state instead of implying that no decision exists.
+  if (fpl.isError) {
     return <section className="state-panel" aria-live="polite"><span className="page-eyebrow">FPL workspace</span><h1>FPL decision data is unavailable.</h1><p>The workspace will not reconstruct a manager decision from projection rankings when the authoritative contracts fail.</p><Button onClick={() => { void fpl.refetch(); void managerPlan.refetch(); }}>Retry live data</Button></section>;
   }
 

@@ -186,8 +186,12 @@ test('current production APIs populate every v2 data surface', async ({ request 
   // Governance truth is carried by the typed diagnostics contract. Do not infer lifecycle
   // state from guessed status words: ok=false plus the counters is itself an explicit state.
   expectGovernanceContract(engine.governance);
-  if (!deadlinePassed) expect(engine.orchestration_readiness?.projection_ready).toBe(true);
-  else expect(typeof engine.orchestration_readiness?.projection_ready).toBe('boolean');
+  expect(typeof engine.orchestration_readiness?.projection_ready).toBe('boolean');
+  if (!deadlinePassed && engine.orchestration_readiness?.projection_ready === false) {
+    // C0284 intentionally remains fail-closed until P7 binds fixture, player and
+    // FPL lineage. A blocked readiness contract is valid only with explicit reasons.
+    expect(engine.orchestration_readiness?.blockers?.length ?? 0).toBeGreaterThan(0);
+  }
   expect(typeof engine.orchestration_readiness?.decision_ready).toBe('boolean');
   expect((engine.source_health?.zero_cost?.sources ?? []).length).toBeGreaterThan(0);
 });

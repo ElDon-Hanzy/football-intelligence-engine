@@ -11,6 +11,8 @@ export const publicGatewayHeaders = {
   apikey: PUBLIC_SUPABASE_ANON_JWT,
 } as const;
 
+const DEFAULT_REQUEST_TIMEOUT_MS = 20_000;
+
 export const endpoints = {
   fpl: `${API_ROOT}/fpl-api`,
   managerPlan: `${API_ROOT}/fpl-manager-plan-api`,
@@ -36,14 +38,24 @@ export async function fetchValidated<T>(
   signal?: AbortSignal,
   extraHeaders?: Record<string, string>,
 ): Promise<T> {
-  const response = await fetch(url, {
-    // C0253: do not force every browser navigation or refresh to bypass its HTTP cache.
-    // Server cache headers remain authoritative; React Query handles stale-while-revalidate
-    // semantics above this layer.
-    cache: 'default',
-    headers: { Accept: 'application/json', ...(extraHeaders ?? {}) },
-    ...(signal ? { signal } : {}),
-  });
+  const timeoutSignal = AbortSignal.timeout(DEFAULT_REQUEST_TIMEOUT_MS);
+  const requestSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      // C0253: do not force every browser navigation or refresh to bypass its HTTP cache.
+      // Server cache headers remain authoritative; React Query handles stale-while-revalidate
+      // semantics above this layer.
+      cache: 'default',
+      headers: { Accept: 'application/json', ...(extraHeaders ?? {}) },
+      signal: requestSignal,
+    });
+  } catch (error) {
+    if (timeoutSignal.aborted && !signal?.aborted) {
+      throw new Error(`Request timed out after ${DEFAULT_REQUEST_TIMEOUT_MS / 1_000}s: ${url}`);
+    }
+    throw error;
+  }
 
   if (!response.ok) throw new Error(`HTTP ${response.status} from ${url}`);
 

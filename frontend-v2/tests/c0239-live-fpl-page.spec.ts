@@ -8,8 +8,12 @@ function desktopOnly(projectName: string): void {
 test('C0239 GW4 FPL page respects live-publication versus historical lifecycle', async ({ page }, testInfo) => {
   desktopOnly(testInfo.project.name);
 
-  const response = await page.request.get(`${endpoints.fpl}?gw=4`, { timeout: 30_000 });
-  expect(response.ok()).toBe(true);
+  let response = await page.request.get(`${endpoints.fpl}?gw=4`, { timeout: 30_000 });
+  for (let attempt = 2; !response.ok() && attempt <= 3; attempt += 1) {
+    await page.waitForTimeout(1_500 * (attempt - 1));
+    response = await page.request.get(`${endpoints.fpl}?gw=4`, { timeout: 30_000 });
+  }
+  expect(response.ok(), `fpl-api GW4 should recover within three attempts; last status ${response.status()}`).toBe(true);
   const fpl = await response.json();
 
   await page.goto('/?view=fpl&gw=4');

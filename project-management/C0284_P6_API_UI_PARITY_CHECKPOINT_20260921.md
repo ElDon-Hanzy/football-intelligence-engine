@@ -25,6 +25,10 @@
 - Pages run #1009 passed every repository, build, unit, contract and serving-parity gate. Both its original attempt and the unchanged recovery attempt stopped before browser execution because the live workspace transport exceeded 30 seconds; no semantic assertion failed. Immediately before the recovery attempt, the exact smoke passed three consecutive times locally (full page contract in 7–9 seconds), confirming an intermittent gateway path rather than a contract defect.
 - The protected smoke now retries only transport, HTTP 429 and HTTP 5xx failures up to three bounded attempts and reports the exhausted endpoint. Non-transient HTTP responses and every lineage, evidence, authorization and historical-integrity assertion remain unchanged. An exhausted retry window still blocks deployment.
 
+
+- Pages run #1015 passed build, parity and workspace smoke; V2 recorded 111 passes and two failures: transient betting API failure, and a FPL population assertion that omitted the explicit pre-P7 publication-block state. The assertion was corrected without relaxing populated XI/bench requirements when a plan exists (commit `bc26283`).
+- Pages run #1016 stopped before browser execution: `gameweek-status-api` timed out on all three protected smoke attempts. An independent deployed V3 check also reached its 20-second bounded timeout for `fpl-api?gw=6` and displayed “Match predictions unavailable.” This is an active API-path outage; no Pages deployment occurred and P6 remains open. Retry the unchanged protected run after a clean live API contract, then complete desktop/mobile 10-fixture audit and closeout.
+
 ## Remaining P6 gate
 
 The Pages workflow must run the authoritative Chromium matrix, deploy the bundle, and pass an independent desktop/mobile audit of all ten GW6 modals. P6 is not closed before that evidence is appended here.

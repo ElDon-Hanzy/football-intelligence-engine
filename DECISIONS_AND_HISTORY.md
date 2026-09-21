@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Decisions & History
 
-_Last reconciled: 2026-09-19 (Dubai) — tracker/architecture reconciliation D_
+_Last reconciled: 2026-09-21 (Dubai) — C0285 planning registration_
 
 This file preserves durable decisions governing the current engine. Runtime evidence outranks stale historical descriptions; history is not rewritten.
 
@@ -17,6 +17,17 @@ This file preserves durable decisions governing the current engine. Runtime evid
 - C0248 is the **sole canonical sequential selected-path authority**. ROLL is explicit; bank, selling value, FT accrual, chips, flexibility and future information belong to the sequential state problem.
 - C0240 is supporting adversarial evidence, not a second selector. C0230 is advisory/nonblocking.
 - C0276 is the bounded autonomous control plane: exact lineage, bounded retry, one governed final-control loop, fail closed on unresolved mandatory evidence. Publication is not external execution.
+
+## C0285 planning decision — 2026-09-21
+GW5 forensic review identified a bounded hypothesis requiring formal falsification: chronology-safe current/recent evidence can be present in the reason manifest yet be heavily shrunk before the final forecast, especially when it conflicts with structural priors. Inspected examples repeatedly exposed `outcome_evidence_heavily_shrunk=true`; this is a diagnostic clue, not causal proof. A separate hypothesis is that dominant-script / independent-lambda behavior underrepresents low-event and high-event match-state tails.
+
+The durable decision is **not** to increase recent-form weight globally. C0285 will first establish exact canonical consumed lineage and test whether heavy suppression is repeatedly harmful across chronological fixtures. If the hypothesis survives, candidate repairs are adaptive reliability-dependent evidence reconciliation and a contradiction/uncertainty gate. Process-based Team State, tactical weapon×vulnerability interactions, and scenario/scoring-environment mixtures are later increments and must prove unique value by ablation before promotion.
+
+Structural/current disagreement is not itself evidence that the current signal is correct. When multiple reliable signals conflict, the candidate behavior is to preserve the structural prior while representing greater uncertainty/tail mass unless evidence justifies a posterior move. Sparse/newly promoted-team evidence remains strongly shrunk.
+
+The program must optimize proper probabilistic accuracy/calibration rather than exact-score matching or winner hit rate. Required validation includes chronological log/Brier scoring, goal-distribution calibration, O/U, BTTS, CS and scoring-tail calibration, then downstream player xPts/haul/blank/captaincy consequences. If gains are inside model error or unstable under reasonable assumptions, disposition is `NO_MEANINGFUL_EDGE` and no production change.
+
+C0285 has zero production effect while planned/research. C0284 remains production control and rollback. C0265 remains untouched. No historical snapshots may be rewritten. Production promotion requires C0213 behavioral proof, bounded prospective evidence, downstream player/FPL recalibration and existing C0248/C0276/C0281/C0284 governance. Canonical plan: `project-management/C0285_ADAPTIVE_EVIDENCE_MATCH_STATE_REPAIR_PLAN_20260921.md`.
 
 ## Tracker/architecture reconciliation D — 2026-09-19
 The tracker must represent bounded decisions and genuine capability gaps, not indefinite passive data collection. A completed infrastructure foundation does not stay open merely because future observations continue to arrive. A rejected generic hypothesis does not remain Monitoring until it happens to become significant. Superseded backlogs are terminally closed while historical evidence remains preserved.
@@ -36,9 +47,7 @@ GW5 demonstrated that a nominal T-2 final window is insufficient when tail laten
 
 The governed phase model is `NORMAL → T4_BASELINE → T4_BASELINE_CONVERGED → T2_DELTA → CLOSED`. T-4 is the target for a coherent baseline. T-2 processes material deltas rather than starting the entire decision chain from scratch.
 
-Inside T-4, authoritative player-state changes are immediately material. Raw fixture-lineage refresh churn is debounced until repeated twice or persistent for five minutes. This is deliberately conservative stabilization and does not claim semantic selected-path/xPts materiality.
-
-Existing C0248/C0243 price timing remains authoritative. Price information cannot create a football transfer. It may only accelerate an already robust transfer if affordability is materially threatened; otherwise information optionality is preserved.
+Inside T-4, authoritative player-state changes are immediately material. Raw fixture-lineage refresh churn is debounced until repeated twice or persistent for five minutes. Existing C0248/C0243 price timing remains authoritative. Price information cannot create a football transfer. It may only accelerate an already robust transfer if affordability is materially threatened; otherwise information optionality is preserved.
 
 Deadline runtime reservation is empirical and tail-aware. Current policy uses `max(300 seconds, 2 × E2E P99 + 60 seconds)`. Timeout observations count as failures, not acceptable latency targets. When remaining time breaches the reservation, new heavy dispatch is prohibited. If a coherent checkpoint exists, it may be frozen for existing governance; if none exists, the system fails closed. A fallback cannot bypass chip, final-gate or publication governance and never implies external execution.
 

@@ -11,10 +11,16 @@ export function useFplWorkspaceData(gameweek: number) {
   const fpl = useQuery({
     queryKey: apiQueryKeys.fpl(gameweek),
     queryFn: ({ signal }) => fetchValidated(withGameweek(endpoints.fpl, gameweek), FplApiSchema, signal),
+    // One request is already bounded to 20 seconds. Inheriting the global two
+    // retries can hold this critical route in a loading skeleton for over a
+    // minute during a gateway incident. Fail visibly after the bounded attempt;
+    // the explicit Retry action starts a new request.
+    retry: false,
   });
   const managerPlan = useQuery({
     queryKey: apiQueryKeys.managerPlan(gameweek),
     queryFn: ({ signal }) => fetchValidated(withGameweek(endpoints.managerPlan, gameweek), ManagerPlanApiSchema, signal, publicGatewayHeaders),
+    retry: false,
   });
   return { fpl, managerPlan };
 }

@@ -58,6 +58,11 @@ Rules:
 - explanation facts must be material, chronology-safe, directionally correct and traceable;
 - research-only context stays separately labeled with zero numeric effect.
 
+## C0285 adaptive-evidence / match-state repair — Planned, zero production effect
+C0285 is a critical bounded forecasting-quality program registered after the GW5 forensic review. Canonical plan: `project-management/C0285_ADAPTIVE_EVIDENCE_MATCH_STATE_REPAIR_PLAN_20260921.md`.
+
+Do not implement it as a blanket recent-form uplift. First falsify whether heavy shrinkage of chronology-safe current evidence is repeatedly harmful. Structural/current disagreement should be eligible to widen uncertainty rather than being silently normalized away. Candidate layers are adaptive evidence reconciliation, contradiction gate, process-based Team State, reliable weapon×vulnerability matchup interactions, and scoring-environment/scenario mixtures. Validate each increment chronologically and by ablation; promote the simplest robust improvement only. Exact-score matching and winner hit rate are not optimization targets; proper probabilistic scoring and calibration are primary. No C0285 numeric production effect until C0213 proof, bounded prospective evidence, downstream player/FPL recalibration and governed promotion. C0284 remains production control during the program. C0265 remains untouched.
+
 ## Transfer-window disposition
 C0203/C0205/C0206 are Completed/Verified. C0207-C0211 are closed/superseded. Do not keep transfer-window projects alive merely because current-season minutes/roles/set pieces continue to update. New concrete transfer/newcomer defects require a new bounded issue.
 

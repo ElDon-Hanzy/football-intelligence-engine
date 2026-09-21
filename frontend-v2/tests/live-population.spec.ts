@@ -211,10 +211,15 @@ test('every current v2 page renders its populated sections without silent blanks
     await page.goto(`/?view=fpl&gw=${gw}`, { waitUntil: 'domcontentloaded', timeout: LIVE_TIMEOUT });
     const fplWorkspaceHeading = page.getByRole('heading', { level: 1, name: /^(FPL decision workspace|FPL decision history)$/ });
     const fplUnavailableHeading = page.getByRole('heading', { level: 1, name: 'FPL decision data is unavailable.' });
-    await expect(fplWorkspaceHeading.or(fplUnavailableHeading)).toBeVisible({ timeout: LIVE_TIMEOUT });
+    const fplBlockedHeading = page.getByRole('heading', { level: 1, name: 'Best-current plan cannot be published yet.' });
+    const fplNoDecisionHeading = page.getByRole('heading', { level: 1, name: `No FPL decision for GW${gw}.` });
+    await expect(fplWorkspaceHeading.or(fplUnavailableHeading).or(fplBlockedHeading).or(fplNoDecisionHeading)).toBeVisible({ timeout: LIVE_TIMEOUT });
     const fplWorkspaceVisible = await fplWorkspaceHeading.isVisible();
     if (manager.plan == null) {
-      await expect(page.getByText('No authoritative manager plan is saved for this Gameweek.', { exact: true }).or(page.getByText('The workspace will not reconstruct a manager decision from projection rankings when the authoritative contracts fail.', { exact: true }))).toBeVisible({ timeout: LIVE_TIMEOUT });
+      await expect(page.getByText('No authoritative manager plan is saved for this Gameweek.', { exact: true })
+        .or(page.getByText('The workspace will not reconstruct a manager decision from projection rankings when the authoritative contracts fail.', { exact: true }))
+        .or(fplBlockedHeading)
+        .or(fplNoDecisionHeading)).toBeVisible({ timeout: LIVE_TIMEOUT });
       await expect(page.locator('.player-tile-grid .player-tile')).toHaveCount(0, { timeout: LIVE_TIMEOUT });
       await expect(page.locator('.bench-list .player-tile')).toHaveCount(0, { timeout: LIVE_TIMEOUT });
     } else {

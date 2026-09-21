@@ -1,6 +1,6 @@
 # Football Intelligence Engine — Project State
 
-_Last updated: 2026-09-21 (Dubai) — C0284 P5 decision-evidence gate verified_
+_Last updated: 2026-09-21 (Dubai) — C0285 forecasting-repair program planned_
 
 ## 1. Mission and immutable rules
 Build one chronology-safe football intelligence engine for FPL decision intelligence and football forecasting/research. FPL objective: maximize probability of Overall Rank #1, or expected final rank if #1 becomes unrealistic.
@@ -43,6 +43,7 @@ C0277 separates exact numerical decision horizon from longer seasonal structural
 - **C0230**: advisory team-regime diagnostic through GW6 only; after GW6 keep as low-cost advisory or retire. It cannot numerically alter projections or block final authorization.
 - **C0279**: promotion blocked / zero production effect. Frozen GW5 cohort awaits settled prospective evidence and full player recalibration before P9.
 - **C0280**: P9 explanation contract promoted; P2-P8 predictive effects remain held pending settled prospective evidence.
+- **C0285**: **Planned / zero production effect**. Adaptive-evidence + match-state repair program created from GW5 forensic evidence. Mandatory first step is exact-lineage baseline and falsification of the shrinkage hypothesis; no blanket recent-form uplift. Candidate layers are adaptive reconciliation, contradiction/uncertainty gate, process-based Team State, reliable tactical matchup interactions and scenario/scoring-environment mixtures. Each layer requires chronological validation and ablation; simplest robust improvement wins. Canonical plan: `project-management/C0285_ADAPTIVE_EVIDENCE_MATCH_STATE_REPAIR_PLAN_20260921.md`.
 
 ## 7. C0265 / C0270 integrity watch
 C0265 remains **Open / Planned / Critical**, deliberately unchanged. Do not repair without separate authorization. C0270 remains prospective shadow monitoring; numerical coincidences are not causal validation.
@@ -69,8 +70,9 @@ C0282 is **Completed / Verified**. V3 is the current consumer product surface; V
 - C0282: **Completed / Verified**.
 - C0283: deployed reconciliation components exist, but the current-season-first forward generator is not the active production writer; activation and promotion are governed by C0284.
 - C0284: **In Progress / P0-P5 Verified / P6 deployment validation active / Production blocker**. The cutoff-safe current-season state and canonical prior decay are active. `forward_fixture_v0.3.0_c0284_current_season` is the single active lineage for GW6-GW8; C0166 writer job 20 is paused with snapshots retained for rollback. The GW6 immutable freeze contains 10 fixtures and remains fail-closed with zero authorized rows until P7 supplies matching fixture/player/FPL lineage. `fixture-facts-api` v11 serves the P5 `c0284_decision_evidence_v01` contract for all 10 GW6 fixtures. V3 source now consumes that full contract and enforces snapshot/decision-hash alignment; database-to-API parity passed 10/10. P6 closes only after protected Pages deployment and all-fixture desktop/mobile browser QA. P7 remains the publication blocker; no next-GW public forecast is authorized.
+- C0285: **Planned / zero production effect / implementation deferred to Work**. Must reconcile concurrent C0284 state before any implementation and preserve C0284 as control/rollback until governed promotion.
 
 ## 11. Canonical references
-`PROJECT_DESCRIPTION.md`, `DECISIONS_AND_HISTORY.md`, `SYSTEM_ARCHITECTURE.md`, `MODEL_REGISTRY.md`, `WEEKLY_DATA_PIPELINE.md`, `MODEL_CONSUMPTION_AUDIT.md`, `skills/fie/SKILL.md`, C0277 closeout, C0278 reconciliation, C0279 canonical plan, C0280 closeouts, C0281 closeout and C0282 plan/closeout evidence.
+`PROJECT_DESCRIPTION.md`, `DECISIONS_AND_HISTORY.md`, `SYSTEM_ARCHITECTURE.md`, `MODEL_REGISTRY.md`, `WEEKLY_DATA_PIPELINE.md`, `MODEL_CONSUMPTION_AUDIT.md`, `skills/fie/SKILL.md`, C0277 closeout, C0278 reconciliation, C0279 canonical plan, C0280 closeouts, C0281 closeout, C0282 plan/closeout evidence, and C0285 canonical plan.
 
 When documentation disagrees with live runtime, verify live evidence first and reconcile documentation rather than weakening runtime gates.

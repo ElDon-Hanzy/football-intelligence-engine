@@ -23,15 +23,40 @@ if (authPayload?.iss !== 'supabase' || authPayload?.ref !== projectRef || authPa
 }
 
 const headers = { Accept: 'application/json', Authorization: `Bearer ${anonJwt}`, apikey: anonJwt };
+const TRANSIENT_ATTEMPTS = 3;
+const TRANSIENT_RETRY_DELAY_MS = 3000;
+const wait = (milliseconds) => new Promise((resolvePromise) => setTimeout(resolvePromise, milliseconds));
 const timedFetch = async (url) => {
   const started = performance.now();
-  // Cold Edge Function starts can exceed 15 seconds while still satisfying the
-  // page's bounded two-request concurrency policy. Keep semantic validation
-  // strict, but allow the production smoke enough time to receive headers.
-  const response = await fetch(url, { headers, cache: 'no-store', signal: AbortSignal.timeout(30000) });
-  const headersMs = performance.now() - started;
-  const payload = await response.json();
-  return { response, payload, headersMs, totalMs: performance.now() - started };
+  let lastError;
+
+  for (let attempt = 1; attempt <= TRANSIENT_ATTEMPTS; attempt += 1) {
+    try {
+      // Cold Edge Function starts can exceed 15 seconds while still satisfying
+      // the page's bounded two-request concurrency policy. The platform gateway
+      // can also fail one request transiently. Retry transport/429/5xx failures
+      // only; semantic assertions below remain strict and unchanged.
+      const attemptStarted = performance.now();
+      const response = await fetch(url, { headers, cache: 'no-store', signal: AbortSignal.timeout(30000) });
+      const headersMs = performance.now() - attemptStarted;
+      const payload = await response.json();
+      const transientStatus = response.status === 429 || response.status >= 500;
+      if (transientStatus && attempt < TRANSIENT_ATTEMPTS) {
+        await wait(TRANSIENT_RETRY_DELAY_MS);
+        continue;
+      }
+      return { response, payload, headersMs, totalMs: performance.now() - started, attempts: attempt };
+    } catch (error) {
+      lastError = error;
+      if (attempt === TRANSIENT_ATTEMPTS) {
+        const endpoint = new URL(url).pathname;
+        throw new Error(`Live transport failed for ${endpoint} after ${TRANSIENT_ATTEMPTS} attempts`, { cause: error });
+      }
+      await wait(TRANSIENT_RETRY_DELAY_MS);
+    }
+  }
+
+  throw lastError;
 };
 
 // C0269 reliability contract: never cold-start catalog, workspace and actual-live all at t0.
@@ -162,6 +187,11 @@ console.log(JSON.stringify({
     initial_parallel_total: Math.round(initialParallelMs),
     actual_total: Math.round(actualCall.totalMs),
     current_page_total: Math.round(currentPageTotalMs),
+  },
+  transport_attempts: {
+    catalog: catalogCall.attempts,
+    workspace: workspaceCall.attempts,
+    actual: actualCall.attempts,
   },
   concurrency_policy: 'MAX_TWO_COLD_EDGE_REQUESTS',
   historical_forecasts_rewritten: payload.semantics.historical_forecasts_rewritten,

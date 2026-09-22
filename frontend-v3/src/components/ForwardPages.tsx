@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchActualLive, type ActualLiveApi } from '../api/actualLive';
 import { fetchForwardIntelligence, type ForwardIntelligencePayload, type ForwardPlayerProjection } from '../api/forwardIntelligence';
-import { fetchHistoricalFpl, type HistoricalFixture, type HistoricalFplPayload, type HistoricalPrediction } from '../api/historicalFpl';
+import { fetchHistoricalFpl, type HistoricalFixture, type HistoricalFplPayload, type HistoricalPlayer, type HistoricalPrediction } from '../api/historicalFpl';
 import { BenchStrip, FplPitch, SquadList, type PitchPlayer } from './FplPitch';
 import type { ProductView } from './ProductPages';
 
 type Navigate = (view: ProductView) => void;
 type ViewMode = 'pitch' | 'list';
+type ForwardSquadMode = 'projection' | 'actual';
 
 export function ForwardHomePage({ gameweek, onNavigate }: { gameweek: number; onNavigate: Navigate }) {
   const state = useForwardIntelligence(gameweek);
@@ -46,6 +47,7 @@ export function ForwardFplPage({ gameweek, activeGameweek }: { gameweek: number;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('pitch');
+  const [squadMode, setSquadMode] = useState<ForwardSquadMode>('projection');
 
   useEffect(() => {
     const controller = new AbortController(); setLoading(true); setError(null); setData(null); setBaseline(null);
@@ -55,16 +57,17 @@ export function ForwardFplPage({ gameweek, activeGameweek }: { gameweek: number;
     return () => controller.abort();
   }, [activeGameweek, gameweek]);
 
-  const resolved = useMemo(() => buildForwardSquad(data, baseline), [data, baseline]);
+  const baselineSquad = useMemo(() => buildForwardSquad(data, baseline), [data, baseline]);
+  const projectedSquad = useMemo(() => buildProjectedDecisionSquad(data), [data]);
   if (loading) return <PageSkeleton label={`Loading GW${gameweek} FPL projection`} />;
   if (error || !data || !baseline) return <ErrorState title={`GW${gameweek} FPL projection unavailable`} message={error} />;
   if (baseline.actual.verification_status !== 'VERIFIED') return <section className="v3-surface v3-workspace-error" aria-live="polite"><span className="v3-kicker">GW{gameweek} initial FPL</span><h1>Current squad baseline unavailable.</h1><p>Actual submitted team not verified.</p><p>The engine recommendation is intentionally not substituted as the future baseline.</p></section>;
 
   return <div className="v3-fpl-workspace" data-forward-gameweek={gameweek}>
-    <section className="v3-fpl-hero"><div><span className="v3-kicker">Gameweek {gameweek} · initial projection</span><h1 className="v3-display">Your next Gameweek</h1><p>Your verified GW{activeGameweek} submitted squad projected into GW{gameweek}. This is a baseline, not the final GW{gameweek} recommendation.</p></div><div className="v3-fpl-hero-status"><span className="v3-status" data-tone="intelligence">Initial xPts ready</span><span className="v3-status" data-tone="neutral">Final plan pending</span></div></section>
-    <section className="v3-fpl-scorecard v3-surface" aria-label="Initial projected xPTS"><div className="v3-fpl-scoremetric" data-metric="xpts"><span>Baseline XI xPTS</span><strong>{resolved.xiPoints == null ? '—' : resolved.xiPoints.toFixed(1)}</strong><small>{resolved.xiCoverage}/11 frozen projections captured</small></div><div className="v3-fpl-scoremetric"><span>Squad coverage</span><strong>{resolved.squadCoverage}/15</strong><small>Current verified squad projected</small></div><div className="v3-fpl-scoremetric"><span>Final decision</span><strong>Pending</strong><small>No transfer / captain call published yet</small></div><p>GW{activeGameweek} locked XI/bench is used only as the baseline arrangement. Captaincy, transfers and start/bench choices are not carried forward as recommendations.</p></section>
-    <div className="v3-fpl-controls"><div><span className="v3-kicker">Projection baseline</span><strong>Current verified squad</strong></div><div className="v3-view-toggle" aria-label="Squad view"><button className={viewMode === 'pitch' ? 'is-active' : ''} type="button" onClick={() => setViewMode('pitch')}>Pitch</button><button className={viewMode === 'list' ? 'is-active' : ''} type="button" onClick={() => setViewMode('list')}>List</button></div></div>
-    <section className="v3-surface v3-squad-stage" aria-labelledby="forward-fpl-title"><div className="v3-squad-stage-head"><div><span className="v3-kicker">GW{gameweek} frozen xPts</span><h2 id="forward-fpl-title">Current squad baseline</h2></div></div>{resolved.starters.length === 0 ? <div className="v3-empty-state"><strong>No baseline projections captured.</strong><span>Missing players are not reconstructed.</span></div> : viewMode === 'pitch' ? <><FplPitch players={resolved.starters} metricMode="projection" /><BenchStrip players={resolved.bench} metricMode="projection" /></> : <SquadList starters={resolved.starters} bench={resolved.bench} metricMode="projection" />}</section>
+    <section className="v3-fpl-hero"><div><span className="v3-kicker">Gameweek {gameweek} · initial projection</span><h1 className="v3-display">Your next Gameweek</h1><p>GW{gameweek} model projections and your separately preserved verified GW{activeGameweek} submitted team. Neither is presented as a final transfer or captain decision.</p></div><div className="v3-fpl-hero-status"><span className="v3-status" data-tone="intelligence">Initial xPts ready</span><span className="v3-status" data-tone="neutral">Final plan pending</span></div></section>
+    <section className="v3-fpl-scorecard v3-surface" aria-label="Initial projected xPTS"><div className="v3-fpl-scoremetric" data-metric="xpts"><span>My team XI xPTS</span><strong>{baselineSquad.xiPoints == null ? '—' : baselineSquad.xiPoints.toFixed(1)}</strong><small>{baselineSquad.xiCoverage}/11 current-squad projections captured</small></div><div className="v3-fpl-scoremetric"><span>GW{gameweek} model XI</span><strong>{projectedSquad.xiPoints == null ? '—' : projectedSquad.xiPoints.toFixed(1)}</strong><small>{projectedSquad.xiCoverage}/11 projected players</small></div><div className="v3-fpl-scoremetric"><span>Final decision</span><strong>Pending</strong><small>No transfer / captain call published yet</small></div></section>
+    <div className="v3-fpl-controls"><div className="v3-view-toggle" aria-label="FPL squad source"><button className={squadMode === 'projection' ? 'is-active' : ''} type="button" onClick={() => setSquadMode('projection')}>GW{gameweek} model XI</button><button className={squadMode === 'actual' ? 'is-active' : ''} type="button" onClick={() => setSquadMode('actual')}>My verified GW{activeGameweek} team</button></div><div className="v3-view-toggle" aria-label="Squad view"><button className={viewMode === 'pitch' ? 'is-active' : ''} type="button" onClick={() => setViewMode('pitch')}>Pitch</button><button className={viewMode === 'list' ? 'is-active' : ''} type="button" onClick={() => setViewMode('list')}>List</button></div></div>
+    {(() => { const squad = squadMode === 'projection' ? projectedSquad : baselineSquad; const title = squadMode === 'projection' ? `GW${gameweek} model XI` : `My verified GW${activeGameweek} submitted team`; return <section className="v3-surface v3-squad-stage" aria-labelledby="forward-fpl-title"><div className="v3-squad-stage-head"><div><span className="v3-kicker">{squadMode === 'projection' ? `GW${gameweek} model output · not final` : `GW${activeGameweek} locked actual team · projected into GW${gameweek}`}</span><h2 id="forward-fpl-title">{title}</h2></div></div>{squad.starters.length === 0 ? <div className="v3-empty-state"><strong>No valid squad projection is available.</strong><span>Missing players are not reconstructed.</span></div> : viewMode === 'pitch' ? <><FplPitch players={squad.starters} metricMode="projection" /><BenchStrip players={squad.bench} metricMode="projection" /></> : <SquadList starters={squad.starters} bench={squad.bench} metricMode="projection" />}</section>; })()}
     <details className="v3-data-details v3-surface"><summary>Data details</summary><div className="v3-data-details-grid"><div><span>Projection run</span><strong>#{data.prediction_run_id ?? '—'}</strong></div><div><span>Projection time</span><strong>{data.generated_at ? formatTimestamp(data.generated_at) : '—'}</strong></div><div><span>Baseline source</span><strong>Verified GW{activeGameweek} submitted team</strong></div><div><span>Plan status</span><strong>Not published</strong></div></div><p>Forward projection evidence is shown as soon as it exists. A manager plan is not invented to fill the gap.</p></details>
   </div>;
 }
@@ -89,6 +92,21 @@ function buildForwardSquad(data: HistoricalFplPayload | null, baseline: ActualLi
   const starters = baseline.actual.starting_xi.map(toPitch).filter((row): row is PitchPlayer => row != null); const bench = baseline.actual.bench_order.map(toPitch).filter((row): row is PitchPlayer => row != null);
   const capturedXi = starters.map((row) => row.expectedPoints).filter((value): value is number => value != null); const xiCoverage = capturedXi.length; const xiPoints = xiCoverage === 11 ? capturedXi.reduce((sum, value) => sum + value, 0) : null;
   return { starters, bench, xiPoints, xiCoverage, squadCoverage: [...starters, ...bench].filter((row) => row.expectedPoints != null).length };
+}
+
+function buildProjectedDecisionSquad(data: HistoricalFplPayload | null) {
+  if (!data?.decision) return { starters: [] as PitchPlayer[], bench: [] as PitchPlayer[], xiPoints: null as number | null, xiCoverage: 0 };
+  const toPitch = (player: HistoricalPlayer, captainId: number | null, viceId: number | null): PitchPlayer => {
+    const fixture = findTeamFixture(data.fixture_results ?? [], player.team ?? null);
+    const home = fixture?.home_team === player.team;
+    const opponent = fixture ? (home ? fixture.away_short ?? fixture.away_team : fixture.home_short ?? fixture.home_team) : null;
+    return { id: player.id, name: player.name, position: player.position ?? '—', teamShort: home ? fixture?.home_short ?? player.team ?? '—' : fixture?.away_short ?? player.team ?? '—', fixtureLabel: opponent ? `${opponent} (${home ? 'H' : 'A'})` : 'Fixture —', fixturePhase: fixture ? 'FUTURE' : null, expectedPoints: finite(player.xPts), expectedMinutes: null, p10: probability(player.p10), actualPoints: null, actualStatus: null, captain: player.id === captainId, vice: player.id === viceId };
+  };
+  const captainId = data.decision.captain_player_id ?? null; const viceId = data.decision.vice_player_id ?? null;
+  const starters = (data.decision.starting_xi ?? []).map((player) => toPitch(player, captainId, viceId));
+  const bench = (data.decision.bench ?? []).map((player) => toPitch(player, captainId, viceId));
+  const values = starters.map((player) => player.expectedPoints).filter((value): value is number => value != null);
+  return { starters, bench, xiPoints: values.length === 11 ? values.reduce((sum, value) => sum + value, 0) : null, xiCoverage: values.length };
 }
 
 function findTeamFixture(fixtures: HistoricalFixture[], team: string | null): HistoricalFixture | null { if (!team) return null; return fixtures.find((fixture) => fixture.home_team === team || fixture.away_team === team) ?? null; }

@@ -1,4 +1,5 @@
 import { fetchJsonCached } from './requestCache';
+import { assertRequestedGameweek } from './gameweekIntegrity';
 
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
 const PUBLIC_SUPABASE_ANON_JWT =
@@ -80,6 +81,7 @@ export async function fetchForwardIntelligence(gameweek = 0, signal?: AbortSigna
   const payload = object(raw);
   const gw = number(payload?.gameweek); const runId = number(payload?.prediction_run_id); const generatedAt = string(payload?.generated_at);
   if (payload?.ok !== true || gw == null || runId == null || !generatedAt) throw new Error('Forward intelligence contract mismatch');
+  assertRequestedGameweek(gameweek, gw, 'Forward intelligence');
   return {
     ok: true,
     gameweek: gw,

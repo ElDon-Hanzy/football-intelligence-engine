@@ -1,4 +1,5 @@
 import { fetchJsonCached } from './requestCache';
+import { assertRequestedGameweek } from './gameweekIntegrity';
 
 export const V3_WORKSPACE_ENDPOINT =
   'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1/fpl-v3-workspace-api';
@@ -239,6 +240,7 @@ export async function fetchFplWorkspace(gameweek = 0, signal?: AbortSignal): Pro
   if (!isWorkspacePayload(payload)) {
     throw new Error('V3 workspace contract mismatch');
   }
+  assertRequestedGameweek(gameweek, payload.gameweek, 'FPL workspace');
   if (payload.semantics.historical_forecasts_rewritten) {
     throw new Error('Integrity gate: historical forecasts report rewritten');
   }

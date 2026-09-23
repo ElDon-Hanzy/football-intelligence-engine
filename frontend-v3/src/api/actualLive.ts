@@ -1,4 +1,5 @@
 import { fetchJsonCached } from './requestCache';
+import { assertRequestedGameweek } from './gameweekIntegrity';
 
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
 const PUBLIC_SUPABASE_ANON_JWT = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtub29pd2V6enN4Y3dodGp0ZGFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzY0MjQsImV4cCI6MjEwMjkxMjQyNH0.V22pHe1g39CnFGTYUX-39Teg_EEmr3kns_Fwbdi4kiQ';
@@ -184,9 +185,7 @@ export async function fetchActualLive(gameweek = 0, signal?: AbortSignal): Promi
     signal,
   });
   if (!isActualLiveApi(payload)) throw new Error('Actual-live contract mismatch');
-  if (payload.gameweek !== gameweek) {
-    throw new Error(`Actual-live Gameweek mismatch: requested GW${gameweek}, received GW${payload.gameweek}`);
-  }
+  assertRequestedGameweek(gameweek, payload.gameweek, 'Actual-live');
   return comparisonHydrated(payload);
 }
 

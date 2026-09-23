@@ -24,11 +24,12 @@ type ScenarioScoreComparison = {
   xptsGap: number | null;
 };
 
-export function FplLiveWorkspace({ gameweek = 0 }: { gameweek?: number }) {
-  return gameweek > 0 ? <HistoricalFplReview gameweek={gameweek} /> : <CurrentFplLiveWorkspace />;
+export function FplLiveWorkspace({ gameweek = 0, currentGameweek = null }: { gameweek?: number; currentGameweek?: number | null }) {
+  const isCurrent = gameweek === 0 || (currentGameweek != null && gameweek === currentGameweek);
+  return isCurrent ? <CurrentFplLiveWorkspace gameweek={currentGameweek ?? undefined} /> : <HistoricalFplReview gameweek={gameweek} />;
 }
 
-function CurrentFplLiveWorkspace() {
+function CurrentFplLiveWorkspace({ gameweek }: { gameweek?: number | undefined }) {
   const [workspace, setWorkspace] = useState<FplWorkspaceApi | null>(null);
   const [live, setLive] = useState<ActualLiveApi | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,8 +44,8 @@ function CurrentFplLiveWorkspace() {
     setError(null);
     setSelectedPlayerId(null);
     void Promise.all([
-      fetchFplWorkspace(0, controller.signal),
-      fetchActualLive(0, controller.signal),
+      fetchFplWorkspace(gameweek, controller.signal),
+      fetchActualLive(gameweek, controller.signal),
     ])
       .then(([current, actual]) => {
         if (actual.gameweek !== current.gameweek) {
@@ -60,7 +61,7 @@ function CurrentFplLiveWorkspace() {
         setLoading(false);
       });
     return () => controller.abort();
-  }, []);
+  }, [gameweek]);
 
   if (loading) return <WorkspaceSkeleton />;
   if (error || !workspace || !live) {

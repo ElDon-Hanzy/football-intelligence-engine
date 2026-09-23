@@ -71,11 +71,12 @@ export function App() {
 
   const isForwardGameweek = selectedGameweek > 0 && currentGameweek != null && selectedGameweek > currentGameweek;
   let content;
-  if (active === 'home') content = isForwardGameweek ? <ForwardHomePage onNavigate={navigate} gameweek={selectedGameweek} /> : <HomePage onNavigate={navigate} gameweek={selectedGameweek} />;
-  else if (active === 'fpl') content = isForwardGameweek && currentGameweek != null ? <ForwardFplPage gameweek={selectedGameweek} activeGameweek={currentGameweek} /> : <FplLiveWorkspace gameweek={selectedGameweek} />;
+  if (!catalogReady || visibleGameweek === 0) content = <PageLoading />;
+  else if (active === 'home') content = isForwardGameweek ? <ForwardHomePage onNavigate={navigate} gameweek={selectedGameweek} /> : <HomePage onNavigate={navigate} gameweek={selectedGameweek} currentGameweek={currentGameweek} />;
+  else if (active === 'fpl') content = isForwardGameweek && currentGameweek != null ? <ForwardFplPage gameweek={selectedGameweek} activeGameweek={currentGameweek} /> : <FplLiveWorkspace gameweek={selectedGameweek} currentGameweek={currentGameweek} />;
   else if (active === 'matches') content = <MatchesIntelligencePage gameweek={visibleGameweek} />;
   else if (active === 'markets') content = <MarketsPage gameweek={visibleGameweek} />;
-  else if (active === 'insights') content = isForwardGameweek ? <ForwardInsightsPage gameweek={selectedGameweek} /> : <InsightsPage gameweek={selectedGameweek} />;
+  else if (active === 'insights') content = isForwardGameweek ? <ForwardInsightsPage gameweek={selectedGameweek} /> : <InsightsPage gameweek={selectedGameweek} currentGameweek={currentGameweek} />;
   else content = visibleGameweek > 0 ? <HistoryPage gameweek={visibleGameweek} /> : <PageLoading />;
 
   return <div className="v3-app-shell">

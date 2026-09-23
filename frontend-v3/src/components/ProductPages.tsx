@@ -54,12 +54,13 @@ function useLive(gameweek: number | null) {
   return data;
 }
 
-export function HomePage({ onNavigate, gameweek = 0 }: { onNavigate: Navigate; gameweek?: number }) {
-  return gameweek > 0 ? <HistoricalHomePage onNavigate={onNavigate} gameweek={gameweek} /> : <CurrentHomePage onNavigate={onNavigate} />;
+export function HomePage({ onNavigate, gameweek = 0, currentGameweek = null }: { onNavigate: Navigate; gameweek?: number; currentGameweek?: number | null }) {
+  const isCurrent = gameweek === 0 || (currentGameweek != null && gameweek === currentGameweek);
+  return isCurrent ? <CurrentHomePage onNavigate={onNavigate} gameweek={currentGameweek ?? undefined} /> : <HistoricalHomePage onNavigate={onNavigate} gameweek={gameweek} />;
 }
 
-function CurrentHomePage({ onNavigate }: { onNavigate: Navigate }) {
-  const state = useWorkspace(0);
+function CurrentHomePage({ onNavigate, gameweek }: { onNavigate: Navigate; gameweek?: number | undefined }) {
+  const state = useWorkspace(gameweek);
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const live = useLive(state.data?.gameweek ?? null);
   if (state.loading) return <PageSkeleton label="Loading command center" />;
@@ -123,12 +124,13 @@ function HistoricalHomePage({ onNavigate, gameweek }: { onNavigate: Navigate; ga
   </div>;
 }
 
-export function InsightsPage({ gameweek = 0 }: { gameweek?: number }) {
-  return gameweek > 0 ? <HistoricalInsightsPage gameweek={gameweek} /> : <CurrentInsightsPage />;
+export function InsightsPage({ gameweek = 0, currentGameweek = null }: { gameweek?: number; currentGameweek?: number | null }) {
+  const isCurrent = gameweek === 0 || (currentGameweek != null && gameweek === currentGameweek);
+  return isCurrent ? <CurrentInsightsPage gameweek={currentGameweek ?? undefined} /> : <HistoricalInsightsPage gameweek={gameweek} />;
 }
 
-function CurrentInsightsPage() {
-  const state = useWorkspace(0);
+function CurrentInsightsPage({ gameweek }: { gameweek?: number | undefined }) {
+  const state = useWorkspace(gameweek);
   const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
   const live = useLive(state.data?.gameweek ?? null);
   if (state.loading) return <PageSkeleton label="Loading player intelligence" />;

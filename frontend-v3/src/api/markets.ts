@@ -1,4 +1,5 @@
 import { fetchJsonCached } from './requestCache';
+import { assertRequestedGameweek } from './gameweekIntegrity';
 
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
 const PUBLIC_SUPABASE_ANON_JWT =
@@ -70,6 +71,7 @@ export async function fetchCoreMarkets(gameweek: number, signal?: AbortSignal): 
   const runId = number(payload?.prediction_run_id);
   const generatedAt = string(payload?.generated_at);
   if (payload?.ok !== true || gw == null || runId == null || !generatedAt) throw new Error('Core markets contract mismatch');
+  assertRequestedGameweek(gameweek, gw, 'Core markets');
   const calls = Array.isArray(payload.betting_recommendations)
     ? payload.betting_recommendations.map(parseCall).filter((item): item is CoreMarketCall => item != null).slice(0, 4)
     : [];

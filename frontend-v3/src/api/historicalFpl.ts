@@ -1,4 +1,5 @@
 import { fetchJsonCached } from './requestCache';
+import { assertFixtureIdsBelongToGameweek, assertRequestedGameweek } from './gameweekIntegrity';
 
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
 const PUBLIC_SUPABASE_ANON_JWT =
@@ -100,6 +101,8 @@ export async function fetchHistoricalFpl(gameweek = 0, signal?: AbortSignal): Pr
     signal,
   });
   if (!isHistoricalPayload(payload)) throw new Error('Historical FPL contract mismatch');
+  assertRequestedGameweek(gameweek, payload.gameweek, 'Historical FPL');
+  assertFixtureIdsBelongToGameweek(gameweek, payload.fixture_results, 'Historical FPL');
   return payload;
 }
 

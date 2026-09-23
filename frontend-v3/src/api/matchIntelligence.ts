@@ -1,4 +1,5 @@
 import { fetchJsonCached } from './requestCache';
+import { assertFixtureIdsBelongToGameweek, assertRequestedGameweek } from './gameweekIntegrity';
 
 const API_ROOT = 'https://knooiwezzsxcwhtjtdap.supabase.co/functions/v1';
 
@@ -259,10 +260,12 @@ function parseDecisionEvidence(value: unknown): DecisionEvidence | null {
 export async function fetchMatchIntelligence(gameweek: number, signal?: AbortSignal): Promise<MatchIntelligence> {
   if (gameweek < 1 || gameweek > 38) throw new Error('A resolved Gameweek is required for match intelligence');
   const fplPayload = object(await fetchJsonCached(`${API_ROOT}/fpl-api?gw=${gameweek}`, { ttlMs: 30_000, signal }));
-  if (fplPayload?.ok !== true || number(fplPayload.gameweek) !== gameweek) throw new Error('FPL prediction contract unavailable');
+  if (fplPayload?.ok !== true) throw new Error('FPL prediction contract unavailable');
+  assertRequestedGameweek(gameweek, number(fplPayload.gameweek), 'Match intelligence');
   const fixtures = Array.isArray(fplPayload.fixture_results)
     ? fplPayload.fixture_results.map(parseFixture).filter((item): item is MatchFixture => item != null)
     : [];
+  assertFixtureIdsBelongToGameweek(gameweek, fixtures, 'Match intelligence');
   return { gameweek, fixtures, factsByMatch: new Map<number, FixtureFacts>() };
 }
 
@@ -272,9 +275,10 @@ export async function fetchFixtureFacts(gameweek: number, signal?: AbortSignal):
   try {
     const factsPayload = object(await fetchJsonCached(`${API_ROOT}/fixture-facts-api?gw=${gameweek}`, { ttlMs: 120_000, signal }));
     if (factsPayload?.ok === true && factsPayload.facts_available === true && Array.isArray(factsPayload.fixtures)) {
+      assertRequestedGameweek(gameweek, factsPayload.gameweek, 'Fixture facts');
       for (const raw of factsPayload.fixtures) {
         const facts = parseFacts(raw);
-        if (facts) factsByMatch.set(facts.match_id, facts);
+        if (facts && facts.decision_evidence?.gameweek === gameweek) factsByMatch.set(facts.match_id, facts);
       }
     }
   } catch (reason) {

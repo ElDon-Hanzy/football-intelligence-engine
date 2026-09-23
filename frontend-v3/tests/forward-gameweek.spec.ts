@@ -105,6 +105,7 @@ test('upcoming GW intelligence is selectable before the active Gameweek complete
   await expect(page.getByRole('heading', { name: 'Your next Gameweek' })).toBeVisible();
   await expect(page.getByText('Final plan pending', { exact: true })).toBeVisible();
   await expect(page.getByText('Baseline XI xPTS', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'My verified GW4 team' }).click();
   await expect(page.locator('.v3-player-card')).toHaveCount(15);
 
   await nav(page, 'Matches');

@@ -201,6 +201,10 @@ test('every current v2 page renders its populated sections without silent blanks
   test.setTimeout(360_000);
   const gw = await currentGameweek(request);
   const manager = await json(request, `${endpoints.managerPlan}?gw=${gw}`, true);
+  const fpl = await json(request, `${endpoints.fpl}?gw=${gw}`);
+  const deadlinePassed = fpl.deadline_at != null && Number.isFinite(new Date(fpl.deadline_at).getTime())
+    ? Date.now() >= new Date(fpl.deadline_at).getTime()
+    : false;
 
   await assertNoPageErrors(page, async () => {
     await openView(page, 'home', gw, 'Command Center');
@@ -254,7 +258,10 @@ test('every current v2 page renders its populated sections without silent blanks
     const projectionCard = page.locator('.projection-calibration-card');
     await expect(projectionCard).toContainText('Current XI xPts');
     const currentXiRow = projectionCard.locator('div').filter({ hasText: /^Current XI xPts/ }).first();
-    await expect(currentXiRow).not.toContainText('—');
+    // Before the deadline there is no verified submitted XI. A dash is the
+    // correct fail-closed state, not an unpopulated UI; enforce a numeric
+    // comparison value only once the Gameweek is post-lock.
+    if (deadlinePassed) await expect(currentXiRow).not.toContainText('—');
     const matched = await projectionCard.locator('div').filter({ hasText: /^Matched players/ }).first().innerText();
     if (/^Matched players\s+0/.test(matched)) {
       await expect(page.getByText(new RegExp(`External benchmark not captured for GW${gw}`))).toBeVisible({ timeout: LIVE_TIMEOUT });

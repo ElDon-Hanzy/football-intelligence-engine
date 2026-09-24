@@ -115,23 +115,31 @@ if (Array.isArray(fixtures) && fixtures.some((fixture) => !['FUTURE', 'LIVE', 'F
 if (actualPayload?.ok !== true) failures.push('actual-live payload.ok is not true');
 if (actualPayload?.contract_version !== 'fpl_v3_actual_live_v01') failures.push(`unexpected actual-live contract_version=${actualPayload?.contract_version ?? 'missing'}`);
 if (actualPayload?.gameweek !== payload?.gameweek) failures.push(`actual-live GW ${actualPayload?.gameweek ?? 'missing'} does not match workspace GW ${payload?.gameweek ?? 'missing'}`);
-if (actualPayload?.actual?.verification_status !== 'VERIFIED') failures.push(`expected post-lock actual VERIFIED, got ${actualPayload?.actual?.verification_status ?? 'missing'}`);
+const requiresVerifiedActual = payload?.lifecycle !== 'PRE_DEADLINE';
+const actualIsVerified = actualPayload?.actual?.verification_status === 'VERIFIED';
+if (requiresVerifiedActual && !actualIsVerified) failures.push(`expected post-lock actual VERIFIED, got ${actualPayload?.actual?.verification_status ?? 'missing'}`);
+if (!requiresVerifiedActual && actualIsVerified) failures.push('pre-deadline workspace unexpectedly exposes a verified submitted team');
 const actualXi = actualPayload?.actual?.starting_xi;
 const actualBench = actualPayload?.actual?.bench_order;
-if (!Array.isArray(actualXi) || actualXi.length !== 11) failures.push(`expected actual XI=11, got ${Array.isArray(actualXi) ? actualXi.length : 'missing'}`);
-if (!Array.isArray(actualBench) || actualBench.length !== 4) failures.push(`expected actual bench=4, got ${Array.isArray(actualBench) ? actualBench.length : 'missing'}`);
+if (requiresVerifiedActual && (!Array.isArray(actualXi) || actualXi.length !== 11)) failures.push(`expected actual XI=11, got ${Array.isArray(actualXi) ? actualXi.length : 'missing'}`);
+if (requiresVerifiedActual && (!Array.isArray(actualBench) || actualBench.length !== 4)) failures.push(`expected actual bench=4, got ${Array.isArray(actualBench) ? actualBench.length : 'missing'}`);
+if (!requiresVerifiedActual && (actualXi != null || actualBench != null)) failures.push('pre-deadline actual payload must not expose submitted XI or bench');
 const actualSquad = Array.isArray(actualXi) && Array.isArray(actualBench) ? [...actualXi, ...actualBench].map(Number) : [];
-if (actualSquad.length === 15 && new Set(actualSquad).size !== 15) failures.push('actual submitted squad is not 15 unique players');
+if (requiresVerifiedActual && actualSquad.length === 15 && new Set(actualSquad).size !== 15) failures.push('actual submitted squad is not 15 unique players');
 if (actualPayload?.semantics?.engine_recommendation_is_never_used_as_actual !== true) failures.push('actual-live endpoint does not explicitly forbid engine substitution');
 if (actualPayload?.semantics?.provisional_live_points_are_not_final !== true) failures.push('actual-live endpoint does not distinguish provisional from final points');
 if (actualPayload?.semantics?.scoring_scope !== 'RAW_FPL_PLAYER_POINTS_FOR_ENGINE_AND_ACTUAL_SCENARIO_SCORING') failures.push(`unexpected scoring_scope=${actualPayload?.semantics?.scoring_scope ?? 'missing'}`);
-if (actualPayload?.semantics?.player_scope !== 'ACTUAL_PRIMARY_PLUS_ENGINE_ACTUAL_SCENARIO_UNION') failures.push(`unexpected player_scope=${actualPayload?.semantics?.player_scope ?? 'missing'}`);
+const expectedPlayerScope = requiresVerifiedActual
+  ? 'ACTUAL_PRIMARY_PLUS_ENGINE_ACTUAL_SCENARIO_UNION'
+  : 'VERIFIED_ACTUAL_REQUIRED_FOR_COMPARISON';
+if (actualPayload?.semantics?.player_scope !== expectedPlayerScope) failures.push(`unexpected player_scope=${actualPayload?.semantics?.player_scope ?? 'missing'}`);
 
 const actualPlayers = actualPayload?.players;
 const actualRows = actualPayload?.player_actuals;
-if (!Array.isArray(actualPlayers) || actualPlayers.length !== 15) failures.push(`expected 15 primary actual players, got ${Array.isArray(actualPlayers) ? actualPlayers.length : 'missing'}`);
-if (!Array.isArray(actualRows) || actualRows.length !== 15) failures.push(`expected 15 primary actual result rows, got ${Array.isArray(actualRows) ? actualRows.length : 'missing'}`);
-if (Array.isArray(actualPlayers) && actualSquad.length === 15) {
+if (requiresVerifiedActual && (!Array.isArray(actualPlayers) || actualPlayers.length !== 15)) failures.push(`expected 15 primary actual players, got ${Array.isArray(actualPlayers) ? actualPlayers.length : 'missing'}`);
+if (requiresVerifiedActual && (!Array.isArray(actualRows) || actualRows.length !== 15)) failures.push(`expected 15 primary actual result rows, got ${Array.isArray(actualRows) ? actualRows.length : 'missing'}`);
+if (!requiresVerifiedActual && (actualPlayers?.length !== 0 || actualRows?.length !== 0)) failures.push('pre-deadline actual payload must not expose primary actual player rows');
+if (requiresVerifiedActual && Array.isArray(actualPlayers) && actualSquad.length === 15) {
   const primaryIds = new Set(actualPlayers.map((row) => Number(row?.player_id)));
   if (actualSquad.some((id) => !primaryIds.has(id)) || primaryIds.size !== 15) failures.push('primary players are not exactly the verified submitted squad');
 }
@@ -139,8 +147,9 @@ if (Array.isArray(actualRows) && actualRows.some((row) => !['FINAL', 'LIVE', 'PA
 
 const scenarioPlayers = actualPayload?.scenario_players;
 const scenarioRows = actualPayload?.scenario_player_actuals;
-if (!Array.isArray(scenarioPlayers) || scenarioPlayers.length < 15) failures.push(`expected scenario player union >=15, got ${Array.isArray(scenarioPlayers) ? scenarioPlayers.length : 'missing'}`);
-if (!Array.isArray(scenarioRows) || scenarioRows.length < 15) failures.push(`expected scenario actual union >=15, got ${Array.isArray(scenarioRows) ? scenarioRows.length : 'missing'}`);
+if (requiresVerifiedActual && (!Array.isArray(scenarioPlayers) || scenarioPlayers.length < 15)) failures.push(`expected scenario player union >=15, got ${Array.isArray(scenarioPlayers) ? scenarioPlayers.length : 'missing'}`);
+if (requiresVerifiedActual && (!Array.isArray(scenarioRows) || scenarioRows.length < 15)) failures.push(`expected scenario actual union >=15, got ${Array.isArray(scenarioRows) ? scenarioRows.length : 'missing'}`);
+if (!requiresVerifiedActual && (scenarioPlayers?.length !== 0 || scenarioRows?.length !== 0)) failures.push('pre-deadline actual payload must not expose an engine/actual comparison union');
 if (Array.isArray(scenarioRows) && scenarioRows.some((row) => !['FINAL', 'LIVE', 'PARTIAL', 'PENDING'].includes(row?.status))) failures.push('scenario result row has invalid status');
 if (Array.isArray(scenarioPlayers) && Array.isArray(recommendationSquad) && actualSquad.length === 15) {
   const scenarioIds = new Set(scenarioPlayers.map((row) => Number(row?.player_id)));

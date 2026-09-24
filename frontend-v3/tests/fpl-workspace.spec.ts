@@ -30,6 +30,8 @@ test('league-wide top 10 xPts ranking is present and ordered', async ({ page }) 
   await loadWorkspace(page);
   const board = page.getByRole('heading', { name: 'Top 10 by projected xPts' }).locator('..').locator('..');
   await expect(board).toBeVisible();
+  const details = page.locator('details.v3-data-details');
+  expect(await board.evaluate((node, detailsNode) => Boolean(detailsNode?.compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING), await details.elementHandle())).toBe(true);
   await expect(page.locator('.v3-player-summary-card')).toHaveCount(10);
   await expect(page.locator('.v3-player-summary-card').first()).toContainText('Gabriel');
   await expect(page.locator('.v3-player-summary-card').first()).toContainText('6.2 xPts');

@@ -193,8 +193,6 @@ function WorkspaceContent({
 
       <CurrentFplScorecard score={score} actualVerified={actualVerified} />
 
-      <LeagueTopXpts workspace={workspace} onPlayer={setSelectedPlayerId} />
-
       <div className="v3-fpl-controls">
         <div className="v3-state-tabs" role="tablist" aria-label="FPL state">
           <Tab active={stateMode === 'recommendation'} onClick={() => setStateMode('recommendation')}>Engine</Tab>
@@ -213,7 +211,7 @@ function WorkspaceContent({
         </div>
 
         {isActualLane && !actualVerified ? (
-          <div className="v3-actual-unverified" role="status"><span className="v3-unverified-icon" aria-hidden="true">?</span><div><span className="v3-kicker">Submitted team</span><h3>Actual submitted team not verified</h3><p>The engine recommendation is intentionally not substituted into My team or Live.</p></div></div>
+          <div className="v3-actual-unverified" role="status"><span className="v3-unverified-icon" aria-hidden="true">?</span><div><span className="v3-kicker">Submitted team</span><h3>Actual submitted team not verified</h3><p>{actualVerificationExplanation(workspace, live)} The engine recommendation is intentionally not substituted into My team or Live.</p></div></div>
         ) : resolved.starters.length === 0 ? (
           <div className="v3-empty-state"><strong>No complete selection is available for this state.</strong><span>Missing players are not reconstructed from another lane.</span></div>
         ) : viewMode === 'pitch' ? (
@@ -227,10 +225,16 @@ function WorkspaceContent({
       {stateMode === 'live' && actualVerified ? <LiveTruthStrip live={live} /> : null}
       <FixtureRail workspace={workspace} />
       <DataDetails workspace={workspace} live={live} actualVerified={actualVerified} />
+      <LeagueTopXpts workspace={workspace} onPlayer={setSelectedPlayerId} />
 
       <PlayerIntelligenceModal open={selectedPlayerId != null} onClose={() => setSelectedPlayerId(null)} playerId={selectedPlayerId} workspace={workspace} live={live} />
     </div>
   );
+}
+
+function actualVerificationExplanation(workspace: FplWorkspaceApi, live: ActualLiveApi) {
+  if (workspace.lifecycle === 'PRE_DEADLINE') return `GW${workspace.gameweek} is still pre-deadline, so no submitted team can be verified yet.`;
+  return live.actual.verification_status === 'NOT_VERIFIED' ? `${live.actual.reason}.` : 'Submitted-team evidence is unavailable.';
 }
 
 function LeagueTopXpts({ workspace, onPlayer }: { workspace: FplWorkspaceApi; onPlayer: (playerId: number) => void }) {

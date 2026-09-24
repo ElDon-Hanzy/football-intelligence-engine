@@ -415,16 +415,13 @@
   }
 
   .v3-dialog-backdrop {
-    align-items: end;
-    padding: 0;
+    align-items: start;
+    padding: max(0.75rem, env(safe-area-inset-top)) 0.75rem max(0.75rem, env(safe-area-inset-bottom));
   }
 
   .v3-dialog {
-    max-height: 92vh;
-    border-right: 0;
-    border-bottom: 0;
-    border-left: 0;
-    border-radius: 1.25rem 1.25rem 0 0;
+    max-height: calc(100dvh - max(1.5rem, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+    border-radius: 1.25rem;
   }
 
   .v3-dialog-head,

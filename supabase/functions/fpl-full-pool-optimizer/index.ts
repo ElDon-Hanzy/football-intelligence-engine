@@ -7,7 +7,7 @@ const CAPS: any = { GKP: 18, DEF: 50, MID: 60, FWD: 35 };
 const FORM = [[3,4,3],[3,5,2],[4,3,3],[4,4,2],[4,5,1],[5,2,3],[5,3,2],[5,4,1]];
 const ATTACK = new Set(['CREATOR_10','WIDE_ATTACKER','WIDE_FORWARD','LINK_FORWARD','TARGET_FORWARD','CENTRAL_STRIKER','WING_BACK']);
 const CONTROL = new Set(['HOLDING_MIDFIELDER','CENTRE_BACK','HYBRID_DEFENDER','WIDE_BACK','GOALKEEPER']);
-const OPTIMIZER_VERSION = 'C0228_DISTRIBUTED_ENSEMBLE_OPTIMIZER_V02';
+const OPTIMIZER_VERSION = 'C0287_COLLECTIBLE_XI_CANONICAL_V01';
 const CONSTRAINT_VERSION = 'C0240_CONSTRAINED_EVALUATION_V01';
 
 function sellPrice(now: number, buy: number) { return now <= buy ? now : buy + Math.floor((now - buy) / 2); }
@@ -16,6 +16,11 @@ function roleRisk(p: any, gws: number[]) { if (!['MID','FWD'].includes(p.positio
 function roleUnknown(p: any, gws: number[]) { let seen=0; for (const g of gws) if (p.roles?.get(g)?.primary_role) seen++; return seen===0 ? 1 : 0; }
 function uniqNums(x: any): number[] { return [...new Set((Array.isArray(x)?x:[]).map((v:any)=>N(v,NaN)).filter((v:number)=>Number.isInteger(v)&&v>0))]; }
 
+// FPL awards the points of eleven starters, plus only the bench players that are
+// actually auto-substituted.  The previous objective assigned a flat fraction of
+// *all* four bench scores, which made an expensive bench look collectible.
+// This is deliberately conservative: it uses only current-run p_start/xPts,
+// never an invented tactical adjustment or historical observation.
 function bestXI(sq: any[], gw: number) {
   let best: any = null;
   for (const [d,m,f] of FORM) {
@@ -23,11 +28,35 @@ function bestXI(sq: any[], gw: number) {
     const xi = [...pick('GKP',1), ...pick('DEF',d), ...pick('MID',m), ...pick('FWD',f)];
     if (xi.length!==11) continue;
     const xp=xi.reduce((s,p)=>s+N(p.preds.get(gw)?.expected_points),0);
-    const tot=sq.reduce((s,p)=>s+N(p.preds.get(gw)?.expected_points),0);
+    const bench=sq.filter(p=>!xi.includes(p));
     const cs=(p:any)=>{const x=p.preds.get(gw);return N(x.expected_points)+N(x.p_5_plus)+2.5*N(x.p_10_plus)+4*N(x.p_15_plus)+6*N(x.p_20_plus)-.5*N(x.p_blank)};
     const cp=[...xi].sort((a,b)=>cs(b)-cs(a)||N(b.preds.get(gw)?.expected_points)-N(a.preds.get(gw)?.expected_points));
-    const z={formation:`${d}-${m}-${f}`,xi,xiPts:xp,benchPts:tot-xp,captain:cp[0],vice:cp[1],captainScore:cs(cp[0])};
-    if(!best||xp>best.xiPts) best=z;
+    const captain=cp[0],vice=cp[1];
+    const capStart=Math.max(0,Math.min(1,N(captain.preds.get(gw)?.p_start)));
+    // The captain's base xPts is already included in xiPts; these are the
+    // additional captain multiplier and a conservative vice insurance term.
+    const captainExtra=N(captain.preds.get(gw)?.expected_points);
+    const viceInsurance=(1-capStart)*N(vice.preds.get(gw)?.expected_points);
+    const starterAbs:any={GKP:0,DEF:0,MID:0,FWD:0};
+    for(const p of xi) starterAbs[p.position]+=1-Math.max(0,Math.min(1,N(p.preds.get(gw)?.p_start)));
+    const ordered=[...bench.filter(p=>p.position==='GKP'),...bench.filter(p=>p.position!=='GKP').sort((a,b)=>N(b.preds.get(gw)?.expected_points)-N(a.preds.get(gw)?.expected_points))];
+    let benchUtility=0;
+    for(const p of ordered){
+      const q=p.preds.get(gw), ps=Math.max(.15,Math.min(1,N(q?.p_start)));
+      // Legal substitute proxy: a keeper only covers the keeper; an outfielder
+      // can cover an absent starter of the same position without breaking the
+      // selected legal formation.  It intentionally does not credit a bench
+      // player merely for existing in the 15.
+      const need=p.position==='GKP'?starterAbs.GKP:starterAbs[p.position];
+      const chance=Math.max(0,Math.min(1,need/ps));
+      benchUtility+=N(q?.expected_points)*chance;
+      if(p.position==='GKP') starterAbs.GKP=Math.max(0,starterAbs.GKP-ps);
+      else starterAbs[p.position]=Math.max(0,starterAbs[p.position]-ps);
+    }
+    const benchPts=bench.reduce((s,p)=>s+N(p.preds.get(gw)?.expected_points),0);
+    const collectible=xp+captainExtra+viceInsurance+benchUtility;
+    const z={formation:`${d}-${m}-${f}`,xi,bench,xiPts:xp,benchPts,benchUtility,benchLeakage:Math.max(0,benchPts-benchUtility),captain,vice,captainExtra,viceInsurance,captainScore:cs(captain),collectible};
+    if(!best||collectible>best.collectible) best=z;
   }
   return best;
 }
@@ -145,9 +174,9 @@ Deno.serve(async (req: Request) => {
       const ti=sq.filter(p=>!p.inCurrent).length; if(ti>cap)return null;
       let obj=0,capTail=0; const plans:any[]=[];
       for(let i=0;i<gws.length;i++){
-        const g=gws[i],z=bestXI(sq,g); if(!z)return null; const cx=N(z.captain.preds.get(g)?.expected_points);
-        obj+=weights[i]*(z.xiPts+cx+benchW*z.benchPts); capTail+=weights[i]*z.captainScore;
-        plans.push({gameweek:g,weight:weights[i],formation:z.formation,xi_expected_points:+z.xiPts.toFixed(3),captain_extra_expected_points:+cx.toFixed(3),bench_expected_points:+z.benchPts.toFixed(3),captain_player_id:z.captain.id,vice_player_id:z.vice.id,starting_xi:z.xi.map((p:any)=>p.id)});
+        const g=gws[i],z=bestXI(sq,g); if(!z)return null;
+        obj+=weights[i]*z.collectible; capTail+=weights[i]*z.captainScore;
+        plans.push({gameweek:g,weight:weights[i],formation:z.formation,xi_expected_points:+z.xiPts.toFixed(3),captain_extra_expected_points:+z.captainExtra.toFixed(3),vice_insurance_expected_points:+z.viceInsurance.toFixed(3),expected_bench_substitution_utility:+z.benchUtility.toFixed(3),bench_expected_points:+z.benchPts.toFixed(3),bench_point_leakage:+z.benchLeakage.toFixed(3),collectible_expected_points:+z.collectible.toFixed(3),captain_player_id:z.captain.id,vice_player_id:z.vice.id,starting_xi:z.xi.map((p:any)=>p.id),bench_order:z.bench.map((p:any)=>p.id)});
       }
       const hits=chargeHits?Math.max(0,ti-ft)*tc:0; obj-=hits;
       const ids=new Set(sq.map(p=>p.id)),outs=currentSquad.filter(p=>!ids.has(p.id)),ins=sq.filter(p=>!p.inCurrent),mins=sq.map(p=>Math.min(...gws.map(g=>N(p.preds.get(g)?.expected_minutes))));
@@ -213,7 +242,7 @@ Deno.serve(async (req: Request) => {
     const roll=evalSq(currentSquad,0,true,false); if(!roll)return Response.json({ok:false,status:'ROLL_BASELINE_ILLEGAL'},{status:409});
 
     const pairTransfers=(x:any)=>{const qs=new Map<string,any[]>();for(const o of x.outs){if(!qs.has(o.position))qs.set(o.position,[]);qs.get(o.position)!.push(o)}return x.ins.map((p:any)=>{const q=qs.get(p.position)||[],o=q.shift();return{out_player_id:o?.id??null,out_name:o?.name??null,out_role:o?.roles?.get(gw)?.primary_role??null,in_player_id:p.id,in_name:p.name,in_role:p.roles?.get(gw)?.primary_role??null,position:p.position,in_price_tenths:p.nowPrice,out_sell_price_tenths:o?.sellPrice??null}})};
-    const ser=(x:any)=>({scenario:`MAX_${x.maxTransfers}FT`,objective:+x.objective.toFixed(3),objective_gain_vs_roll:+(x.objective-roll.objective).toFixed(3),cost_tenths:x.cost,itb_tenths:budget-x.cost,transfers_in:x.transfersIn,transfer_cost_points:x.hits,transfers:pairTransfers(x),strategic:x.strategic,squad:x.squad.map((p:any)=>({player_id:p.id,name:p.name,team:tn.get(p.team_id)||p.team_id,position:p.position,now_price_tenths:p.nowPrice,budget_price_tenths:p.budgetPrice,horizon_score:+p.horizonScore.toFixed(3),current_xmins:+p.currentMinutes.toFixed(2),current_tail_score:+p.tailScore.toFixed(3),penalty_order:p.penaltyOrder,current_role:p.roles?.get(gw)?.primary_role??null,current_role_confidence:p.roles?.get(gw)?.confidence??null,role_family:roleFamily(p.roles?.get(gw)?.primary_role),role_risk:p.roleRisk===1,retained:p.inCurrent})),gameweeks:x.gwPlans});
+    const ser=(x:any)=>{const p=x.gwPlans?.[0]||{};return {scenario:`MAX_${x.maxTransfers}FT`,objective:+x.objective.toFixed(3),collectible_horizon_expected_points:+(x.objective+x.hits).toFixed(3),gw_expected_points:p.collectible_expected_points??null,gw_starting_xi_expected_points:p.xi_expected_points??null,gw_bench_substitution_utility:p.expected_bench_substitution_utility??null,gw_bench_point_leakage:p.bench_point_leakage??null,objective_gain_vs_roll:+(x.objective-roll.objective).toFixed(3),cost_tenths:x.cost,itb_tenths:budget-x.cost,transfers_in:x.transfersIn,transfer_cost_points:x.hits,transfers:pairTransfers(x),strategic:x.strategic,squad:x.squad.map((p:any)=>({player_id:p.id,name:p.name,team:tn.get(p.team_id)||p.team_id,position:p.position,now_price_tenths:p.nowPrice,budget_price_tenths:p.budgetPrice,horizon_score:+p.horizonScore.toFixed(3),current_xmins:+p.currentMinutes.toFixed(2),current_tail_score:+p.tailScore.toFixed(3),penalty_order:p.penaltyOrder,current_role:p.roles?.get(gw)?.primary_role??null,current_role_confidence:p.roles?.get(gw)?.confidence??null,role_family:roleFamily(p.roles?.get(gw)?.primary_role),role_risk:p.roleRisk===1,retained:p.inCurrent})),gameweeks:x.gwPlans};};
     const familySig=(x:any)=>{const pf=x.squad.filter((p:any)=>p.position==='FWD'&&p.nowPrice>=90).length,pm=x.squad.filter((p:any)=>p.position==='MID'&&p.nowPrice>=90).length,pd=x.squad.filter((p:any)=>p.position==='DEF'&&p.nowPrice>=70).length;return `PF${pf}_PM${pm}_PD${pd}`};
 
     if(constrained){
